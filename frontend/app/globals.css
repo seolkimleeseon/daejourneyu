@@ -1,0 +1,18 @@
+:root {
+  /* 대저니유 디자인 토큰 (티일 팔레트) */
+  --main: #35AD90;   --sub80: #4FBAA0;  --sub40: #A0DDD0;  --sub20: #D7F2EB;
+  --orange: #FF8A3D; --yellow: #F4C542; --navy: #183B56;   --blue: #4F7CF7;
+  --bg: #F4F6F9;     --card: #FFFFFF;
+  --g100: #F8F9FA;   --g90: #ECEFF1;    --g80: #D5DADF;    --g70: #B0B8C1;
+  --g60: #8D97A3;    --g50: #6B7682;    --g40: #3F4752;
+  --text: #3F4752;   --muted: #8D97A3;
+  --radius-card: 16px; --radius-ctrl: 12px; --inset: 20px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.2px;
+}

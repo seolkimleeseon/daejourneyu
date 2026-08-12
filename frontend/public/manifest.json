@@ -1,0 +1,14 @@
+{
+  "name": "Daejourneyu — 대전 반려동물 여행",
+  "short_name": "Daejourneyu",
+  "description": "Dae(대전) + journey + 유 · 반려동물과 함께하는 대전 여행",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F6F9",
+  "theme_color": "#35AD90",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
