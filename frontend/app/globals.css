@@ -1,18 +1,73 @@
-:root {
-  /* 대저니유 디자인 토큰 (티일 팔레트) */
-  --main: #35AD90;   --sub80: #4FBAA0;  --sub40: #A0DDD0;  --sub20: #D7F2EB;
-  --orange: #FF8A3D; --yellow: #F4C542; --navy: #183B56;   --blue: #4F7CF7;
-  --bg: #F4F6F9;     --card: #FFFFFF;
-  --g100: #F8F9FA;   --g90: #ECEFF1;    --g80: #D5DADF;    --g70: #B0B8C1;
-  --g60: #8D97A3;    --g50: #6B7682;    --g40: #3F4752;
-  --text: #3F4752;   --muted: #8D97A3;
-  --radius-card: 16px; --radius-ctrl: 12px; --inset: 20px;
+@import "tailwindcss";
+
+/*
+ * 디자인 토큰 — PLAN.md §3, §4-5 결정에 따라 프로토타입 :root 팔레트를 기준(source of truth)으로 채택.
+ * 색은 컴포넌트에서 raw hex로 쓰지 말고 반드시 아래 토큰(Tailwind 유틸리티, 예: bg-brand, text-ink-muted)으로 참조할 것.
+ */
+@theme {
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* 프로토타입에 정의만 있고 실사용처를 못 찾은 폰트. STEP2에서 필요 확인 전까지는 쓰지 말 것. */
+  --font-round: "Jua", "Pretendard Variable", sans-serif;
+
+  /* 브랜드(민트/그린) — 메인 브랜드 컬러 스케일 */
+  --color-brand: #35ad90;
+  --color-brand-100: #d7f2eb;
+  --color-brand-300: #a0ddd0;
+  --color-brand-400: #72c8b3;
+  --color-brand-500: #4fbaa0;
+  --color-brand-700: #1e7d64;
+
+  /* 액센트 — 보조 색상 (MBTI/뱃지, 축제, 경고 등) */
+  --color-accent-purple: #4f7cf7;
+  --color-accent-purple-light: #e7edfd;
+  --color-accent-amber: #b8891c;
+  --color-accent-amber-light: #fdf3d2;
+  --color-accent-coral: #ff8a3d;
+  --color-accent-coral-light: #ffe9d6;
+  --color-accent-navy: #183b56;
+
+  /* 표면 */
+  --color-surface: #f8f9fa;
+  --color-card: #ffffff;
+
+  /* 선/구분선 */
+  --color-line: #eceff1;
+  --color-line-strong: #d5dadf;
+
+  /* 텍스트 */
+  --color-ink: #253039;
+  --color-ink-muted: #6b7682;
+
+  /* 세부 그레이 스케일(브랜드색 대신 무채색이 필요한 드문 경우에만) */
+  --color-steel-100: #f8f9fa;
+  --color-steel-200: #eceff1;
+  --color-steel-300: #d5dadf;
+  --color-steel-400: #b0b8c1;
+  --color-steel-500: #8d97a3;
+  --color-steel-600: #6b7682;
+  --color-steel-700: #3f4752;
+
+  /* 반경 스케일 — 프로토타입 관찰값 기반(PLAN.md §3) */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 22px;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body {
-  font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.2px;
 }

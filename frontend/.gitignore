@@ -1,0 +1,18 @@
+# 의존성 / 빌드 산출물
+node_modules/
+.next/
+out/
+dist/
+
+# next-pwa가 next build 때마다 생성하는 서비스워커 산출물 — 소스가 아니라 빌드 결과물
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+
+# 환경변수
+.env
+.env.local
+
+# 로그
+npm-debug.log*

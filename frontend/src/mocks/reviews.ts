@@ -1,0 +1,43 @@
+import type { Review } from "@/types";
+
+export const mockReviews: Review[] = [
+  {
+    id: "review-1",
+    placeId: "place-1",
+    placeName: "한밭수목원",
+    authorId: "user-1",
+    authorName: "콩이맘",
+    isMine: true,
+    text: "물가 산책로가 넓어서 콩이가 신나게 뛰어다녔어요. 목줄은 필수지만 사람도 적당히 붐벼서 좋았습니다.",
+    tags: ["산책 좋아요", "물그릇 제공"],
+    likes: 6,
+    liked: false,
+    createdAtLabel: "2일 전",
+  },
+  {
+    id: "review-2",
+    placeId: "place-4",
+    placeName: "유성 반려동물 놀이터",
+    authorId: "user-1",
+    authorName: "콩이맘",
+    isMine: true,
+    text: "대형견 구역이 따로 있어서 안심하고 풀어놓을 수 있었어요. 그늘이 부족한 게 아쉬워요.",
+    tags: ["대형견 구역 분리", "그늘 부족"],
+    likes: 3,
+    liked: false,
+    createdAtLabel: "5일 전",
+  },
+  {
+    id: "review-3",
+    placeId: "place-6",
+    placeName: "대흥동 감성 카페",
+    authorId: "user-2",
+    authorName: "모찌아빠",
+    isMine: false,
+    text: "소형견만 가능하다는 걸 미리 안내해줘서 헷갈리지 않았어요. 자리도 편안했습니다.",
+    tags: ["소형견만", "좌석 편안"],
+    likes: 4,
+    liked: false,
+    createdAtLabel: "1주 전",
+  },
+];
