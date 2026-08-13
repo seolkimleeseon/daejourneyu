@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/shell/Providers";
 
@@ -27,6 +28,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        {/* 카카오톡 공유하기 SDK — https://developers.kakao.com/docs/ko/kakaotalk-share/js-link */}
+        <Script src="https://developers.kakao.com/sdk/js/kakao.min.js" strategy="afterInteractive" />
         <Providers>{children}</Providers>
       </body>
     </html>
