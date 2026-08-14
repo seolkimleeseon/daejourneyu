@@ -11,7 +11,7 @@ const DAEJEON_AREA_CODE = "3";
  * areaBasedList2의 firstimage는 상당수 장소에서 비어 있다. 그 장소들만 detailImage2로 보충해서 채운다.
  * detailImage2는 일일 트래픽 한도가 1,000회로 다른 오퍼레이션보다 낮아서, 한 번 호출에서 보충하는 개수를 제한한다.
  */
-const MAX_IMAGE_SUPPLEMENT_PER_REQUEST = 24;
+const MAX_IMAGE_SUPPLEMENT_PER_REQUEST = 60;
 
 /** 카테고리 하나로 몰아서 정렬하면(예: 수정일순) 특정 관광타입에 결과가 쏠릴 수 있어, 타입별로 따로 조회해 최소 개수를 보장한다. */
 const CATEGORY_CONTENT_TYPE_IDS: PetTourContentTypeId[] = ["12", "14", "28", "32", "39"];

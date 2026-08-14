@@ -5,6 +5,13 @@ import placesRouter from "./routes/places";
 import weatherRouter from "./routes/weather";
 import petTourSpotsRouter from "./routes/petTourSpots";
 import daejeonRouter from "./routes/daejeon";
+import parksRouter from "./routes/parks";
+import geocodeRouter from "./routes/geocode";
+import kakaoPlacesRouter from "./routes/kakaoPlaces";
+import petFacilitiesRouter from "./routes/petFacilities";
+import verifiedPetRestaurantsRouter from "./routes/verifiedPetRestaurants";
+import daejeonPlacesRouter from "./routes/daejeonPlaces";
+import campgroundsRouter from "./routes/campgrounds";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -20,6 +27,13 @@ app.use("/api/places", placesRouter);
 app.use("/api/weather", weatherRouter);
 app.use("/api/pet-tour-spots", petTourSpotsRouter);
 app.use("/api/daejeon", daejeonRouter);
+app.use("/api/parks", parksRouter);
+app.use("/api/geocode", geocodeRouter);
+app.use("/api/kakao-places", kakaoPlacesRouter);
+app.use("/api/pet-facilities", petFacilitiesRouter);
+app.use("/api/verified-pet-restaurants", verifiedPetRestaurantsRouter);
+app.use("/api/daejeon-places", daejeonPlacesRouter);
+app.use("/api/campgrounds", campgroundsRouter);
 
 app.listen(PORT, () => {
   console.log(`🐾 대저니유 API listening on http://localhost:${PORT}`);
