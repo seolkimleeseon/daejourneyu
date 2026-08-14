@@ -11,12 +11,16 @@ async function fetchPetTourPlaces(): Promise<PickablePlace[]> {
     .filter((place): place is PickablePlace => place !== null);
 }
 
-/** 한국관광공사 반려동물 동반여행 서비스(대전) 기반 실제 장소 목록. 실패 시 호출부에서 mockPlaces로 폴백할 것. */
-export function usePetTourSpots() {
+/**
+ * 한국관광공사 반려동물 동반여행 서비스(대전) 기반 실제 장소 목록. 실패 시 호출부에서 mockPlaces로 폴백할 것.
+ * enabled: false로 두면 요청을 보내지 않는다 — 바텀시트처럼 열릴 때만 필요한 곳에서 불필요한 초기 로딩을 막는 용도.
+ */
+export function usePetTourSpots(enabled = true) {
   return useQuery({
     queryKey: ["pet-tour-spots"],
     queryFn: fetchPetTourPlaces,
     staleTime: 30 * 60 * 1000,
     retry: 1,
+    enabled,
   });
 }
