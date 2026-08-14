@@ -71,3 +71,22 @@ body {
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.2px;
 }
+
+/* 얇고 은은한 스크롤바 — 바텀시트 등 스크롤 영역 공용 */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-steel-500);
+}
