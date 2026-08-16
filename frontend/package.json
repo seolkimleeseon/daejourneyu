@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.101.4",
@@ -24,6 +25,7 @@
     "@types/react-dom": "18.3.0",
     "next-pwa": "5.6.0",
     "postcss": "8.5.26",
+    "sharp": "^0.35.3",
     "tailwindcss": "4.3.3",
     "typescript": "5.5.3"
   }
