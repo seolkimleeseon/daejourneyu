@@ -24,7 +24,7 @@ const iconProps = {
 const TABS: NavTab[] = [
   {
     href: "/map",
-    label: "다녀지도",
+    label: "댕댕지도",
     icon: (
       <svg {...iconProps}>
         <path d="M12 21s-6.5-5.8-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.2 12 21 12 21z" />

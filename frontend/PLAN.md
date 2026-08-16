@@ -44,7 +44,7 @@ home
 └─ [MBTI 코스 만들기 진입] → mbtiIntro/jvMbtiResult → … → 코스 생성 플로우(SCHEDULE 참고, 탭 넘나듦)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TAB: MAP (다녀지도)
+TAB: MAP (댕댕지도)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 map   (내부 상태머신: districts → traveling(연출) → list — 별도 라우트 아님, 컴포넌트 내부 state)
 └─ placeDetail
