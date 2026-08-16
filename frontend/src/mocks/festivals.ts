@@ -9,6 +9,8 @@ export const mockFestivals: FestivalEvent[] = [
     time: "10:00~17:00",
     petFriendly: true,
     condition: "전 견종 동반 가능",
+    instagramUrl: "https://www.instagram.com/daejourneyu",
+    webUrl: "https://blog.naver.com/daejourneyu",
   },
   {
     id: "festival-2",
@@ -17,5 +19,6 @@ export const mockFestivals: FestivalEvent[] = [
     place: "대전역 일원",
     time: "10:00~20:00",
     petFriendly: false,
+    webUrl: "https://blog.naver.com/daejourneyu",
   },
 ];
