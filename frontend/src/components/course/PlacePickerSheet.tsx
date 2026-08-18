@@ -18,7 +18,10 @@ import type { DaejeonDistrict, PlaceCategory } from "@/types";
 /** MIN_RESULTS_BEFORE_RELAX 미만이면 구 필터를 풀거나 카카오맵으로 더 찾아본다 */
 const MIN_RESULTS_BEFORE_RELAX = 4;
 
-const CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문화", "숙박"];
+// TODO(player1-pr): place.ts의 PlaceCategory에서 "숙박"이 실제로 빠지면(player1 PR 머지 후)
+// 이 파일에서도 "숙박" 관련 항목을 함께 정리한다. 지금은 데이터(캠핑장·관광공사 숙박)를
+// 전부 "문화"로 매핑해두었으니 "숙박" 카테고리로 들어오는 place는 없다.
+const CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문화"];
 const CATEGORY_EMOJI: Record<PlaceCategory, string> = {
   산책: "🌳",
   놀이터: "🐾",

@@ -20,12 +20,13 @@ export interface PickablePlace extends Place {
 }
 
 /** 관광타입(12:관광지 14:문화시설 15:축제 25:여행코스 28:레포츠 32:숙박 38:쇼핑 39:음식점) → 우리 앱 카테고리.
- * 15(축제)·38(쇼핑)은 "장소"로 다루기 애매해 코스에 담지 않는다(매핑에서 제외). */
+ * 15(축제)·38(쇼핑)은 "장소"로 다루기 애매해 코스에 담지 않는다(매핑에서 제외).
+ * PlaceCategory에 숙박이 없어(Player1 소유 타입) 32(숙박)는 문화로 묶는다. */
 const CATEGORY_BY_CONTENT_TYPE: Record<string, PlaceCategory> = {
   "12": "산책",
   "14": "문화",
   "28": "산책",
-  "32": "숙박",
+  "32": "문화",
   "39": "맛집",
 };
 
@@ -54,7 +55,7 @@ export function mapPetTourSpotToPlace(spot: ApiPetTourSpot): PickablePlace | nul
   };
 }
 
-const ALL_CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문화", "숙박"];
+const ALL_CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문화"];
 
 /**
  * 대전 지역은 KorPetTourService2 실데이터 자체가 아직 카테고리별로 아주 적다(예: 관광지 몇 곳뿐이고
