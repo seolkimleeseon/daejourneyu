@@ -28,6 +28,10 @@
   --color-accent-coral-light: #ffe9d6;
   --color-accent-navy: #183b56;
 
+  /* 소셜 로그인 브랜드 색 — 카카오 가이드 고정값이라 팔레트와 별개로 둔다 */
+  --color-kakao: #fee500;
+  --color-kakao-ink: #191600;
+
   /* 표면 */
   --color-surface: #f8f9fa;
   --color-card: #ffffff;

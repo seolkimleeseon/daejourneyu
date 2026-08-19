@@ -6,10 +6,17 @@ import Link from "next/link";
 import { TopBar } from "@/components/shell/TopBar";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/onboarding/FormField";
+import { KakaoLoginButton } from "@/components/onboarding/KakaoLoginButton";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { markOnboardingSeen } from "@/lib/onboarding";
 import type { AuthFieldErrors } from "@/lib/api/auth";
+
+const KAKAO_ERROR_MESSAGES: Record<string, string> = {
+  kakao_state: "로그인 요청이 만료됐어요. 다시 시도해주세요",
+  kakao_denied: "카카오 로그인이 취소됐어요",
+  kakao_failed: "카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요",
+};
 
 export default function LoginPage() {
   return (
@@ -34,6 +41,9 @@ function LoginPageInner() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  /** 카카오 콜백이 실패하면 이 화면으로 error 파라미터를 달고 돌아온다. */
+  const kakaoError = KAKAO_ERROR_MESSAGES[searchParams.get("error") ?? ""];
+
   const handleSubmit = async () => {
     setPending(true);
     setFormError(null);
@@ -57,6 +67,20 @@ function LoginPageInner() {
     <>
       <TopBar title="로그인" showBack />
       <div className="flex flex-col gap-3.5 px-5 pb-8 pt-4">
+        {kakaoError ? (
+          <p className="rounded-lg bg-accent-coral-light px-3 py-2 text-[11px] text-accent-coral">
+            {kakaoError}
+          </p>
+        ) : null}
+
+        <KakaoLoginButton next={next} />
+
+        <div className="flex items-center gap-2 py-1">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-[10px] text-ink-muted">또는 이메일로 로그인</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
         <FormField
           label="이메일"
           type="email"

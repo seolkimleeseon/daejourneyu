@@ -6,6 +6,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/shell/TopBar";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/onboarding/FormField";
+import { KakaoLoginButton } from "@/components/onboarding/KakaoLoginButton";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
 import type { AuthFieldErrors } from "@/lib/api/auth";
@@ -63,6 +64,14 @@ function SignupPageInner() {
     <>
       <TopBar title="회원가입" showBack />
       <div className="flex flex-col gap-3.5 px-5 pb-8 pt-4">
+        <KakaoLoginButton next={next} label="카카오로 3초 만에 가입" />
+
+        <div className="flex items-center gap-2 py-1">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-[10px] text-ink-muted">또는 이메일로 가입</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
         <FormField
           label="이메일"
           type="email"
