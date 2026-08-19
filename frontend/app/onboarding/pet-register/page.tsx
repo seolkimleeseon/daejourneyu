@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { Button } from "@/components/ui/Button";
 import { PetRegisterForm } from "@/components/onboarding/PetRegisterForm";
+import { markOnboardingSeen } from "@/lib/onboarding";
 
 /**
  * petRegister — 온보딩과 마이탭 '정보 수정'이 함께 쓰는 진입점.
@@ -31,6 +32,13 @@ function PetRegisterPageInner() {
       router.back();
       return;
     }
+    // 온보딩 흐름의 마지막 화면이므로 여기서 완료를 기록한다.
+    markOnboardingSeen();
+    router.replace("/home");
+  };
+
+  const handleSkip = () => {
+    markOnboardingSeen();
     router.replace("/home");
   };
 
@@ -47,7 +55,7 @@ function PetRegisterPageInner() {
         <PetRegisterForm mode={mode} petId={petId} onCompleted={handleCompleted} />
 
         {mode === "create" && !fromMy ? (
-          <Button variant="text" className="mt-3" onClick={() => router.replace("/home")}>
+          <Button variant="text" className="mt-3" onClick={handleSkip}>
             나중에 등록할게요
           </Button>
         ) : null}

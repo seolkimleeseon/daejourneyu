@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { LoginModal } from "@/components/my/LoginModal";
+import { markOnboardingSeen } from "@/lib/onboarding";
 
 const HIGHLIGHTS = [
   { emoji: "🐾", title: "반려동물 동반 조건까지", text: "견종·크기별 동반 조건을 장소마다 확인해요" },
@@ -12,6 +15,13 @@ const HIGHLIGHTS = [
 /** onboarding — 앱 첫 진입 화면. 회원가입 또는 둘러보기(비로그인 탐색)로 갈라진다. */
 export default function OnboardingPage() {
   const router = useRouter();
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  /** 온보딩을 벗어나 앱으로 들어가는 모든 경로에서 "봤음"을 기록해 다음 진입부터는 홈으로 간다. */
+  const enterApp = () => {
+    markOnboardingSeen();
+    router.replace("/home");
+  };
 
   return (
     <div className="flex min-h-dvh flex-col px-5 pb-8 pt-16">
@@ -42,10 +52,15 @@ export default function OnboardingPage() {
         <Button variant="primary" onClick={() => router.push("/onboarding/signup")}>
           시작하기
         </Button>
-        <Button variant="text" onClick={() => router.replace("/home")}>
+        <Button variant="secondary" onClick={() => setLoginOpen(true)}>
+          이미 계정이 있어요
+        </Button>
+        <Button variant="text" onClick={enterApp}>
           로그인 없이 둘러볼래요
         </Button>
       </div>
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={enterApp} />
     </div>
   );
 }
