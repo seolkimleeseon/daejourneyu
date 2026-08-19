@@ -1,33 +1,55 @@
 import { create } from "zustand";
 import type { Pet } from "@/types";
-import { mockPets } from "@/mocks";
+import {
+  createPetRequest,
+  fetchPets,
+  updatePetRequest,
+  type PetInput,
+  type PetResult,
+} from "@/lib/api/pets";
 
-/** 등록/수정 폼이 다루는 입력값. id·mbti는 폼에서 만들지 않는다(mbti는 퀴즈 결과로만 채워짐). */
-export type PetInput = Omit<Pet, "id" | "mbti">;
+export type { PetInput };
 
 interface PetState {
   pets: Pet[];
   activePetIndex: number;
   activePet: () => Pet | null;
   switchActivePet: (index: number) => void;
-  /** 등록 후 방금 추가한 반려동물을 활성으로 둔다. */
-  addPet: (input: PetInput) => void;
-  updatePet: (petId: string, input: PetInput) => void;
+  /** 로그인 상태가 되면 서버 목록을 불러오고, 로그아웃되면 비운다. */
+  hydrate: () => Promise<void>;
+  clear: () => void;
+  addPet: (input: PetInput) => Promise<PetResult>;
+  updatePet: (petId: string, input: PetInput) => Promise<PetResult>;
 }
 
-// TODO(api): 등록/수정을 POST·PATCH /api/pets 로 교체. 지금은 클라이언트 상태로만 유지한다.
 export const usePetStore = create<PetState>((set, get) => ({
-  pets: mockPets,
+  pets: [],
   activePetIndex: 0,
   activePet: () => get().pets[get().activePetIndex] ?? null,
   switchActivePet: (index) => set({ activePetIndex: index }),
-  addPet: (input) =>
-    set((state) => {
-      const pets = [...state.pets, { ...input, id: `pet-${Date.now()}` }];
-      return { pets, activePetIndex: pets.length - 1 };
-    }),
-  updatePet: (petId, input) =>
-    set((state) => ({
-      pets: state.pets.map((pet) => (pet.id === petId ? { ...pet, ...input } : pet)),
-    })),
+
+  hydrate: async () => {
+    const pets = await fetchPets();
+    // 목록이 줄어든 경우 활성 인덱스가 범위를 벗어나지 않도록 보정한다.
+    set((state) => ({ pets, activePetIndex: Math.min(state.activePetIndex, Math.max(pets.length - 1, 0)) }));
+  },
+
+  clear: () => set({ pets: [], activePetIndex: 0 }),
+
+  addPet: async (input) => {
+    const result = await createPetRequest(input);
+    // 방금 등록한 반려동물을 활성으로 둔다.
+    if (result.ok) set((state) => ({ pets: [...state.pets, result.pet], activePetIndex: state.pets.length }));
+    return result;
+  },
+
+  updatePet: async (petId, input) => {
+    const result = await updatePetRequest(petId, input);
+    if (result.ok) {
+      set((state) => ({
+        pets: state.pets.map((pet) => (pet.id === petId ? result.pet : pet)),
+      }));
+    }
+    return result;
+  },
 }));

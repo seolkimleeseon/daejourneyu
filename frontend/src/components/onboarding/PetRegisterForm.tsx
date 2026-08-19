@@ -4,7 +4,8 @@ import { useState } from "react";
 import type { PetSize } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
-import { usePetStore, type PetInput } from "@/stores/usePetStore";
+import { usePetStore } from "@/stores/usePetStore";
+import type { PetInput } from "@/lib/api/pets";
 import { useToastStore } from "@/stores/useToastStore";
 import { FormField } from "./FormField";
 
@@ -25,6 +26,8 @@ interface FormErrors {
   breed?: string;
   weightKg?: string;
   ageYears?: string;
+  size?: string;
+  emoji?: string;
 }
 
 /** 몸무게만 입력해도 크기가 맞춰지도록 기본값을 제안한다(사용자가 직접 바꿀 수 있다). */
@@ -54,6 +57,8 @@ export function PetRegisterForm({ mode, petId, onCompleted }: PetRegisterFormPro
   const [emoji, setEmoji] = useState(target?.emoji ?? EMOJIS[0]);
   const [sizeTouched, setSizeTouched] = useState(mode === "edit");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   const handleWeightChange = (value: string) => {
     setWeight(value);
@@ -84,17 +89,27 @@ export function PetRegisterForm({ mode, petId, onCompleted }: PetRegisterFormPro
     return { name: name.trim(), breed: breed.trim(), weightKg, ageYears, size, emoji };
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const input = validate();
     if (!input) return;
 
-    if (mode === "edit" && target) {
-      updatePet(target.id, input);
-      showToast(`${input.name}의 정보를 수정했어요`);
-    } else {
-      addPet(input);
-      showToast(`${input.name}을(를) 등록했어요`);
+    setPending(true);
+    setFormError(null);
+
+    const result =
+      mode === "edit" && target ? await updatePet(target.id, input) : await addPet(input);
+    setPending(false);
+
+    if (!result.ok) {
+      // 서버가 필드별 오류를 주면 폼에 붙이고, 그 외에는 폼 하단에 한 줄로 보여준다.
+      setErrors(result.errors ?? {});
+      setFormError(result.errors ? null : result.message ?? "저장에 실패했어요");
+      return;
     }
+
+    showToast(
+      mode === "edit" ? `${input.name}의 정보를 수정했어요` : `${input.name} 등록을 마쳤어요`
+    );
     onCompleted();
   };
 
@@ -176,8 +191,10 @@ export function PetRegisterForm({ mode, petId, onCompleted }: PetRegisterFormPro
         </p>
       </div>
 
-      <Button variant="primary" onClick={handleSubmit} className="mt-1">
-        {mode === "edit" ? "수정 완료" : "등록하기"}
+      {formError ? <p className="px-0.5 text-[11px] text-accent-coral">{formError}</p> : null}
+
+      <Button variant="primary" onClick={handleSubmit} disabled={pending} className="mt-1">
+        {pending ? "저장 중…" : mode === "edit" ? "수정 완료" : "등록하기"}
       </Button>
     </div>
   );
