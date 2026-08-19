@@ -43,8 +43,12 @@ export default function MyPage() {
       setLoginOpen(true);
       return;
     }
-    // TODO(step3): 반려동물 등록/수정 폼(petRegister) 포팅 후 해당 화면으로 이동
-    showToast("반려동물 등록 화면은 다음 스텝에서 제공돼요");
+    // 반려동물이 있으면 수정, 없으면 등록으로 — 두 경우 모두 PetRegisterForm 하나를 재사용한다.
+    router.push(
+      activePet
+        ? `/onboarding/pet-register?mode=edit&petId=${activePet.id}&from=my`
+        : "/onboarding/pet-register?from=my"
+    );
   };
 
   const handleReviewsClick = () => {
@@ -68,7 +72,7 @@ export default function MyPage() {
             pets={pets}
             activeIndex={activePetIndex}
             onSwitch={switchActivePet}
-            onAddPet={() => showToast("반려동물 추가 화면은 다음 스텝에서 제공돼요")}
+            onAddPet={() => router.push("/onboarding/pet-register?from=my")}
           />
         ) : null}
 
