@@ -19,6 +19,8 @@ import { mockCourses, mockCourseSchedules } from "@/mocks";
 export default function MyPage() {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  /** 세션 복구 전에는 로그인 여부를 알 수 없다 — 이때 탭하면 로그인 화면으로 잘못 보내게 된다. */
+  const hydrated = useAuthStore((state) => state.hydrated);
   const pets = usePetStore((state) => state.pets);
   const activePetIndex = usePetStore((state) => state.activePetIndex);
   const switchActivePet = usePetStore((state) => state.switchActivePet);
@@ -39,6 +41,7 @@ export default function MyPage() {
   });
 
   const handlePassportClick = () => {
+    if (!hydrated) return;
     if (!isLoggedIn) {
       setLoginOpen(true);
       return;
@@ -52,6 +55,7 @@ export default function MyPage() {
   };
 
   const handleReviewsClick = () => {
+    if (!hydrated) return;
     if (!isLoggedIn) {
       setLoginOpen(true);
       return;
@@ -65,7 +69,12 @@ export default function MyPage() {
     <>
       <TopBar title="마이" />
       <div className="px-4 pb-6 pt-3">
-        <PetPassportCard pet={activePet} isLoggedIn={isLoggedIn} onClick={handlePassportClick} />
+        <PetPassportCard
+          pet={activePet}
+          isLoggedIn={isLoggedIn}
+          loading={!hydrated}
+          onClick={handlePassportClick}
+        />
 
         {isLoggedIn && pets.length > 0 ? (
           <PetSwitcher
@@ -94,7 +103,7 @@ export default function MyPage() {
             trailing="›"
             onClick={() => showToast("알림 설정은 준비 중이에요")}
           />
-          {isLoggedIn ? (
+          {!hydrated ? null : isLoggedIn ? (
             <MenuItem label="로그아웃" tone="danger" onClick={() => setLogoutOpen(true)} />
           ) : (
             <MenuItem

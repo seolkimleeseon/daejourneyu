@@ -12,6 +12,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function FeedPage() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hydrated = useAuthStore((state) => state.hydrated);
   const { data: posts = [], isLoading: postsLoading } = usePosts();
   const { data: articles = [], isLoading: articlesLoading } = useArticles();
 
@@ -22,6 +23,8 @@ export default function FeedPage() {
 
   /** '내 글'은 로그인 사용자의 게시물이므로 비로그인 상태에서는 로그인 모달로 유도한다. */
   const handleSegmentChange = (next: FeedSegment) => {
+    // 세션 복구 전에는 로그인 여부를 알 수 없으므로 게이팅을 미룬다.
+    if (next === "mine" && !hydrated) return;
     if (next === "mine" && !isLoggedIn) {
       setLoginOpen(true);
       return;
