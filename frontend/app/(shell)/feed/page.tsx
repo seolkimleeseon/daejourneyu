@@ -66,7 +66,7 @@ export default function FeedPage() {
         </div>
       </div>
 
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setSegment("mine")} />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
 }

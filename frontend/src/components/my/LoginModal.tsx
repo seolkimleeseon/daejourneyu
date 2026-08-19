@@ -1,40 +1,39 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { useAuthStore } from "@/stores/useAuthStore";
 
 interface LoginModalProps {
   open: boolean;
   onClose: () => void;
-  /** 로그인 성공 후 이어서 진행할 동작 (예: 원래 가려던 화면으로 이동) */
-  onLoggedIn?: () => void;
 }
 
-// TODO(api): 이메일/비밀번호 입력은 아직 목업이다 — 실제 로그인 폼은 인증 API 붙을 때 함께 구현.
-export function LoginModal({ open, onClose, onLoggedIn }: LoginModalProps) {
+/**
+ * 로그인 게이트. 실제 인증은 /onboarding/login 화면이 담당하고 이 모달은 그리로 보내기만 한다.
+ * 로그인 후 원래 보려던 화면으로 돌아오도록 현재 경로를 next로 넘긴다.
+ */
+export function LoginModal({ open, onClose }: LoginModalProps) {
   const router = useRouter();
-  const login = useAuthStore((state) => state.login);
+  const pathname = usePathname();
 
-  const handleLogin = () => {
-    login();
+  const go = (path: string) => {
     onClose();
-    onLoggedIn?.();
+    router.push(`${path}?next=${encodeURIComponent(pathname ?? "/home")}`);
   };
 
   return (
-    <Modal open={open} onClose={onClose} emoji="🐾" title="로그인이 필요해요">
-      <Button variant="primary" onClick={handleLogin}>
-        로그인 (목업)
+    <Modal
+      open={open}
+      onClose={onClose}
+      emoji="🐾"
+      title="로그인이 필요해요"
+      description="로그인하면 반려동물 여권과 내 활동을 볼 수 있어요."
+    >
+      <Button variant="primary" onClick={() => go("/onboarding/login")}>
+        로그인
       </Button>
-      <Button
-        variant="secondary"
-        onClick={() => {
-          onClose();
-          router.push("/onboarding/signup");
-        }}
-      >
+      <Button variant="secondary" onClick={() => go("/onboarding/signup")}>
         회원가입
       </Button>
       <Button variant="text" onClick={onClose}>

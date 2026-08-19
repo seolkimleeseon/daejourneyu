@@ -8,27 +8,27 @@ import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/onboarding/FormField";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { markOnboardingSeen } from "@/lib/onboarding";
 import type { AuthFieldErrors } from "@/lib/api/auth";
 
-export default function SignupPage() {
+export default function LoginPage() {
   return (
     <Suspense fallback={<div className="py-10 text-center text-xs text-ink-muted">불러오는 중…</div>}>
-      <SignupPageInner />
+      <LoginPageInner />
     </Suspense>
   );
 }
 
-/** signup — 회원가입 폼. 검증은 서버(POST /api/auth/signup)가 정본이고 여기서는 결과만 표시한다. */
-function SignupPageInner() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  /** 로그인 게이팅에 걸려 넘어온 경우 원래 보려던 화면으로 되돌려 보낸다. */
   const next = searchParams.get("next");
 
-  const signup = useAuthStore((state) => state.signup);
+  const login = useAuthStore((state) => state.login);
   const showToast = useToastStore((state) => state.show);
 
   const [email, setEmail] = useState("");
-  const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<AuthFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -39,29 +39,23 @@ function SignupPageInner() {
     setFormError(null);
     setErrors({});
 
-    const result = await signup({ email: email.trim(), nickname: nickname.trim(), password });
+    const result = await login({ email: email.trim(), password });
     setPending(false);
 
     if (!result.ok) {
       setErrors(result.errors ?? {});
-      setFormError(result.errors ? null : result.message ?? "가입에 실패했어요");
+      setFormError(result.errors ? null : result.message ?? "로그인에 실패했어요");
       return;
     }
 
-    // 가입 직후에는 반려동물 등록으로 이어간다. 게이팅에 걸려 들어온 경우에는 원래 화면으로 돌려보낸다.
-    if (next) {
-      showToast(`${result.user.nickname}님, 반가워요!`);
-      router.replace(next);
-      return;
-    }
-
-    showToast("가입이 완료됐어요. 반려동물을 등록해볼까요?");
-    router.replace("/onboarding/pet-register");
+    markOnboardingSeen();
+    showToast(`${result.user.nickname}님, 반가워요!`);
+    router.replace(next ?? "/home");
   };
 
   return (
     <>
-      <TopBar title="회원가입" showBack />
+      <TopBar title="로그인" showBack />
       <div className="flex flex-col gap-3.5 px-5 pb-8 pt-4">
         <FormField
           label="이메일"
@@ -73,39 +67,30 @@ function SignupPageInner() {
           error={errors.email}
         />
         <FormField
-          label="닉네임"
-          value={nickname}
-          onChange={(event) => setNickname(event.target.value)}
-          placeholder="콩이맘"
-          maxLength={20}
-          error={errors.nickname}
-        />
-        <FormField
           label="비밀번호"
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           placeholder="8자 이상"
-          autoComplete="new-password"
+          autoComplete="current-password"
           error={errors.password}
         />
 
-        {formError ? <p className="px-0.5 text-[11px] text-accent-coral">{formError}</p> : null}
+        {formError ? (
+          <p className="px-0.5 text-[11px] text-accent-coral">{formError}</p>
+        ) : null}
 
         <Button variant="primary" onClick={handleSubmit} disabled={pending} className="mt-2">
-          {pending ? "가입 중…" : "가입하고 시작하기"}
+          {pending ? "로그인 중…" : "로그인"}
         </Button>
 
-        <p className="px-1 text-center text-[10px] text-ink-muted">
-          가입하면 대저니유 이용약관과 개인정보 처리방침에 동의하게 돼요.
-        </p>
         <p className="text-center text-[11px] text-ink-muted">
-          이미 계정이 있으신가요?{" "}
+          아직 계정이 없으신가요?{" "}
           <Link
-            href={next ? `/onboarding/login?next=${encodeURIComponent(next)}` : "/onboarding/login"}
+            href={next ? `/onboarding/signup?next=${encodeURIComponent(next)}` : "/onboarding/signup"}
             className="font-bold text-brand-700 underline"
           >
-            로그인
+            회원가입
           </Link>
         </p>
       </div>

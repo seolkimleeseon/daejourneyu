@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { LoginModal } from "@/components/my/LoginModal";
 import { markOnboardingSeen } from "@/lib/onboarding";
 
 const HIGHLIGHTS = [
@@ -15,9 +13,8 @@ const HIGHLIGHTS = [
 /** onboarding — 앱 첫 진입 화면. 회원가입 또는 둘러보기(비로그인 탐색)로 갈라진다. */
 export default function OnboardingPage() {
   const router = useRouter();
-  const [loginOpen, setLoginOpen] = useState(false);
 
-  /** 온보딩을 벗어나 앱으로 들어가는 모든 경로에서 "봤음"을 기록해 다음 진입부터는 홈으로 간다. */
+  /** 온보딩을 벗어나 앱으로 들어가는 경로에서 "봤음"을 기록해 다음 진입부터는 홈으로 간다. */
   const enterApp = () => {
     markOnboardingSeen();
     router.replace("/home");
@@ -52,7 +49,7 @@ export default function OnboardingPage() {
         <Button variant="primary" onClick={() => router.push("/onboarding/signup")}>
           시작하기
         </Button>
-        <Button variant="secondary" onClick={() => setLoginOpen(true)}>
+        <Button variant="secondary" onClick={() => router.push("/onboarding/login")}>
           이미 계정이 있어요
         </Button>
         <Button variant="text" onClick={enterApp}>
@@ -60,7 +57,6 @@ export default function OnboardingPage() {
         </Button>
       </div>
 
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={enterApp} />
     </div>
   );
 }
