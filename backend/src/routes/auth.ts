@@ -19,12 +19,19 @@ const MIN_NICKNAME_LENGTH = 2;
 /** 클라이언트로 내보내는 사용자 정보. passwordHash는 절대 포함하지 않는다. */
 interface PublicUser {
   id: string;
-  email: string;
+  /** 카카오 계정은 이메일 동의를 안 받았을 수 있어 null이 올 수 있다. */
+  email: string | null;
   nickname: string;
+  provider: string;
 }
 
-function toPublicUser(user: { id: string; email: string; nickname: string }): PublicUser {
-  return { id: user.id, email: user.email, nickname: user.nickname };
+function toPublicUser(user: {
+  id: string;
+  email: string | null;
+  nickname: string;
+  provider: string;
+}): PublicUser {
+  return { id: user.id, email: user.email, nickname: user.nickname, provider: user.provider };
 }
 
 /** 프론트 폼과 같은 규칙으로 검증한다 — 클라이언트 검증은 우회될 수 있으므로 서버에서 다시 본다. */
@@ -85,7 +92,8 @@ router.post(
 
     const user = await prisma.user.findUnique({ where: { email } });
     // 이메일이 없는 경우와 비밀번호가 틀린 경우를 구분해 알려주지 않는다(계정 존재 여부 노출 방지).
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    // 카카오로 가입한 계정은 passwordHash가 없어 비밀번호 로그인이 불가능하다.
+    if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
       return res.status(401).json({ error: "이메일 또는 비밀번호가 올바르지 않습니다" });
     }
 

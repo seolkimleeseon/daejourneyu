@@ -13,16 +13,23 @@ datasource db {
 model User {
   id String @id @default(cuid())
 
-  email    String @unique
+  /// 카카오는 이메일 제공에 동의를 받아야 하므로 없을 수 있다.
+  email    String? @unique
   nickname String
-  /** bcrypt 해시. 평문 비밀번호는 어디에도 저장하지 않는다. */
-  passwordHash String
+  /// bcrypt 해시. 평문 비밀번호는 어디에도 저장하지 않는다. 소셜 계정은 null.
+  passwordHash String?
+
+  /// "local" | "kakao"
+  provider String @default("local")
+  /// 소셜 제공자가 발급한 회원번호. local 계정은 null.
+  providerId String?
 
   pets Pet[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([provider, providerId])
   @@map("users")
 }
 
