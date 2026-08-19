@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import placesRouter from "./routes/places";
 import authRouter from "./routes/auth";
+import petsRouter from "./routes/pets";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -19,6 +20,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 // 라우트
 app.use("/api/places", placesRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/pets", petsRouter);
 
 // 라우터에서 넘어온 예외를 500으로 변환한다 — 스택은 서버 로그에만 남긴다.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

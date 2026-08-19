@@ -1,4 +1,4 @@
-// 대저니유 데이터 모델. 지금은 인증(User)만 있고, 장소·코스·반려동물은 목데이터를 쓰는 단계다.
+// 대저니유 데이터 모델. 지금은 인증(User)과 반려동물(Pet)만 있고, 장소·코스는 목데이터를 쓰는 단계다.
 // 스키마를 고친 뒤에는 반드시 `npx prisma migrate dev`로 마이그레이션을 남긴다.
 
 generator client {
@@ -18,8 +18,38 @@ model User {
   /** bcrypt 해시. 평문 비밀번호는 어디에도 저장하지 않는다. */
   passwordHash String
 
+  pets Pet[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+/// 반려동물. 사용자당 여러 마리를 등록할 수 있고, 마이탭에서 활성 개체를 전환한다.
+model Pet {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name     String
+  breed    String
+  weightKg Float
+  ageYears Int
+  /// "소형견" | "중형견" | "대형견" — 장소별 동반 조건 판단에 쓰인다.
+  size  String
+  emoji String
+
+  /// MBTI는 사람이 아니라 반려동물의 성향 유형이다. 퀴즈를 아직 안 봤으면 전부 null.
+  mbtiCode   String?
+  mbtiName   String?
+  mbtiTheme  String?
+  mbtiTraits String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("pets")
 }
