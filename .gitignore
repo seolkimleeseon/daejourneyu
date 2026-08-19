@@ -5,3 +5,6 @@ dist/
 .env.local
 public/sw.js
 public/workbox-*.js
+
+# JetBrains IDE 개인 설정
+.idea/
