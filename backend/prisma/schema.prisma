@@ -1,0 +1,25 @@
+// 대저니유 데이터 모델. 지금은 인증(User)만 있고, 장소·코스·반려동물은 목데이터를 쓰는 단계다.
+// 스키마를 고친 뒤에는 반드시 `npx prisma migrate dev`로 마이그레이션을 남긴다.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+
+  email    String @unique
+  nickname String
+  /** bcrypt 해시. 평문 비밀번호는 어디에도 저장하지 않는다. */
+  passwordHash String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
