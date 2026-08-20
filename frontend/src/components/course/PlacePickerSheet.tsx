@@ -13,29 +13,17 @@ import { useDaejeonPlaces } from "@/hooks/useDaejeonPlaces";
 import { useCampgrounds } from "@/hooks/useCampgrounds";
 import { useKakaoPlacesMulti, type KakaoSearchTarget } from "@/hooks/useKakaoPlaces";
 import type { PickablePlace } from "@/lib/petTourMapper";
+import { CATEGORIES, CATEGORY_ICON, DISTRICTS } from "@/lib/placeFilters";
 import type { DaejeonDistrict, PlaceCategory } from "@/types";
 
 /** MIN_RESULTS_BEFORE_RELAX 미만이면 구 필터를 풀거나 카카오맵으로 더 찾아본다 */
 const MIN_RESULTS_BEFORE_RELAX = 4;
 
-// TODO(player1-pr): place.ts의 PlaceCategory에서 "숙박"이 실제로 빠지면(player1 PR 머지 후)
-// 이 파일에서도 "숙박" 관련 항목을 함께 정리한다. 지금은 데이터(캠핑장·관광공사 숙박)를
-// 전부 "문화"로 매핑해두었으니 "숙박" 카테고리로 들어오는 place는 없다.
-const CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문화"];
-const CATEGORY_EMOJI: Record<PlaceCategory, string> = {
-  산책: "🌳",
-  놀이터: "🐾",
-  맛집: "🥐",
-  문화: "🏛️",
-  숙박: "🏨",
-};
-const DISTRICTS: DaejeonDistrict[] = ["유성구", "중구", "동구", "대덕구", "서구"];
 const CATEGORY_KAKAO_KEYWORD: Record<PlaceCategory, string> = {
   산책: "공원",
   놀이터: "반려동물 놀이터",
   맛집: "맛집",
   문화: "문화시설",
-  숙박: "숙박",
 };
 
 /**
@@ -119,11 +107,11 @@ function PlaceCard({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-3xl">
-            {CATEGORY_EMOJI[place.category]}
+            {CATEGORY_ICON[place.category]}
           </div>
         )}
         <span className="absolute left-1.5 top-1.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">
-          {CATEGORY_EMOJI[place.category]} {place.category}
+          {CATEGORY_ICON[place.category]} {place.category}
         </span>
         {isAdded ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/35 text-2xl font-bold text-white">
@@ -229,7 +217,7 @@ export function PlacePickerSheet() {
   // 그래서 카테고리별로 따로 개수를 세서 부족한 카테고리만 카카오로 채운다.
   const activeCategory = category !== "전체" ? category : null;
   const categoryCounts = useMemo(() => {
-    const counts: Record<PlaceCategory, number> = { 산책: 0, 놀이터: 0, 맛집: 0, 문화: 0, 숙박: 0 };
+    const counts: Record<PlaceCategory, number> = { 산책: 0, 놀이터: 0, 맛집: 0, 문화: 0 };
     const q = query.trim();
     for (const place of places) {
       const matchesDistrict = district === "전체" || place.district === district;
@@ -285,7 +273,7 @@ export function PlacePickerSheet() {
         </FilterChip>
         {CATEGORIES.map((cat) => (
           <FilterChip key={cat} active={category === cat} onClick={() => setCategory(cat)}>
-            {CATEGORY_EMOJI[cat]} {cat}
+            {CATEGORY_ICON[cat]} {cat}
           </FilterChip>
         ))}
       </div>
