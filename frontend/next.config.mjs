@@ -11,10 +11,8 @@ const withPWA = withPWAInit({
 const nextConfig = {
   reactStrictMode: true,
   async rewrites() {
-    // /api/* 요청을 백엔드(Node)로 프록시
-    return [
-      { source: "/api/:path*", destination: "http://localhost:4000/api/:path*" },
-    ];
+    // /api/* 요청을 백엔드(Node, backend/)로 프록시
+    return [{ source: "/api/:path*", destination: "http://localhost:4000/api/:path*" }];
   },
 };
 

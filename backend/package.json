@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/free-port.js",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
   "dependencies": {
     "cors": "2.8.5",
-    "express": "4.19.2"
+    "dotenv": "^17.4.2",
+    "express": "4.19.2",
+    "fast-xml-parser": "^5.10.1"
   },
   "devDependencies": {
     "@types/cors": "2.8.17",

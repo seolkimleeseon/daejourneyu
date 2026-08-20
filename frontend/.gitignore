@@ -3,6 +3,7 @@ node_modules/
 .next/
 out/
 dist/
+tsconfig.tsbuildinfo
 
 # next-pwa가 next build 때마다 생성하는 서비스워커 산출물 — 소스가 아니라 빌드 결과물
 public/sw.js
