@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
+import { Tag } from "@/components/ui/Tag";
 import { cn } from "@/lib/cn";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { usePetTourSpots } from "@/hooks/usePetTourSpots";
@@ -55,23 +56,7 @@ function sortByQuality(list: PickablePlace[]): PickablePlace[] {
   });
 }
 
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        active
-          ? "shrink-0 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white"
-          : "shrink-0 rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-ink-muted"
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
-function PlaceCard({
+function PickablePlaceCard({
   place,
   isAdded,
   onClick,
@@ -268,23 +253,23 @@ export function PlacePickerSheet() {
       />
 
       <div className="mb-1.5 flex gap-1 overflow-x-auto pb-0.5">
-        <FilterChip active={category === "전체"} onClick={() => setCategory("전체")}>
+        <Tag tone="neutral-ghost" active={category === "전체"} className="shrink-0" onClick={() => setCategory("전체")}>
           전체
-        </FilterChip>
+        </Tag>
         {CATEGORIES.map((cat) => (
-          <FilterChip key={cat} active={category === cat} onClick={() => setCategory(cat)}>
+          <Tag key={cat} tone="neutral-ghost" active={category === cat} className="shrink-0" onClick={() => setCategory(cat)}>
             {CATEGORY_ICON[cat]} {cat}
-          </FilterChip>
+          </Tag>
         ))}
       </div>
       <div className="mb-3 flex gap-1 overflow-x-auto pb-0.5">
-        <FilterChip active={district === "전체"} onClick={() => setDistrict("전체")}>
+        <Tag tone="neutral-ghost" active={district === "전체"} className="shrink-0" onClick={() => setDistrict("전체")}>
           🧭 전체 구
-        </FilterChip>
+        </Tag>
         {DISTRICTS.map((gu) => (
-          <FilterChip key={gu} active={district === gu} onClick={() => setDistrict(gu)}>
+          <Tag key={gu} tone="neutral-ghost" active={district === gu} className="shrink-0" onClick={() => setDistrict(gu)}>
             {gu}
-          </FilterChip>
+          </Tag>
         ))}
       </div>
 
@@ -299,7 +284,7 @@ export function PlacePickerSheet() {
       <div className="mb-3 grid grid-cols-2 gap-2">
         {strict.length ? (
           strict.map((place) => (
-            <PlaceCard
+            <PickablePlaceCard
               key={place.id}
               place={place}
               isAdded={selected.some((item) => item.id === place.id)}
@@ -320,7 +305,7 @@ export function PlacePickerSheet() {
           </div>
           <div className="mb-3 grid grid-cols-2 gap-2">
             {relaxed.map((place) => (
-              <PlaceCard
+              <PickablePlaceCard
                 key={place.id}
                 place={place}
                 isAdded={selected.some((item) => item.id === place.id)}
@@ -342,7 +327,7 @@ export function PlacePickerSheet() {
           </div>
           <div className="mb-3 grid grid-cols-2 gap-2">
             {kakaoExtra.map((place) => (
-              <PlaceCard
+              <PickablePlaceCard
                 key={place.id}
                 place={place}
                 isAdded={selected.some((item) => item.id === place.id)}
