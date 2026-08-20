@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { HomeStatusCard } from "@/components/home/HomeStatusCard";
-import { HomeTile } from "@/components/home/HomeTile";
 import { HomeFeatureCard } from "@/components/home/HomeFeatureCard";
+import { TileButton } from "@/components/ui/TileButton";
 import { LoginModal } from "@/components/my/LoginModal";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -90,14 +90,16 @@ export default function HomePage() {
 
         <div className="mb-2 px-1 text-xs font-bold text-ink-muted">무엇부터 시작할까요</div>
         <div className="mb-5 grid grid-cols-2 gap-2.5">
-          <HomeTile
+          <TileButton
+            variant="outlined"
             emoji="🐾"
             title="내 반려동물 MBTI"
             subtitle={activePet?.mbti ? `${activePet.mbti.code} · 결과 보기` : "여행 성향 알아보기"}
             tone="purple"
             onClick={() => showToast("여행 MBTI는 다음 스텝에서 제공돼요")}
           />
-          <HomeTile
+          <TileButton
+            variant="outlined"
             emoji="💬"
             title="오늘 어디 갈까?"
             subtitle="장소와 코스 추천받기"
