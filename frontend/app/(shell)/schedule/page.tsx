@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
-import { CourseMakeCard } from "@/components/course/CourseMakeCard";
 import { CourseCard } from "@/components/course/CourseCard";
+import { TileButton } from "@/components/ui/TileButton";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { mockCourseSchedules } from "@/mocks";
 
@@ -46,25 +46,28 @@ export default function SchedulePage() {
         <div className="px-4 pb-6 pt-4">
           <div className="mb-1 px-1 text-xs font-bold text-ink-muted">코스 만들기</div>
           <div className="mb-5 grid grid-cols-3 gap-2">
-            <CourseMakeCard
+            <TileButton
+              variant="filled"
               tone="brand"
               emoji="✨"
               title="MBTI 맞춤 코스"
-              sub="성향 테스트로 코스 자동 생성"
+              subtitle="성향 테스트로 코스 자동 생성"
               onClick={() => router.push("/schedule/course/new/mbti")}
             />
-            <CourseMakeCard
+            <TileButton
+              variant="filled"
               tone="purple"
               emoji="🤖"
               title="AI에게 물어보기"
-              sub="말로 원하는 여행을 설명해요"
+              subtitle="말로 원하는 여행을 설명해요"
               onClick={() => router.push("/home/chatbot")}
             />
-            <CourseMakeCard
+            <TileButton
+              variant="filled"
               tone="coral"
               emoji="📍"
               title="직접 짓기"
-              sub="가고 싶은 곳만 담아서"
+              subtitle="가고 싶은 곳만 담아서"
               onClick={() => router.push("/schedule/course/new/manual")}
             />
           </div>

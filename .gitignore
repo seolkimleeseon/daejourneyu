@@ -8,3 +8,6 @@ public/workbox-*.js
 
 # JetBrains IDE 개인 설정
 .idea/
+
+# Claude Code 개인 로컬 지침 (커밋 안 함)
+CLAUDE.local.md
