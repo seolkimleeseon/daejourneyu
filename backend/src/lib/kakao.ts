@@ -2,9 +2,6 @@ const AUTHORIZE_ENDPOINT = "https://kauth.kakao.com/oauth/authorize";
 const TOKEN_ENDPOINT = "https://kauth.kakao.com/oauth/token";
 const PROFILE_ENDPOINT = "https://kapi.kakao.com/v2/user/me";
 
-/** 카카오 로그인 동의 항목. 이메일은 앱 설정에서 동의 항목을 켜야 실제로 내려온다(선택 동의면 없을 수 있다). */
-const SCOPE = "profile_nickname account_email";
-
 export interface KakaoProfile {
   /** 카카오 회원번호. 사용자 식별의 기준이다. */
   id: string;
@@ -33,7 +30,9 @@ export function buildAuthorizeUrl(state: string): string {
     client_id: restApiKey,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: SCOPE,
+    // scope는 넘기지 않는다. 개발자 콘솔의 "카카오 로그인 > 동의항목"에 설정된 항목이 그대로 쓰인다.
+    // 콘솔에 없는 항목을 scope로 요청하면 동의 화면 대신 KOE205 오류가 뜬다(이메일은 비즈앱 전환 전까지
+    // 권한이 없는 경우가 많다). 닉네임·이메일 수집 여부는 콘솔에서 켜고 끈다.
     state,
   });
 
