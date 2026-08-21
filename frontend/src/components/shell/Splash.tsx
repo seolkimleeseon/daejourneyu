@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { AppIcon } from "./AppIcon";
 
 const SHOW_MS = 1200;
 const FADE_MS = 550;
@@ -32,6 +33,7 @@ export function Splash() {
       )}
       style={{ transitionDuration: `${FADE_MS}ms` }}
     >
+      <AppIcon size={72} variant="inverted" className="rounded-2xl shadow-lg" />
       <div className="text-[27px] font-extrabold tracking-tight text-white">대저니유</div>
       <div className="font-mono text-[9px] font-bold tracking-[2.6px] text-white/80">
         DAEJEON · JOURNEY · YOU
