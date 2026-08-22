@@ -1,0 +1,98 @@
+// 대저니유 백엔드 DB 스키마
+//
+// 지금은 로컬 개발 편의를 위해 SQLite(파일 하나, 설치 없이 바로 동작)로 돌리지만,
+// 팀 계획(루트/backend CLAUDE.md)의 최종 방향은 PostgreSQL(Supabase 호스팅)이다.
+// 전환 방법: 1) datasource의 provider를 "postgresql"로, 2) .env의 DATABASE_URL을
+// Supabase connection string으로 교체, 3) `npx prisma migrate dev`로 새 마이그레이션 생성.
+// SQLite는 enum·String[]을 지원하지 않아 아래 스키마는 두 프로바이더 모두에서 그대로
+// 동작하도록 enum 대신 String(+ 앱 레벨 유니언 타입), 배열 대신 관계 테이블을 사용했다.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// TODO(auth): 지금은 로그인이 없어 모든 코스가 시드된 단일 사용자(user-1) 소유다.
+// NextAuth 연동 시 실제 세션 사용자로 교체한다.
+model User {
+  id       String   @id
+  email    String   @unique
+  nickname String
+  courses  Course[]
+}
+
+// 프론트 타입(src/types/course.ts)의 Course와 1:1 대응.
+// nights: 0 = 당일치기. transport: "자차" | "대중교통". source: "ai" | "manual" | "saved".
+model Course {
+  id        String   @id @default(cuid())
+  label     String
+  /** 티켓 카드 대표 이모지. 사용자가 코스 상세에서 직접 고를 수 있다. null이면 프론트가 기본값(🐾)을 쓴다. */
+  emoji     String?
+  nights    Int
+  transport String
+  source    String
+  shared    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  days     CourseDay[]
+  schedule CourseSchedule?
+}
+
+// Course.days(일차별 2차원 배열)의 바깥쪽 차원. dayIndex로 순서를 보존한다.
+model CourseDay {
+  id       String @id @default(cuid())
+  dayIndex Int
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  stops CourseStop[]
+
+  @@unique([courseId, dayIndex])
+}
+
+// Course.days의 안쪽 배열 원소(CourseStop). placeId는 장소 데이터를 FK로 정규화하지
+// 않고 스냅샷으로 저장한다 — 프론트/백엔드 Place 모델이 아직 일치하지 않기 때문
+// (루트 CLAUDE.md "현재 연동 상태" 참고). order로 방문 순서를 보존한다.
+model CourseStop {
+  id          String  @id @default(cuid())
+  order       Int
+  placeId     String
+  name        String
+  category    String
+  district    String
+  condition   String
+  petFriendly Boolean
+
+  courseDayId String
+  courseDay   CourseDay @relation(fields: [courseDayId], references: [id], onDelete: Cascade)
+
+  @@unique([courseDayId, order])
+}
+
+// 코스에 실제 날짜를 붙여 "내 여정"에 등록한 것 — 코스 자체와 별개 개념(루트 CLAUDE.md 도메인 용어).
+// 코스 하나당 예정 일정은 하나만 존재한다(courseId unique).
+model CourseSchedule {
+  id   String @id @default(cuid())
+  date String // YYYY-MM-DD
+
+  courseId String @unique
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  festivalTitles CourseScheduleFestival[]
+}
+
+// 일정 주변에 매칭된 축제 제목(다건). 캘린더에서 "🎪 근처 축제: ..."로 부가 표시된다.
+model CourseScheduleFestival {
+  id    String @id @default(cuid())
+  title String
+
+  courseScheduleId String
+  courseSchedule   CourseSchedule @relation(fields: [courseScheduleId], references: [id], onDelete: Cascade)
+}
