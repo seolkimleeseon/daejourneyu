@@ -55,7 +55,7 @@ export function PlacesStep({
   };
 
   return (
-    <div className="px-4 pb-6 pt-1">
+    <div className="animate-fade-up px-4 pb-6 pt-1">
       {days.length > 1 ? (
         <div className="mb-3 flex gap-1.5 overflow-x-auto pb-0.5">
           {days.map((day, index) => (
