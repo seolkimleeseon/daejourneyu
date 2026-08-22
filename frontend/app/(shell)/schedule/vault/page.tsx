@@ -5,10 +5,12 @@ import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { CourseCard } from "@/components/course/CourseCard";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { mockCourseSchedules } from "@/mocks";
 
 export default function CourseVaultPage() {
   const router = useRouter();
+  useSyncCoursesFromApi();
   const storeCourses = useCourseStore((state) => state.courses);
   const courses = [...storeCourses].reverse();
   const scheduledCourseIds = new Set(mockCourseSchedules.map((schedule) => schedule.courseId));
