@@ -12,6 +12,7 @@ type CourseStop = {
   district: string;
   condition: string;
   petFriendly: boolean;
+  imageUrl?: string | null;
 };
 
 type Course = {
@@ -55,6 +56,7 @@ function toCourse(row: CourseRow): Course {
         district: s.district,
         condition: s.condition,
         petFriendly: s.petFriendly,
+        imageUrl: s.imageUrl,
       }))
     ),
   };
@@ -64,16 +66,16 @@ const TRANSPORTS: Transport[] = ["자차", "대중교통"];
 const SOURCES: CourseSource[] = ["ai", "manual", "saved"];
 
 function isValidStop(s: unknown): s is CourseStop {
-  return (
-    typeof s === "object" &&
-    s !== null &&
-    typeof (s as CourseStop).placeId === "string" &&
-    typeof (s as CourseStop).name === "string" &&
-    typeof (s as CourseStop).category === "string" &&
-    typeof (s as CourseStop).district === "string" &&
-    typeof (s as CourseStop).condition === "string" &&
-    typeof (s as CourseStop).petFriendly === "boolean"
-  );
+  if (typeof s !== "object" || s === null) return false;
+  const stop = s as CourseStop;
+  if (typeof stop.placeId !== "string") return false;
+  if (typeof stop.name !== "string") return false;
+  if (typeof stop.category !== "string") return false;
+  if (typeof stop.district !== "string") return false;
+  if (typeof stop.condition !== "string") return false;
+  if (typeof stop.petFriendly !== "boolean") return false;
+  if (stop.imageUrl !== undefined && stop.imageUrl !== null && typeof stop.imageUrl !== "string") return false;
+  return true;
 }
 
 function isValidDays(days: unknown): days is CourseStop[][] {

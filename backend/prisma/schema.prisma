@@ -69,6 +69,8 @@ model CourseStop {
   district    String
   condition   String
   petFriendly Boolean
+  /** 장소 사진 URL(있는 소스에서 담아온 경우만). 없으면 프론트가 카테고리 이모지로 대체 표시. */
+  imageUrl    String?
 
   courseDayId String
   courseDay   CourseDay @relation(fields: [courseDayId], references: [id], onDelete: Cascade)
