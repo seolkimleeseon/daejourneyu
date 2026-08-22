@@ -48,6 +48,7 @@ const EMOJI_CHOICES = [
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   useSyncCoursesFromApi();
   const courses = useCourseStore((state) => state.courses);
   const updateCourse = useCourseStore((state) => state.updateCourse);
@@ -66,6 +67,15 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const openPlaceSheet = useSheetStore((state) => state.open);
+
+  if (!isLoggedIn) {
+    return (
+      <>
+        <TopBar title="코스 상세" showBack />
+        <LoginRequiredGate message="저장된 코스는 로그인해야 볼 수 있어요" />
+      </>
+    );
+  }
 
   if (!course) {
     return (

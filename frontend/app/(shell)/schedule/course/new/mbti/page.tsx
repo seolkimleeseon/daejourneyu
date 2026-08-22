@@ -12,8 +12,10 @@ import { NightsStep } from "./steps/NightsStep";
 import { ConditionsStep } from "./steps/ConditionsStep";
 import { TransportStep } from "./steps/TransportStep";
 import { GeneratedResultStep } from "./steps/GeneratedResultStep";
+import { LoginModal } from "@/components/my/LoginModal";
 import { MBTI_QUESTIONS, resolveMbtiType, scoreAnswers, topTheme, type CourseTheme, type MbtiAnswer } from "@/lib/mbti";
 import { chunkIntoDays } from "@/lib/chunkDays";
+import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -79,6 +81,7 @@ function MbtiCourseWizard() {
   const [season, setSeason] = useState("여름");
   const [transport, setTransport] = useState<Transport>("자차");
   const [generatedDays, setGeneratedDays] = useState<Place[][]>([]);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const startQuiz = () => {
     setAnswers(Array(MBTI_QUESTIONS.length).fill(null));
@@ -122,6 +125,14 @@ function MbtiCourseWizard() {
   };
 
   const handleSave = () => {
+    if (!isLoggedIn) {
+      setLoginOpen(true);
+      return;
+    }
+    saveCourse();
+  };
+
+  const saveCourse = () => {
     const flat = generatedDays.flat();
     if (flat.length < 2) {
       showToast("추천할 장소가 부족해요");
@@ -141,6 +152,7 @@ function MbtiCourseWizard() {
           district: place.district,
           condition: place.condition,
           petFriendly: place.petFriendly,
+          imageUrl: resolvePlaceImageUrl(place),
         }))
       ),
     });
@@ -264,6 +276,7 @@ function MbtiCourseWizard() {
           onGoHome={() => router.push("/home")}
         />
       ) : null}
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={saveCourse} />
     </>
   );
 }

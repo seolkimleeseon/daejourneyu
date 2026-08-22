@@ -6,6 +6,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { CourseCard } from "@/components/course/CourseCard";
 import { ScheduleCalendar } from "@/components/course/ScheduleCalendar";
+import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
 import { TileButton } from "@/components/ui/TileButton";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -86,48 +87,56 @@ export default function SchedulePage() {
             />
           </div>
 
-          <div className="mb-1 flex items-center justify-between px-1">
-            <div className="text-xs font-bold text-ink-muted">코스 보관함</div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-ink-muted">{courses.length}개</span>
-              {courses.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => router.push("/schedule/vault")}
-                  className="text-xs font-semibold text-brand"
-                >
-                  전체 보기 ›
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {courses.length > 0 ? (
-            <>
-              {preview.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  hasUpcomingSchedule={scheduledCourseIds.has(course.id)}
-                  onClick={() => router.push(`/schedule/course/${course.id}`)}
-                />
-              ))}
-              {courses.length > VAULT_PREVIEW_COUNT ? (
-                <button
-                  type="button"
-                  onClick={() => router.push("/schedule/vault")}
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-line-strong text-xs font-semibold text-ink-muted"
-                >
-                  코스 보관함 전체 보기 ({courses.length}개) ›
-                </button>
-              ) : null}
-            </>
+          {!isLoggedIn ? (
+            <LoginRequiredGate compact message="보관함에 저장한 코스를 보려면 로그인해주세요" />
           ) : (
-            <TabPlaceholder emoji="🐾" message={"보관함이 비어 있어요\n첫 코스를 만들어보세요"} />
+            <>
+              <div className="mb-1 flex items-center justify-between px-1">
+                <div className="text-xs font-bold text-ink-muted">코스 보관함</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-muted">{courses.length}개</span>
+                  {courses.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/schedule/vault")}
+                      className="text-xs font-semibold text-brand"
+                    >
+                      전체 보기 ›
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {courses.length > 0 ? (
+                <>
+                  {preview.map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      hasUpcomingSchedule={scheduledCourseIds.has(course.id)}
+                      onClick={() => router.push(`/schedule/course/${course.id}`)}
+                    />
+                  ))}
+                  {courses.length > VAULT_PREVIEW_COUNT ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/schedule/vault")}
+                      className="flex min-h-11 w-full items-center justify-center rounded-lg border border-line-strong text-xs font-semibold text-ink-muted"
+                    >
+                      코스 보관함 전체 보기 ({courses.length}개) ›
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <TabPlaceholder emoji="🐾" message={"보관함이 비어 있어요\n첫 코스를 만들어보세요"} />
+              )}
+            </>
           )}
         </div>
-      ) : (
+      ) : isLoggedIn ? (
         <ScheduleCalendar />
+      ) : (
+        <LoginRequiredGate message="내 여행 일정을 캘린더로 보려면 로그인해주세요" />
       )}
     </>
   );

@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
+import { LoginModal } from "@/components/my/LoginModal";
 import { useToastStore } from "@/stores/useToastStore";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/cn";
 import { mockPlaces } from "@/mocks";
 import type { Course, CourseStop } from "@/types";
@@ -50,7 +52,10 @@ export default function ChatbotPage() {
   const router = useRouter();
   const showToast = useToastStore((state) => state.show);
   const addCourse = useCourseStore((state) => state.addCourse);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [pendingCourse, setPendingCourse] = useState<CourseSuggestion | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "greeting",
@@ -119,6 +124,15 @@ export default function ChatbotPage() {
   };
 
   const handleSaveCourse = (course: CourseSuggestion) => {
+    if (!isLoggedIn) {
+      setPendingCourse(course);
+      setLoginOpen(true);
+      return;
+    }
+    saveCourse(course);
+  };
+
+  const saveCourse = (course: CourseSuggestion) => {
     const saved = addCourse(course);
     showToast("코스를 보관함에 저장했어요 🐾");
     router.push(`/schedule/course/${saved.id}`);
@@ -236,6 +250,13 @@ export default function ChatbotPage() {
           </button>
         </div>
       </div>
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onLoggedIn={() => {
+          if (pendingCourse) saveCourse(pendingCourse);
+        }}
+      />
     </div>
   );
 }

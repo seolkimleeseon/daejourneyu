@@ -4,16 +4,28 @@ import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { CourseCard } from "@/components/course/CourseCard";
+import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { mockCourseSchedules } from "@/mocks";
 
 export default function CourseVaultPage() {
   const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   useSyncCoursesFromApi();
   const storeCourses = useCourseStore((state) => state.courses);
   const courses = [...storeCourses].reverse();
   const scheduledCourseIds = new Set(mockCourseSchedules.map((schedule) => schedule.courseId));
+
+  if (!isLoggedIn) {
+    return (
+      <>
+        <TopBar title="코스 보관함" showBack />
+        <LoginRequiredGate message="보관함에 담긴 코스는 로그인해야 볼 수 있어요" />
+      </>
+    );
+  }
 
   return (
     <>

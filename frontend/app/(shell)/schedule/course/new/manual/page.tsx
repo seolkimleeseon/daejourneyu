@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { CourseStepBar } from "@/components/course/CourseStepBar";
 import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
+import { LoginModal } from "@/components/my/LoginModal";
 import { NightsStep } from "./steps/NightsStep";
 import { PlacesStep } from "./steps/PlacesStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { nearestNeighborRoute } from "@/lib/nearestNeighborRoute";
+import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import type { Place } from "@/types";
 
 const MANUAL_STEP_LABELS = ["설정", "장소", "동선"] as const;
@@ -24,7 +27,9 @@ export default function ManualCourseWizardPage() {
   const router = useRouter();
   const addCourse = useCourseStore((state) => state.addCourse);
   const showToast = useToastStore((state) => state.show);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
+  const [loginOpen, setLoginOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [nights, setNights] = useState(0);
   const [days, setDays] = useState<Place[][]>([[]]);
@@ -89,6 +94,14 @@ export default function ManualCourseWizardPage() {
   };
 
   const handleSave = () => {
+    if (!isLoggedIn) {
+      setLoginOpen(true);
+      return;
+    }
+    saveCourse();
+  };
+
+  const saveCourse = () => {
     const flat = reviewDays.flat();
     if (flat.length < 2) {
       showToast("최소 2곳이 필요해요");
@@ -109,6 +122,7 @@ export default function ManualCourseWizardPage() {
           district: place.district,
           condition: place.condition,
           petFriendly: place.petFriendly,
+          imageUrl: resolvePlaceImageUrl(place),
         }))
       ),
     });
@@ -155,6 +169,7 @@ export default function ManualCourseWizardPage() {
       ) : null}
 
       <PlacePickerSheet />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={saveCourse} />
     </>
   );
 }
