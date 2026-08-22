@@ -4,8 +4,9 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
 import { DragReorderList } from "@/components/course/DragReorderList";
+import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
-import { CATEGORY_EMOJI } from "@/lib/courseFormat";
+import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { routeDistanceKm } from "@/lib/nearestNeighborRoute";
 import type { Place } from "@/types";
 
@@ -99,12 +100,7 @@ export function ReviewStep({
                   ⠿
                 </button>
               ) : null}
-              <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg">
-                {CATEGORY_EMOJI[place.category] ?? "📍"}
-                <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
-                  {index + 1}
-                </span>
-              </div>
+              <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 text-sm font-bold text-ink">
                   {place.name}

@@ -11,9 +11,12 @@ import { Modal } from "@/components/ui/Modal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
-import { CATEGORY_EMOJI, nightsLabel, resolveCourseEmoji, SOURCE_LABEL, SOURCE_TONE } from "@/lib/courseFormat";
+import { StopThumbnail } from "@/components/course/StopThumbnail";
+import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
+import { nightsLabel, resolveCourseEmoji, resolvePlaceImageUrl, SOURCE_LABEL, SOURCE_TONE } from "@/lib/courseFormat";
 import { cn } from "@/lib/cn";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { mockCourseSchedules } from "@/mocks";
@@ -31,6 +34,7 @@ function placeToStop(place: Place): CourseStop {
     district: place.district,
     condition: place.condition,
     petFriendly: place.petFriendly,
+    imageUrl: resolvePlaceImageUrl(place),
   };
 }
 
@@ -441,12 +445,7 @@ function DayStops({
                 ⠿
               </button>
             ) : null}
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xl">
-              {CATEGORY_EMOJI[stop.category] ?? "📍"}
-              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
-                {stopIndex + 1}
-              </span>
-            </div>
+            <StopThumbnail category={stop.category} imageUrl={stop.imageUrl} badge={stopIndex + 1} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-ink">{stop.name}</div>
               <div className="mt-0.5 text-xs text-ink-muted">

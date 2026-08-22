@@ -10,6 +10,8 @@ export interface CourseStop {
   district: DaejeonDistrict;
   condition: string;
   petFriendly: boolean;
+  /** 장소 사진 URL(있는 소스에서 담아온 경우만). 없으면 카테고리 이모지로 대체 표시. */
+  imageUrl?: string | null;
 }
 
 export interface Course {

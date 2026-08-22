@@ -4,8 +4,9 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
 import { DragReorderList } from "@/components/course/DragReorderList";
+import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
-import { CATEGORY_EMOJI, nightsLabel } from "@/lib/courseFormat";
+import { nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import type { CourseTheme } from "@/lib/mbti";
 import type { Place, Transport } from "@/types";
 
@@ -101,12 +102,7 @@ export function GeneratedResultStep({
                         ⠿
                       </button>
                     ) : null}
-                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg">
-                      {CATEGORY_EMOJI[place.category] ?? "📍"}
-                      <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
-                        {index + 1}
-                      </span>
-                    </div>
+                    <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-bold text-ink">{place.name}</div>
                       <div className="mt-0.5 text-xs text-ink-muted">

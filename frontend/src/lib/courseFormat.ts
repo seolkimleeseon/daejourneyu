@@ -13,6 +13,22 @@ export const CATEGORY_EMOJI: Record<PlaceCategory, string> = {
   문화: "🎨",
 };
 
+/** 카테고리별 배경/글자 색 — 동선 리스트 썸네일이 전부 민트 한 톤이라 단조로워서 카테고리마다 다르게 준다. */
+export const CATEGORY_TONE: Record<PlaceCategory, { bg: string; text: string }> = {
+  산책: { bg: "bg-brand-100", text: "text-brand-700" },
+  놀이터: { bg: "bg-accent-coral-light", text: "text-accent-coral" },
+  맛집: { bg: "bg-accent-amber-light", text: "text-accent-amber" },
+  문화: { bg: "bg-accent-purple-light", text: "text-accent-purple" },
+};
+
+/** Place 계열 타입 중 imageUrl을 들고 있는 소스(PickablePlace 등)에서만 안전하게 꺼낸다.
+ * Place 자체엔 이 필드가 없어(Player1 소유 타입) 없으면 null로 취급한다.
+ * (매개변수에 id를 같이 요구하는 건 Place와 공통 필드가 하나도 없으면 TS가 "약한 타입" 경고를
+ * 내기 때문 — id는 Place에 항상 있으니 걸리지 않으면서 구조적으로 안전하게 받는다.) */
+export function resolvePlaceImageUrl(place: { id: string; imageUrl?: string | null }): string | null {
+  return place.imageUrl ?? null;
+}
+
 export const SOURCE_LABEL: Record<CourseSource, string> = {
   ai: "AI 추천",
   manual: "직접 지음",
