@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { CourseStepBar } from "@/components/course/CourseStepBar";
 import { IntroStep } from "./steps/IntroStep";
@@ -12,10 +12,12 @@ import { NightsStep } from "./steps/NightsStep";
 import { ConditionsStep } from "./steps/ConditionsStep";
 import { TransportStep } from "./steps/TransportStep";
 import { GeneratedResultStep } from "./steps/GeneratedResultStep";
-import { MBTI_QUESTIONS, scoreAnswers, type CourseTheme, type MbtiAnswer } from "@/lib/mbti";
+import { MBTI_QUESTIONS, resolveMbtiType, scoreAnswers, topTheme, type CourseTheme, type MbtiAnswer } from "@/lib/mbti";
 import { chunkIntoDays } from "@/lib/chunkDays";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useMbtiResultStore } from "@/stores/useMbtiResultStore";
 import { usePetTourSpots } from "@/hooks/usePetTourSpots";
 import { ensureCategoryMinimum } from "@/lib/petTourMapper";
 import { mockPlaces } from "@/mocks";
@@ -42,17 +44,35 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: Place[])
 }
 
 export default function MbtiCourseWizardPage() {
+  return (
+    <Suspense fallback={null}>
+      <MbtiCourseWizard />
+    </Suspense>
+  );
+}
+
+function MbtiCourseWizard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const addCourse = useCourseStore((state) => state.addCourse);
   const showToast = useToastStore((state) => state.show);
   const { data: apiPlaces } = usePetTourSpots();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const savedMbtiCode = useMbtiResultStore((state) => state.code);
+  const setSavedMbtiCode = useMbtiResultStore((state) => state.setCode);
 
-  const [phase, setPhase] = useState<Phase>("intro");
-  const [entryPath, setEntryPath] = useState<"quiz" | "theme">("quiz");
+  // 로그인 상태에서 저장된 MBTI 결과가 있고, "MBTI 맞춤 코스" 타일에서 바로가기로 들어온 경우엔
+  // 인트로/퀴즈/결과 단계를 건너뛰고 바로 코스 생성(기간→조건→이동→코스)으로 진입한다.
+  // 로그인 안 했거나 저장된 결과가 없으면(=quick이어도) 평소와 똑같이 인트로부터 시작한다.
+  const quickStart = searchParams.get("quick") === "1" && isLoggedIn && !!savedMbtiCode;
+  const quickTheme = quickStart ? topTheme(resolveMbtiType(savedMbtiCode!)) : null;
+
+  const [phase, setPhase] = useState<Phase>(quickStart ? "nights" : "intro");
+  const [entryPath, setEntryPath] = useState<"quiz" | "theme">(quickStart ? "theme" : "quiz");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<MbtiAnswer[]>(() => Array(MBTI_QUESTIONS.length).fill(null));
-  const [mbtiCode, setMbtiCode] = useState("");
-  const [theme, setTheme] = useState<CourseTheme>("산책");
+  const [mbtiCode, setMbtiCode] = useState(quickStart ? savedMbtiCode! : "");
+  const [theme, setTheme] = useState<CourseTheme>(quickTheme ?? "산책");
   const [nights, setNights] = useState(0);
   const [companion, setCompanion] = useState("나와 강아지");
   const [budget, setBudget] = useState("3~7만원");
@@ -71,7 +91,9 @@ export default function MbtiCourseWizardPage() {
     next[currentQuestion] = answer;
     setAnswers(next);
     if (currentQuestion + 1 >= MBTI_QUESTIONS.length) {
-      setMbtiCode(scoreAnswers(next));
+      const code = scoreAnswers(next);
+      setMbtiCode(code);
+      setSavedMbtiCode(code);
       setPhase("result");
     } else {
       setCurrentQuestion((prev) => prev + 1);
@@ -89,6 +111,14 @@ export default function MbtiCourseWizardPage() {
     const source = ensureCategoryMinimum(apiPlaces ?? [], mockPlaces, MIN_PER_CATEGORY);
     setGeneratedDays(generateCourseDays(theme, nights, source));
     setPhase("generated");
+  };
+
+  const handleReorderDay = (dayIndex: number, nextDay: Place[]) => {
+    setGeneratedDays((prev) => {
+      const next = [...prev];
+      next[dayIndex] = nextDay;
+      return next;
+    });
   };
 
   const handleSave = () => {
@@ -171,6 +201,7 @@ export default function MbtiCourseWizardPage() {
 
       {phase === "quiz" ? (
         <QuestionStep
+          key={currentQuestion}
           question={MBTI_QUESTIONS[currentQuestion]}
           index={currentQuestion}
           total={MBTI_QUESTIONS.length}
@@ -228,6 +259,7 @@ export default function MbtiCourseWizardPage() {
           transport={transport}
           days={generatedDays}
           courseTitle={COURSE_TITLES[theme]}
+          onReorderDay={handleReorderDay}
           onSave={handleSave}
           onGoHome={() => router.push("/home")}
         />
