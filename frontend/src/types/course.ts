@@ -15,6 +15,8 @@ export interface CourseStop {
 export interface Course {
   id: string;
   label: string;
+  /** 티켓 카드 대표 이모지. 사용자가 직접 고르지 않았으면 비어있고, 화면에서는 기본값(🐾)을 쓴다. */
+  emoji?: string | null;
   /** 0 = 당일치기 */
   nights: number;
   transport: Transport;
