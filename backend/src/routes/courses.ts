@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { requireAuth } from "../middleware/requireAuth";
 
 type Transport = "자차" | "대중교통";
 type CourseSource = "ai" | "manual" | "saved";
@@ -26,9 +27,6 @@ type Course = {
   shared: boolean;
   days: CourseStop[][];
 };
-
-// TODO(auth): 로그인이 없어 모든 코스를 이 시드 사용자 소유로 취급한다. NextAuth 연동 시 세션에서 가져온다.
-const MOCK_USER_ID = "user-1";
 
 const courseWithRelations = {
   days: {
@@ -108,23 +106,28 @@ function validateCourseUpdateInput(
 
 const router = Router();
 
-// GET /api/courses — 내 코스 보관함 전체 목록
-router.get("/", async (_req, res) => {
+// 이 라우터의 모든 엔드포인트는 로그인이 필요하다 — 코스는 회원 전용 데이터다.
+router.use(requireAuth);
+
+// GET /api/courses — 내 코스 보관함 전체 목록(로그인한 사용자 소유만)
+router.get("/", async (req, res) => {
   const rows = await prisma.course.findMany({
-    where: { userId: MOCK_USER_ID },
+    where: { userId: req.userId! },
     orderBy: { createdAt: "asc" },
     include: courseWithRelations,
   });
   res.json(rows.map(toCourse));
 });
 
-// GET /api/courses/:id — 코스 상세
+// GET /api/courses/:id — 코스 상세. 다른 사람 코스면 존재 여부도 노출하지 않고 404로 통일한다.
 router.get("/:id", async (req, res) => {
   const row = await prisma.course.findUnique({
     where: { id: req.params.id },
     include: courseWithRelations,
   });
-  if (!row) return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  if (!row || row.userId !== req.userId) {
+    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  }
   res.json(toCourse(row));
 });
 
@@ -143,7 +146,7 @@ router.post("/", async (req, res) => {
       transport: input.transport,
       source: input.source,
       shared: input.shared,
-      userId: MOCK_USER_ID,
+      userId: req.userId!,
       days: {
         create: input.days.map((stops, dayIndex) => ({
           dayIndex,
@@ -157,10 +160,12 @@ router.post("/", async (req, res) => {
   res.status(201).json(toCourse(created));
 });
 
-// PATCH /api/courses/:id — 코스 상세에서 이름·대표 이모지·동선(순서/삭제)을 수정
+// PATCH /api/courses/:id — 코스 상세에서 이름·대표 이모지·동선(순서/삭제)을 수정. 소유자만 가능.
 router.patch("/:id", async (req, res) => {
   const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-  if (!existing) return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  if (!existing || existing.userId !== req.userId) {
+    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  }
 
   if (!validateCourseUpdateInput(req.body)) {
     return res.status(400).json({ error: "코스 수정 형식이 올바르지 않아요" });
@@ -195,10 +200,12 @@ router.patch("/:id", async (req, res) => {
   res.json(toCourse(updated));
 });
 
-// DELETE /api/courses/:id — 보관함에서 코스 삭제
+// DELETE /api/courses/:id — 보관함에서 코스 삭제. 소유자만 가능.
 router.delete("/:id", async (req, res) => {
   const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-  if (!existing) return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  if (!existing || existing.userId !== req.userId) {
+    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  }
 
   await prisma.course.delete({ where: { id: req.params.id } });
   res.status(204).send();
