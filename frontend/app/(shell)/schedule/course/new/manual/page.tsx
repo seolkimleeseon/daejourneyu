@@ -80,14 +80,10 @@ export default function ManualCourseWizardPage() {
     setStep(2);
   };
 
-  const handleMove = (dayIndex: number, from: number, direction: -1 | 1) => {
+  const handleReorderDay = (dayIndex: number, nextDay: Place[]) => {
     setReviewDays((prev) => {
-      const day = [...prev[dayIndex]];
-      const to = from + direction;
-      if (to < 0 || to >= day.length) return prev;
-      [day[from], day[to]] = [day[to], day[from]];
       const next = [...prev];
-      next[dayIndex] = day;
+      next[dayIndex] = nextDay;
       return next;
     });
   };
@@ -150,7 +146,7 @@ export default function ManualCourseWizardPage() {
           days={reviewDays}
           activeDay={reviewDay}
           onSetActiveDay={setReviewDay}
-          onMove={handleMove}
+          onReorderDay={handleReorderDay}
           name={courseName}
           onChangeName={setCourseName}
           defaultName={defaultCourseName()}

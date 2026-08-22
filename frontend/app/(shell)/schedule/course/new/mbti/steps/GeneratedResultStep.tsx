@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
+import { DragReorderList } from "@/components/course/DragReorderList";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
-import { nightsLabel } from "@/lib/courseFormat";
+import { CATEGORY_EMOJI, nightsLabel } from "@/lib/courseFormat";
 import type { CourseTheme } from "@/lib/mbti";
 import type { Place, Transport } from "@/types";
 
@@ -16,6 +17,7 @@ interface GeneratedResultStepProps {
   transport: Transport;
   days: Place[][];
   courseTitle: string;
+  onReorderDay: (dayIndex: number, next: Place[]) => void;
   onSave: () => void;
   onGoHome: () => void;
 }
@@ -28,66 +30,105 @@ export function GeneratedResultStep({
   transport,
   days,
   courseTitle,
+  onReorderDay,
   onSave,
   onGoHome,
 }: GeneratedResultStepProps) {
+  const [editMode, setEditMode] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="px-4 pb-6 pt-1">
       <div ref={captureRef} className="rounded-2xl bg-surface p-2">
-        <div className="mb-4 rounded-2xl bg-brand-100 p-4 text-center">
+        <div className="animate-pop-in mb-4 rounded-2xl bg-brand-100 p-4 text-center">
           <div className="text-sm font-extrabold text-brand-700">오늘의 &lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
-            <Tag tone="brand" className="cursor-default">
+            <Tag tone="brand" className="cursor-default border border-line bg-card">
               {nights > 0 ? "🌙" : "☀️"} {nightsLabel(nights)}
             </Tag>
-            <Tag tone="purple" className="cursor-default">
+            <Tag tone="purple" className="cursor-default border border-line bg-card">
               {transport === "자차" ? "🚗" : "🚌"} {transport}
             </Tag>
-            <Tag tone="purple" className="cursor-default">
+            <Tag tone="purple" className="cursor-default border border-line bg-card">
               👥 {companion}
             </Tag>
-            <Tag tone="amber" className="cursor-default">
+            <Tag tone="amber" className="cursor-default border border-line bg-card">
               💰 {budget}
             </Tag>
-            <Tag tone="brand" className="cursor-default">
+            <Tag tone="brand" className="cursor-default border border-line bg-card">
               🐾 동반 가능
             </Tag>
           </div>
         </div>
 
+        <div className="mb-2 flex items-center justify-end px-1">
+          <button
+            type="button"
+            onClick={() => setEditMode((prev) => !prev)}
+            className={
+              editMode
+                ? "rounded-full bg-brand px-3 py-1 text-[11px] font-bold text-white"
+                : "rounded-full border border-brand-300 bg-brand-100 px-3 py-1 text-[11px] font-bold text-brand-700"
+            }
+          >
+            {editMode ? "✓ 완료" : "✏️ 순서 편집"}
+          </button>
+        </div>
+
         {days.map((day, dayIndex) => (
-          <div key={dayIndex} className="mb-4 last:mb-0">
-            {days.length > 1 ? (
-              <div className="mb-2 text-xs font-bold text-ink-muted">
-                📍 {dayIndex + 1}일차 동선 · {day.length}곳
-              </div>
-            ) : (
-              <div className="mb-2 text-xs font-bold text-ink-muted">{theme}형 동선 · {day.length}곳</div>
-            )}
-            <div className="overflow-hidden rounded-2xl border border-line bg-card">
-              {day.map((place, index) => (
-                <div key={place.id} className="flex gap-3 border-b border-line px-4 py-3 last:border-b-0">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-bold text-ink">{place.name}</div>
-                    <div className="mt-0.5 text-xs text-ink-muted">
-                      {place.district} · {place.category}
+          <div
+            key={dayIndex}
+            style={{ animationDelay: `${0.15 + dayIndex * 0.08}s` }}
+            className="animate-fade-up mb-4 last:mb-0"
+          >
+            <div className="mb-2 px-1 text-xs font-bold text-ink-muted">
+              {days.length > 1 ? `📍 ${dayIndex + 1}일차 동선` : `📍 ${theme}형 동선`} · {day.length}곳
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
+              <DragReorderList
+                items={day}
+                getId={(place) => place.id}
+                onReorder={(next) => onReorderDay(dayIndex, next)}
+                renderRow={(place, index, ref, dragHandleProps) => (
+                  <div ref={ref} className="flex items-center gap-2.5 border-b border-line px-4 py-3 last:border-b-0">
+                    {editMode ? (
+                      <button
+                        type="button"
+                        {...dragHandleProps}
+                        className="flex h-9 w-6 shrink-0 touch-none items-center justify-center text-base text-ink-muted"
+                        aria-label="순서 바꾸기(드래그)"
+                      >
+                        ⠿
+                      </button>
+                    ) : null}
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg">
+                      {CATEGORY_EMOJI[place.category] ?? "📍"}
+                      <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
+                        {index + 1}
+                      </span>
                     </div>
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      <Tag tone={place.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
-                        {place.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
-                      </Tag>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-ink">{place.name}</div>
+                      <div className="mt-0.5 text-xs text-ink-muted">
+                        {place.district} · {place.category}
+                      </div>
+                      {!editMode ? (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          <Tag tone={place.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
+                            {place.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
+                          </Tag>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                </div>
-              ))}
+                )}
+              />
             </div>
           </div>
         ))}
+        {editMode ? (
+          <div className="text-center text-[11px] text-ink-muted">⠿ 을 눌러 위아래로 드래그하면 순서가 바뀌어요</div>
+        ) : null}
       </div>
 
       <ResultShareActions
