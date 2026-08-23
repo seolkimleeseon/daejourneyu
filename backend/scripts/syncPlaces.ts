@@ -20,6 +20,7 @@ import {
 } from "../src/lib/daejeonPlaces";
 import { fetchDaejeonCampgrounds } from "../src/lib/campgrounds";
 import { PET_ACP_FACILITIES } from "../src/lib/petAcpFacilities";
+import { DAEJEON_DOG_PARKS } from "../src/lib/daejeonDogParks";
 
 type PlaceCategory = "산책" | "놀이터" | "맛집" | "문화";
 const DISTRICTS = ["유성구", "중구", "동구", "대덕구", "서구"];
@@ -257,6 +258,25 @@ function loadPetAcpFacilities(): PlaceRow[] {
   return rows;
 }
 
+function loadDaejeonDogParks(): PlaceRow[] {
+  return DAEJEON_DOG_PARKS.filter(
+    (entry) => DISTRICTS.includes(entry.district) && isFinitePoint(entry.lat, entry.lng)
+  ).map((entry) => ({
+    id: `dogpark-${entry.name}`,
+    name: entry.name,
+    category: "놀이터",
+    district: entry.district,
+    condition: `대전시 자치구 조성 반려동물 놀이터 · 무료 · ${entry.note}`,
+    petFriendly: true,
+    smallDogOnly: false,
+    lat: entry.lat,
+    lng: entry.lng,
+    imageUrl: null,
+    source: "daejeon-dogpark",
+    sourceTier: 1,
+  }));
+}
+
 /** 이름(공백 제거) 기준으로 중복을 골라내 신뢰도 티어가 더 높은(숫자가 작은) 쪽만 남긴다.
  * 동률이면 imageUrl이 있는 쪽을 우선한다 — PlacePickerSheet.sortByQuality와 동일 규칙. */
 function dedupeByName(rows: PlaceRow[]): PlaceRow[] {
@@ -285,6 +305,7 @@ async function main() {
     ["daejeon-places", loadDaejeonPlaces],
     ["camp", loadCampgrounds],
     ["petacp", loadPetAcpFacilities],
+    ["dogpark", loadDaejeonDogParks],
   ];
 
   const all: PlaceRow[] = [];
