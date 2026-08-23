@@ -21,22 +21,27 @@ export function StopThumbnail({ category, imageUrl, badge, size = 52, className 
   const showImage = !!imageUrl && !imageFailed;
 
   return (
-    <div className={cn("relative shrink-0 overflow-hidden rounded-xl", className)} style={{ width: size, height: size }}>
-      {showImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl ?? undefined}
-          alt=""
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setImageFailed(true)}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className={cn("flex h-full w-full items-center justify-center text-xl", tone.bg)}>
-          {CATEGORY_EMOJI[category] ?? "📍"}
-        </div>
-      )}
+    // 뱃지(순번)를 이 바깥 relative 컨테이너 기준으로 띄워서, 이미지 쪽에만 overflow-hidden을 걸어
+    // 뱃지가 모서리에서 잘리지 않게 한다 — 예전엔 컨테이너 자체가 overflow-hidden이라 -bottom-1/-right-1로
+    // 살짝 밖으로 나간 뱃지 테두리가 잘려 보였다.
+    <div className={cn("relative shrink-0", className)} style={{ width: size, height: size }}>
+      <div className="h-full w-full overflow-hidden rounded-xl">
+        {showImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl ?? undefined}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => setImageFailed(true)}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className={cn("flex h-full w-full items-center justify-center text-xl", tone.bg)}>
+            {CATEGORY_EMOJI[category] ?? "📍"}
+          </div>
+        )}
+      </div>
       {badge != null ? (
         <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-card bg-brand text-[9px] font-bold text-white">
           {badge}

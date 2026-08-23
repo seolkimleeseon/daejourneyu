@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
+import { StopThumbnail } from "@/components/course/StopThumbnail";
+import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import type { Place } from "@/types";
@@ -131,6 +133,7 @@ export function PlacesStep({
                 >
                   {isStart ? "●" : ""}
                 </div>
+                <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} size={44} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1 text-sm font-bold text-ink">
                     {place.name}
