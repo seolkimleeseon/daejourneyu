@@ -21,6 +21,8 @@ import {
 import { fetchDaejeonCampgrounds } from "../src/lib/campgrounds";
 import { PET_ACP_FACILITIES } from "../src/lib/petAcpFacilities";
 import { DAEJEON_DOG_PARKS } from "../src/lib/daejeonDogParks";
+import { assertKakaoRestKey, fetchPlaceImage } from "../src/lib/kakaoLocal";
+import { mapWithConcurrency } from "../src/lib/concurrency";
 
 type PlaceCategory = "산책" | "놀이터" | "맛집" | "문화";
 const DISTRICTS = ["유성구", "중구", "동구", "대덕구", "서구"];
@@ -296,6 +298,46 @@ function dedupeByName(rows: PlaceRow[]): PlaceRow[] {
   return [...byName.values()];
 }
 
+const IMAGE_SEARCH_HINT: Record<PlaceCategory, string> = {
+  산책: "공원",
+  놀이터: "반려동물 놀이터",
+  맛집: "맛집",
+  문화: "문화시설",
+};
+
+/** 이미지 보강 동시 요청 상한 — 레이트리밋 방지(kakaoLocal.ts의 다른 호출부와 동일 값). */
+const IMAGE_BACKFILL_CONCURRENCY = 8;
+
+/**
+ * 소스별 fetch 단계에서 이미지를 못 채운 행(petacp·dogpark처럼 사진이 아예 없는 소스,
+ * park·daejeon-places처럼 소스 자체의 supplementImagesByName 호출 건수 상한에 걸려 못 채운 행)을
+ * dedupe 이후 한 번 더 훑어 카카오 이미지 검색으로 채운다. 소스별 호출과 별개로 한 번만 돌기
+ * 때문에 이 스크립트 실행에서는 상한을 두지 않고 누락분 전체를 시도한다.
+ */
+async function backfillMissingImages(rows: PlaceRow[]): Promise<void> {
+  let key: string;
+  try {
+    key = assertKakaoRestKey();
+  } catch {
+    console.warn("  이미지 보강 스킵 — KAKAO_REST_API_KEY가 없어요");
+    return;
+  }
+
+  const missing = rows.filter((row) => !row.imageUrl);
+  if (!missing.length) return;
+  console.log(`  이미지 보강 대상 ${missing.length}건 검색 중...`);
+
+  const images = await mapWithConcurrency(missing, IMAGE_BACKFILL_CONCURRENCY, (row) =>
+    fetchPlaceImage(`대전 ${row.district} ${row.name} ${IMAGE_SEARCH_HINT[row.category]}`, key).catch(() => null)
+  );
+  let filled = 0;
+  missing.forEach((row, index) => {
+    if (images[index]) filled += 1;
+    row.imageUrl = images[index];
+  });
+  console.log(`  이미지 보강 완료: ${filled}/${missing.length}건 채움`);
+}
+
 async function main() {
   const loaders: [string, () => Promise<PlaceRow[]> | PlaceRow[]][] = [
     ["pettour", loadPetTourSpots],
@@ -320,8 +362,11 @@ async function main() {
   }
 
   const deduped = dedupeByName(all);
-  console.log(`\n합계 ${all.length}건 → dedupe 후 ${deduped.length}건. DB에 upsert 중...`);
+  console.log(`\n합계 ${all.length}건 → dedupe 후 ${deduped.length}건.`);
 
+  await backfillMissingImages(deduped);
+
+  console.log("DB에 upsert 중...");
   for (const row of deduped) {
     await prisma.place.upsert({
       where: { id: row.id },
