@@ -6,12 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
 import { cn } from "@/lib/cn";
 import { useSheetStore } from "@/stores/useSheetStore";
-import { usePetTourSpots } from "@/hooks/usePetTourSpots";
-import { useDaejeonParks } from "@/hooks/useDaejeonParks";
-import { usePetFacilities } from "@/hooks/usePetFacilities";
-import { useVerifiedPetRestaurants } from "@/hooks/useVerifiedPetRestaurants";
-import { useDaejeonPlaces } from "@/hooks/useDaejeonPlaces";
-import { useCampgrounds } from "@/hooks/useCampgrounds";
+import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { useKakaoPlacesMulti, type KakaoSearchTarget } from "@/hooks/useKakaoPlaces";
 import type { PickablePlace } from "@/lib/petTourMapper";
 import { CATEGORIES, CATEGORY_ICON, DISTRICTS } from "@/lib/placeFilters";
@@ -28,23 +23,13 @@ const CATEGORY_KAKAO_KEYWORD: Record<PlaceCategory, string> = {
 };
 
 /**
- * id 접두사로 소스별 신뢰도 티어를 매긴다 — 낮을수록 먼저 보여준다.
- * 1: 반려동물 동반 여부가 실제로 인증/필터링된 소스(관광공사·식약처·대전관광공사·고캠핑)
- * 2: 공식 공공데이터지만 반려동물 동반 인증까지는 아닌 소스(공원·문화·숙박·관광지·모범음식점)
- * 3: 카카오맵 검색(확인 필요)
+ * 소스별 신뢰도 티어를 매긴다 — 낮을수록 먼저 보여준다. backend/scripts/syncPlaces.ts가
+ * Place.sourceTier로 이미 매겨서(1=반려동물 동반 인증 소스, 2=공공데이터 미인증) 응답에 실어주므로
+ * 그대로 쓰고, 카카오맵 실시간 검색 결과(Place 테이블 밖, id가 "kakao-"로 시작)만 3으로 취급한다.
  */
-const TRUST_TIER_PREFIXES: [string, number][] = [
-  ["pettour-", 1],
-  ["foodsafety-", 1],
-  ["petfac-", 1],
-  ["camp-", 1],
-  ["park-", 2],
-  ["daejeon-", 2],
-  ["kakao-", 3],
-];
-
 function getTrustTier(place: PickablePlace): number {
-  return TRUST_TIER_PREFIXES.find(([prefix]) => place.id.startsWith(prefix))?.[1] ?? 2;
+  if (place.id.startsWith("kakao-")) return 3;
+  return place.sourceTier ?? 2;
 }
 
 /** 신뢰도 티어 우선 → 같은 티어 안에서는 사진 있는 카드 우선으로 정렬한다. */
@@ -123,52 +108,10 @@ export function PlacePickerSheet() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<PlaceCategory | "전체">("전체");
   const [district, setDistrict] = useState<DaejeonDistrict | "전체">("전체");
-  // TODO(mock): mockPlaces 혼합은 잠시 뺐다 — 실데이터(관광공사+대전시 공원+공식 인증 소스+카카오)만으로
-  // 얼마나 채워지는지 먼저 확인하기 위함.
-  const { data: apiPlaces, isLoading, isError } = usePetTourSpots(isOpen);
-  // 산책 카테고리는 관광공사 데이터만으론 커버리지가 좁아 대전시 공식 도시공원정보로 보강한다.
-  const { data: parkPlaces } = useDaejeonParks(isOpen);
-  // 대전관광공사 반려동물 동반시설(맛집·산책·놀이터·숙박) — 정부기관이 직접 인증한 목록.
-  const { data: facilityPlaces } = usePetFacilities(isOpen);
-  // 식약처 반려동물 동반출입 음식점 정식 등록 목록 — 맛집 카테고리 최고 신뢰도 소스.
-  const { data: verifiedRestaurantPlaces } = useVerifiedPetRestaurants(isOpen);
-  // 대전시 문화시설·숙박·관광지 공공데이터 — 문화/숙박 카테고리 보강용.
-  const { data: culturePlaces } = useDaejeonPlaces("culture", isOpen);
-  const { data: lodgingPlaces } = useDaejeonPlaces("lodging", isOpen);
-  const { data: tourspotPlaces } = useDaejeonPlaces("tourspot", isOpen);
-  const { data: exemplaryRestaurantPlaces } = useDaejeonPlaces("restaurant", isOpen);
-  // 한국관광공사 고캠핑 정보(대전 인근) — 숙박 카테고리 보강용.
-  const { data: campgroundPlaces } = useCampgrounds(isOpen);
-  const places: PickablePlace[] = useMemo(() => {
-    const merged = [...(apiPlaces ?? [])];
-    const knownNames = new Set(merged.map((place) => place.name));
-    const addAll = (extra: PickablePlace[] | undefined) => {
-      for (const place of extra ?? []) {
-        if (knownNames.has(place.name)) continue;
-        knownNames.add(place.name);
-        merged.push(place);
-      }
-    };
-    addAll(verifiedRestaurantPlaces);
-    addAll(facilityPlaces);
-    addAll(parkPlaces);
-    addAll(culturePlaces);
-    addAll(lodgingPlaces);
-    addAll(tourspotPlaces);
-    addAll(exemplaryRestaurantPlaces);
-    addAll(campgroundPlaces);
-    return merged;
-  }, [
-    apiPlaces,
-    parkPlaces,
-    facilityPlaces,
-    verifiedRestaurantPlaces,
-    culturePlaces,
-    lodgingPlaces,
-    tourspotPlaces,
-    exemplaryRestaurantPlaces,
-    campgroundPlaces,
-  ]);
+  // Place 테이블(backend/scripts/syncPlaces.ts가 9개 공공데이터 소스+문체부 CSV를 정규화·dedupe해 채움)
+  // 하나만 부르면 된다 — 예전엔 소스별로 훅을 따로 불러 여기서 이름 기준으로 병합했다(커밋 0b5c8ac).
+  const { data: fetchedPlaces, isLoading, isError } = usePickablePlaces(isOpen);
+  const places = fetchedPlaces ?? [];
 
   const matchesQuery = (place: PickablePlace, q: string) =>
     !q || place.name.includes(q) || place.district.includes(q) || place.category.includes(q);

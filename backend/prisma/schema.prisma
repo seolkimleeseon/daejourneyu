@@ -101,3 +101,24 @@ model CourseScheduleFestival {
   courseScheduleId String
   courseSchedule   CourseSchedule @relation(fields: [courseScheduleId], references: [id], onDelete: Cascade)
 }
+
+// 9개 공공데이터/시드 소스(관광공사 반려동물 동반여행지·대전관광공사 동반시설·식약처 인증맛집·
+// 대전시 공원/문화/숙박/관광지/모범음식점·고캠핑·문체부 반려동물 동반가능 시설 현황)를 정규화해
+// 영속화한 장소. backend/scripts/syncPlaces.ts로만 upsert되고 API는 읽기 전용으로 서빙한다.
+// id는 소스별 접두사(pettour-/park-/petacp- 등)를 유지해 재실행 시 자연스럽게 upsert(중복 방지)되게 한다.
+model Place {
+  id           String   @id
+  name         String
+  category     String // 산책|놀이터|맛집|문화 (프론트 PlaceCategory)
+  district     String // 프론트 DaejeonDistrict
+  condition    String
+  petFriendly  Boolean
+  smallDogOnly Boolean  @default(false)
+  lat          Float
+  lng          Float
+  imageUrl     String?
+  source       String // pettour|petfac|foodsafety|park|daejeon-culture|daejeon-lodging|daejeon-tourspot|daejeon-restaurant|camp|petacp
+  /** 낮을수록 신뢰도 높음: 1=반려동물 동반 여부가 인증/필터링된 소스, 2=공식 공공데이터지만 동반 인증까지는 아닌 소스 */
+  sourceTier   Int
+  updatedAt    DateTime @updatedAt
+}

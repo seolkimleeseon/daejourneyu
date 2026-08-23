@@ -20,7 +20,7 @@ import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useMbtiResultStore } from "@/stores/useMbtiResultStore";
-import { usePetTourSpots } from "@/hooks/usePetTourSpots";
+import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { ensureCategoryMinimum } from "@/lib/petTourMapper";
 import { mockPlaces } from "@/mocks";
 import type { Place, Transport } from "@/types";
@@ -58,7 +58,7 @@ function MbtiCourseWizard() {
   const searchParams = useSearchParams();
   const addCourse = useCourseStore((state) => state.addCourse);
   const showToast = useToastStore((state) => state.show);
-  const { data: apiPlaces } = usePetTourSpots();
+  const { data: apiPlaces } = usePickablePlaces();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const savedMbtiCode = useMbtiResultStore((state) => state.code);
   const setSavedMbtiCode = useMbtiResultStore((state) => state.setCode);

@@ -44,23 +44,21 @@ cd frontend && npm install && npm run dev    # http://localhost:3000
 ## 현재 연동 상태 (중요)
 
 README의 "홈에서 백엔드 `/api/places`를 불러온다"는 설명은 **더 이상 맞지 않는다.** 초기 스캐폴딩
-이후 프론트가 재구축되면서 `app/page.tsx`는 `/home`으로 리다이렉트하고, 화면 데이터는 전부
+이후 프론트가 재구축되면서 `app/page.tsx`는 `/home`으로 리다이렉트하고, 화면 데이터는 대부분
 `frontend/src/mocks`의 목데이터를 TanStack Query 훅으로 읽는다. 실제 API 교체 지점은 코드에
 `// TODO(api)`로 표시되어 있다.
 
-**IMPORTANT: 프론트와 백엔드의 `Place` 모델은 아직 일치하지 않는다.** 어느 한쪽만 고치면 연동이
-깨지므로, 스키마를 바꿀 때는 반드시 양쪽을 함께 확인한다.
+**`Place`는 이제 Prisma로 영속화되어 있고, 프론트·백엔드 필드가 일치한다.** `/api/places`가
+`district`/`category`/`petFriendly`/`smallDogOnly`/`lat`/`lng`/`imageUrl` 등 프론트
+`src/types/place.ts` 필드명을 그대로 응답한다(예전엔 `gu`/`cat`처럼 백엔드 자체 필드명을 썼는데,
+그 불일치를 이 작업에서 없앴다). `backend/scripts/syncPlaces.ts`가 관광공사·대전관광공사·식약처·
+대전시·고캠핑·문체부 반려동물 동반가능 시설 현황(총 9개 소스 + CSV 1건)을 정규화·dedupe해서
+`npm run sync:places`로 채워 넣는다 — 수동 실행이라 소스가 갱신되면 다시 돌려야 한다.
 
-| | frontend (`src/types/place.ts`) | backend (`src/routes/places.ts`) |
-|---|---|---|
-| id | `string` | `number` |
-| 분류 | `category` (5종 유니언) | `cat` |
-| 지역 | `district` (5개 구 유니언) | `gu` |
-| 동반 | `petFriendly` + `condition` | `pet` |
-| 좌표 | `lat` / `lng` 필수 | 없음 |
-
-실 API 연동 작업을 시작할 때는 프론트 타입을 정본으로 삼아 백엔드를 맞추고, 백엔드의 임시 배열은
-Prisma + PostgreSQL로 교체하는 것이 계획된 방향이다.
+다만 이 데이터를 실제로 쓰는 건 아직 `frontend/src/components/course/PlacePickerSheet.tsx`(코스
+위저드 장소 선택 시트)뿐이다. 홈/맵 탭이 쓰는 `frontend/src/hooks/usePlaces.ts`는 여전히
+`mockPlaces`를 반환하는 상태(`TODO(api)` 그대로 남아 있음) — 실제 API로 바꾸는 건 그 탭 담당자가
+할 일로 남겨뒀다.
 
 ## 도메인 용어
 
