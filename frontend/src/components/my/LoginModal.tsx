@@ -39,11 +39,6 @@ export function LoginModal({ open, onClose, onLoggedIn }: LoginModalProps) {
     onClose();
   };
 
-  const handleKakaoLogin = () => {
-    const returnTo = typeof window !== "undefined" ? window.location.pathname : "/schedule";
-    window.location.href = `/api/auth/kakao/start?returnTo=${encodeURIComponent(returnTo)}`;
-  };
-
   const handleSubmit = async () => {
     setError(null);
     if (!email.trim() || !password) {
@@ -120,21 +115,6 @@ export function LoginModal({ open, onClose, onLoggedIn }: LoginModalProps) {
       <Button variant="primary" onClick={handleSubmit} disabled={pending}>
         {pending ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
       </Button>
-
-      <div className="flex items-center gap-2 py-0.5">
-        <div className="h-px flex-1 bg-line" />
-        <span className="text-[10px] text-ink-muted">또는</span>
-        <div className="h-px flex-1 bg-line" />
-      </div>
-
-      {/* 카카오 브랜드 컬러(#FEE500) — 자체 디자인 토큰이 아니라 카카오 로그인 버튼 가이드라인 고정값이라 raw hex 예외로 둔다. */}
-      <button
-        type="button"
-        onClick={handleKakaoLogin}
-        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] text-sm font-bold text-[#181600]"
-      >
-        <span>💬</span>카카오로 로그인
-      </button>
 
       <Button variant="text" onClick={handleClose}>
         닫기

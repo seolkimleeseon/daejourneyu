@@ -12,8 +12,6 @@ interface AuthState {
   token: string | null;
   login: (email: string, password: string) => Promise<AuthResult>;
   signup: (email: string, password: string, nickname: string) => Promise<AuthResult>;
-  /** 카카오 로그인 콜백이 돌려준 토큰으로 세션을 세운다(/auth/kakao/complete 페이지에서 사용). */
-  loginWithToken: (token: string) => Promise<AuthResult>;
   logout: () => void;
   /** 새로고침 후 저장된 토큰이 여전히 유효한지 서버에 확인한다. Providers에서 앱 시작 시 한 번 호출. */
   restoreSession: () => Promise<void>;
@@ -47,16 +45,6 @@ export const useAuthStore = create<AuthState>()(
           return { ok: true };
         } catch (error) {
           return { ok: false, error: errorMessage(error, "회원가입에 실패했어요") };
-        }
-      },
-
-      loginWithToken: async (token) => {
-        try {
-          const { user } = await meApi(token);
-          set({ isLoggedIn: true, user, token });
-          return { ok: true };
-        } catch (error) {
-          return { ok: false, error: errorMessage(error, "로그인에 실패했어요") };
         }
       },
 
