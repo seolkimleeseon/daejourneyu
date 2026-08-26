@@ -18,7 +18,7 @@ export type PetInput = Omit<Pet, "id" | "mbti">;
 
 async function requestPets(
   path: string,
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   body?: PetInput
 ): Promise<Response | null> {
   try {
@@ -65,4 +65,17 @@ export async function createPetRequest(input: PetInput): Promise<PetResult> {
 
 export async function updatePetRequest(petId: string, input: PetInput): Promise<PetResult> {
   return toPetResult(await requestPets(`/${petId}`, "PATCH", input));
+}
+
+/** 삭제는 돌려받을 Pet이 없으므로 PetResult가 아니라 성공 여부만 다룬다. */
+export type PetDeleteResult = { ok: true } | { ok: false; message: string };
+
+export async function deletePetRequest(petId: string): Promise<PetDeleteResult> {
+  const response = await requestPets(`/${petId}`, "DELETE");
+  if (!response) return { ok: false, message: NETWORK_ERROR };
+  // 성공은 204라 본문이 없다.
+  if (response.ok) return { ok: true };
+
+  const data = (await response.json().catch(() => ({}))) as { error?: string };
+  return { ok: false, message: data.error ?? "삭제에 실패했어요" };
 }
