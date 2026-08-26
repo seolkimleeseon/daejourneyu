@@ -30,7 +30,7 @@ export default function MyPage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
-  const { got: gotBadges, gotCount, total: badgeTotal } = useMyBadges();
+  const { badges } = useMyBadges();
 
   const handlePassportClick = () => {
     if (!hydrated) return;
@@ -79,11 +79,7 @@ export default function MyPage() {
 
         {isLoggedIn ? (
           <div className="mt-2">
-            <BadgeGrid
-              badges={gotBadges}
-              total={badgeTotal}
-              onSeeAll={() => router.push("/my/badges")}
-            />
+            <BadgeGrid badges={badges} />
           </div>
         ) : null}
 
@@ -93,11 +89,6 @@ export default function MyPage() {
             label="내가 쓴 후기"
             trailing={isLoggedIn ? `${myReviewCount}개 ›` : "›"}
             onClick={handleReviewsClick}
-          />
-          <MenuItem
-            label="여행 뱃지"
-            trailing={`${gotCount}/${badgeTotal} ›`}
-            onClick={() => router.push("/my/badges")}
           />
           <MenuItem
             label="알림 설정 · 준비 중"

@@ -1,41 +1,32 @@
 import type { Badge } from "@/lib/badges";
 
-interface BadgeGridProps {
-  /** 획득한 뱃지만 넘긴다 — 잠긴 칸은 전체 목록 화면(/my/badges)이 담당한다. */
-  badges: Badge[];
-  total: number;
-  onSeeAll: () => void;
-}
-
 /**
- * 마이탭의 뱃지 요약. 자물쇠로 빈 칸을 채우면 "내 뱃지"가 아니라 카탈로그처럼 보여서,
- * 여기서는 획득한 것만 보여주고 못 얻은 것은 전체 목록에서 확인하게 한다.
+ * 마이탭의 뱃지 섹션. 획득분과 아직 못 얻은 것을 한 화면에 두되 역할을 나눈다 —
+ * 위쪽 그리드는 "내가 모은 것"(트로피 케이스), 아래 목록은 "다음에 할 것"(남은 거리)이다.
+ *
+ * 잠긴 뱃지를 감추면 목표까지 남은 거리가 안 보여 동기가 줄고, 반대로 자물쇠로만 채우면
+ * 무슨 뱃지인지조차 안 보여 카탈로그처럼 읽힌다. 그래서 흐린 이모지와 획득 조건을 같이 보여준다.
  */
-export function BadgeGrid({ badges, total, onSeeAll }: BadgeGridProps) {
+export function BadgeGrid({ badges }: { badges: Badge[] }) {
+  const got = badges.filter((badge) => badge.got);
+  const locked = badges.filter((badge) => !badge.got);
+
   return (
     <div>
       <div className="mb-2 mt-1 flex items-center justify-between px-1 text-xs font-bold text-ink-muted">
         <span>내 여행 뱃지</span>
-        <button type="button" onClick={onSeeAll} className="text-brand-700 active:opacity-55">
-          {badges.length}/{total} ›
-        </button>
+        <span>
+          {got.length}/{badges.length}
+        </span>
       </div>
 
-      {badges.length === 0 ? (
-        <button
-          type="button"
-          onClick={onSeeAll}
-          className="w-full rounded-xl border border-dashed border-line-strong px-3 py-5 text-center active:bg-surface"
-        >
-          <div className="text-[22px] leading-none">🐾</div>
-          <div className="mt-1.5 text-[11px] font-bold text-ink">아직 모은 뱃지가 없어요</div>
-          <div className="mt-0.5 text-[10px] text-ink-muted">
-            어떤 뱃지가 있는지 보러 가기 ›
-          </div>
-        </button>
+      {got.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line-strong px-3 py-4 text-center text-[11px] text-ink-muted">
+          아직 모은 뱃지가 없어요. 아래 목표부터 시작해보세요.
+        </p>
       ) : (
         <div className="grid grid-cols-4 gap-2">
-          {badges.map((badge) => (
+          {got.map((badge) => (
             <div
               key={badge.name}
               className="rounded-xl border border-brand-300 bg-brand-100 px-1 pb-2.5 pt-3 text-center"
@@ -48,6 +39,33 @@ export function BadgeGrid({ badges, total, onSeeAll }: BadgeGridProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {locked.length > 0 ? (
+        <div className="mt-4">
+          <div className="mb-1.5 px-1 text-xs font-bold text-ink-muted">다음 목표</div>
+          <div className="flex flex-col gap-1.5">
+            {locked.map((badge) => (
+              <div
+                key={badge.name}
+                className="flex items-center gap-2.5 rounded-xl border border-line bg-card px-3 py-2.5"
+              >
+                {/* 자물쇠로 덮지 않는다 — 어떤 뱃지인지 보여야 목표로 읽힌다. */}
+                <span className="shrink-0 text-lg leading-none opacity-40 grayscale">
+                  {badge.emoji}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-ink-muted">{badge.name}</div>
+                  <div className="mt-0.5 text-[10px] leading-tight text-ink-muted">{badge.how}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-center text-[11px] font-bold text-brand-700">
+          🎉 뱃지를 모두 모았어요!
+        </p>
       )}
     </div>
   );
