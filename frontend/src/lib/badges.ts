@@ -5,7 +5,7 @@ export interface Badge {
   name: string;
   /** 그리드 타일에 들어가는 짧은 라벨. 한 줄을 넘기지 않는다. */
   description: string;
-  /** 전체 목록 화면에서 보여줄 획득 조건. 아직 못 얻은 뱃지의 안내가 되므로 문장으로 쓴다. */
+  /** 아직 못 받은 뱃지에 보여줄 획득 조건. 그 자체로 할 일이 되므로 문장으로 쓴다. */
   how: string;
   got: boolean;
 }
