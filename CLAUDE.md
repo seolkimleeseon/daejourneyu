@@ -25,13 +25,29 @@ daejourneyu/
 
 ## 실행
 
-프론트/백엔드를 **별도 터미널 2개**로 띄운다. 프론트의 `/api/*`는 `next.config.mjs`의
-rewrites로 `localhost:4000`에 프록시된다 — 백엔드가 꺼져 있으면 API 호출이 실패한다.
+로컬 개발에는 **DB · 백엔드 · 프론트 세 가지**가 떠 있어야 한다. DB는 Prisma가 관리하는 로컬
+Postgres로 `--detach`를 붙이면 백그라운드로 돌아가고, 백엔드/프론트는 터미널 2개를 잡는다.
+프론트의 `/api/*`는 `next.config.mjs`의 rewrites로 `localhost:4000`에 프록시된다 — 백엔드가
+꺼져 있으면 API 호출이 실패한다.
 
 ```bash
+cd backend  && npx prisma dev --name daejourneyu --detach   # localhost:51214, 이미 떠 있으면 그대로 재사용
 cd backend  && npm install && npm run dev    # http://localhost:4000 (tsx watch)
 cd frontend && npm install && npm run dev    # http://localhost:3000
 ```
+
+**IMPORTANT: DB는 `npm run dev`에 딸려 오지 않는다.** 재부팅·절전으로 detach된 Postgres가
+사라져도 백엔드·프론트는 멀쩡히 뜨고 화면도 그려지기 때문에, 증상이 DB와 무관해 보이는 곳에서
+나타난다 — 카카오 로그인이 `?error=kakao_db`로 되돌아오거나, 로그인·가입 API가 500을 뱉는 식이다.
+**인증 계열이 갑자기 안 되면 카카오 콘솔을 뒤지기 전에 DB 상태부터 확인한다.**
+
+```bash
+cd backend && npx prisma dev ls        # status가 running인지 확인. 꺼져 있으면 위 --detach 명령으로 다시 기동
+```
+
+DB를 다시 띄운 뒤 백엔드를 재시작할 필요는 없다 — Prisma가 다음 쿼리에서 알아서 재연결한다.
+접속 URL은 `backend/.env`의 `DATABASE_URL`이 정본이고, 포트(51214)는 `--name`으로 구분되는
+서버마다 고정이다. 서버 목록·정지는 `prisma dev ls|stop|rm`으로 다룬다.
 
 | | build | 그 외 |
 |---|---|---|
