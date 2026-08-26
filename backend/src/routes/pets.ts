@@ -9,6 +9,23 @@ const router = Router();
 const SIZES = ["소형견", "중형견", "대형견"] as const;
 type PetSize = (typeof SIZES)[number];
 
+/**
+ * 아바타 후보. 프론트 `PetRegisterForm`의 EMOJIS와 같은 목록을 유지해야 한다 —
+ * 한쪽만 늘리면 화면에서 고를 수 있는데 서버가 400으로 막는 상태가 된다.
+ * TODO(step3 이후): 사진 업로드로 바뀌면 이 화이트리스트는 사라진다.
+ */
+const EMOJIS = ["🐕", "🐩", "🦮", "🐕‍🦺", "🐈", "🐇"] as const;
+
+/** 입력 상한. 폼(maxLength)만으론 API 직접 호출을 막지 못해 서버에서도 같은 기준으로 자른다. */
+const MAX_NAME_LENGTH = 20;
+const MAX_BREED_LENGTH = 30;
+/** 세계 최대 견종도 100kg를 넘지 않는다. 오타(28 → 2800)를 걸러내는 용도. */
+const MAX_WEIGHT_KG = 200;
+/** 기네스 최고령견이 29살이다. */
+const MAX_AGE_YEARS = 50;
+/** 한 계정당 등록 한도. 목록 화면(PetSwitcher)이 감당할 수 있는 수준으로 둔다. */
+const MAX_PETS_PER_USER = 10;
+
 /** 프론트 Pet 타입(src/types/pet.ts) 모양. mbti는 컬럼 4개를 중첩 객체로 묶어 돌려준다. */
 interface PublicPet {
   id: string;
@@ -72,11 +89,23 @@ function parsePetInput(body: unknown): ParsedPetInput {
   const age = Number(ageYears);
 
   if (!trimmedName) errors.name = "이름을 입력해주세요";
+  else if (trimmedName.length > MAX_NAME_LENGTH) errors.name = `이름은 ${MAX_NAME_LENGTH}자 이내로 입력해주세요`;
+
   if (!trimmedBreed) errors.breed = "견종을 입력해주세요";
+  else if (trimmedBreed.length > MAX_BREED_LENGTH) {
+    errors.breed = `견종은 ${MAX_BREED_LENGTH}자 이내로 입력해주세요`;
+  }
+
   if (!Number.isFinite(weight) || weight <= 0) errors.weightKg = "몸무게를 0보다 큰 숫자로 입력해주세요";
+  else if (weight > MAX_WEIGHT_KG) errors.weightKg = `몸무게는 ${MAX_WEIGHT_KG}kg 이하로 입력해주세요`;
+
   if (!Number.isFinite(age) || age < 0) errors.ageYears = "나이를 0 이상 숫자로 입력해주세요";
+  else if (age > MAX_AGE_YEARS) errors.ageYears = `나이는 ${MAX_AGE_YEARS}살 이하로 입력해주세요`;
+
   if (!SIZES.includes(size as PetSize)) errors.size = "크기를 선택해주세요";
-  if (typeof emoji !== "string" || !emoji) errors.emoji = "아바타를 선택해주세요";
+  if (typeof emoji !== "string" || !EMOJIS.includes(emoji as (typeof EMOJIS)[number])) {
+    errors.emoji = "아바타를 선택해주세요";
+  }
 
   return {
     errors,
@@ -112,6 +141,11 @@ router.post(
     const { errors, data } = parsePetInput(req.body);
     if (Object.keys(errors).length > 0) return res.status(400).json({ errors });
 
+    const count = await prisma.pet.count({ where: { userId: req.userId } });
+    if (count >= MAX_PETS_PER_USER) {
+      return res.status(400).json({ error: `반려동물은 최대 ${MAX_PETS_PER_USER}마리까지 등록할 수 있어요` });
+    }
+
     const pet = await prisma.pet.create({ data: { ...data, userId: req.userId! } });
     res.status(201).json({ pet: toPublicPet(pet) });
   })
@@ -131,6 +165,20 @@ router.patch(
 
     const pet = await prisma.pet.update({ where: { id: target.id }, data });
     res.json({ pet: toPublicPet(pet) });
+  })
+);
+
+// DELETE /api/pets/:petId
+router.delete(
+  "/:petId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    // PATCH와 같은 이유로 소유자까지 확인한다 — 남의 반려동물을 지울 수 없어야 한다.
+    const target = await prisma.pet.findFirst({ where: { id: req.params.petId, userId: req.userId } });
+    if (!target) return res.status(404).json({ error: "반려동물을 찾을 수 없어요" });
+
+    await prisma.pet.delete({ where: { id: target.id } });
+    res.status(204).end();
   })
 );
 
