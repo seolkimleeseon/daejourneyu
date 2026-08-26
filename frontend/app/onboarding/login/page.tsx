@@ -12,9 +12,17 @@ import { useToastStore } from "@/stores/useToastStore";
 import { markOnboardingSeen } from "@/lib/onboarding";
 import type { AuthFieldErrors } from "@/lib/api/auth";
 
+/**
+ * 백엔드 콜백(`/api/auth/kakao/callback`)이 붙여 보내는 error 코드 → 화면 문구.
+ * 실패 지점마다 코드가 다르므로 문구만 보고 어디서 끊겼는지 구분할 수 있다.
+ */
 const KAKAO_ERROR_MESSAGES: Record<string, string> = {
   kakao_state: "로그인 요청이 만료됐어요. 다시 시도해주세요",
   kakao_denied: "카카오 로그인이 취소됐어요",
+  kakao_config: "서버에 카카오 로그인 설정이 없어요. backend/.env를 확인해주세요",
+  kakao_api: "카카오 서버와 통신하지 못했어요. 잠시 후 다시 시도해주세요",
+  kakao_db: "로그인 정보를 저장하지 못했어요. 데이터베이스가 떠 있는지 확인해주세요",
+  // 위 어디에도 해당하지 않는 예상 밖의 실패
   kakao_failed: "카카오 로그인에 실패했어요. 잠시 후 다시 시도해주세요",
 };
 

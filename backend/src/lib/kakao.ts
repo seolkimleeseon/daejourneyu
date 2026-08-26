@@ -9,14 +9,20 @@ export interface KakaoProfile {
   email: string | null;
 }
 
+/** 서버 설정(.env) 누락. 사용자가 재시도해도 소용없는 오류라 콜백에서 따로 구분한다. */
+export class KakaoConfigError extends Error {}
+
+/** 카카오 API 호출 자체가 실패한 경우(토큰 교환·프로필 조회). 재시도로 풀릴 수 있다. */
+export class KakaoApiError extends Error {}
+
 export function assertKakaoConfig(): { restApiKey: string; redirectUri: string } {
   // P2의 카카오 로컬 API와 같은 키를 쓴다 — 로그인은 앱 설정에서 "카카오 로그인"만 추가로 켜면 된다.
   const restApiKey = process.env.KAKAO_REST_API_KEY;
   const redirectUri = process.env.KAKAO_REDIRECT_URI;
 
   if (!restApiKey || !redirectUri) {
-    throw new Error(
-      "KAKAO_REST_API_KEY / KAKAO_REDIRECT_URI가 backend/.env에 설정되지 않았어요 (.env.example 참고)"
+    throw new KakaoConfigError(
+      "KAKAO_REST_API_KEY / KAKAO_REDIRECT_URI가 backend/.env에 설정되지 않았어요"
     );
   }
 
@@ -61,11 +67,11 @@ async function exchangeCodeForToken(code: string): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`카카오 토큰 교환 실패 (${response.status}): ${await response.text()}`);
+    throw new KakaoApiError(`카카오 토큰 교환 실패 (${response.status}): ${await response.text()}`);
   }
 
   const data = (await response.json()) as { access_token?: string };
-  if (!data.access_token) throw new Error("카카오 응답에 access_token이 없습니다");
+  if (!data.access_token) throw new KakaoApiError("카카오 응답에 access_token이 없습니다");
 
   return data.access_token;
 }
@@ -76,7 +82,7 @@ async function fetchProfile(accessToken: string): Promise<KakaoProfile> {
   });
 
   if (!response.ok) {
-    throw new Error(`카카오 프로필 조회 실패 (${response.status}): ${await response.text()}`);
+    throw new KakaoApiError(`카카오 프로필 조회 실패 (${response.status}): ${await response.text()}`);
   }
 
   const data = (await response.json()) as {
