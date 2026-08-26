@@ -79,7 +79,7 @@ export default function MyPage() {
 
         {isLoggedIn ? (
           <div className="mt-2">
-            <BadgeGrid badges={badges} />
+            <BadgeGrid badges={badges} onOpenAll={() => router.push("/my/badges")} />
           </div>
         ) : null}
 
