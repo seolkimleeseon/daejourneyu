@@ -18,21 +18,38 @@ export function QuestionCard({ question, selected, onSelect }: QuestionCardProps
 
   return (
     <div>
-      <span className="mb-1.5 block text-center text-[9px] font-semibold text-accent-purple">{question.tag}</span>
-      <div className="mb-2 text-center text-3xl">{question.emoji}</div>
-      <div className="mb-4 text-center text-sm font-semibold leading-relaxed text-ink">{question.question}</div>
+      <div className="animate-fade-up">
+        <span className="mb-1.5 block text-center text-[9px] font-semibold text-accent-purple">{question.tag}</span>
+        <div className="mb-2 text-center text-3xl">{question.emoji}</div>
+        <div className="mb-4 text-center text-sm font-semibold leading-relaxed text-ink">{question.question}</div>
+      </div>
       <div className="flex flex-col gap-2">
-        <button type="button" className={cardClass(question.optionA.letter)} onClick={() => onSelect(question.optionA.letter)}>
+        <button
+          type="button"
+          style={{ animationDelay: "0.06s" }}
+          className={cn("animate-fade-up", cardClass(question.optionA.letter))}
+          onClick={() => onSelect(question.optionA.letter)}
+        >
           <div className="mb-1 text-xl">{question.optionA.emoji}</div>
           <div className="text-xs font-semibold text-ink">{question.optionA.label}</div>
           <div className="mt-0.5 text-[10px] text-ink-muted">{question.optionA.sub}</div>
         </button>
-        <button type="button" className={cardClass(question.optionB.letter)} onClick={() => onSelect(question.optionB.letter)}>
+        <button
+          type="button"
+          style={{ animationDelay: "0.12s" }}
+          className={cn("animate-fade-up", cardClass(question.optionB.letter))}
+          onClick={() => onSelect(question.optionB.letter)}
+        >
           <div className="mb-1 text-xl">{question.optionB.emoji}</div>
           <div className="text-xs font-semibold text-ink">{question.optionB.label}</div>
           <div className="mt-0.5 text-[10px] text-ink-muted">{question.optionB.sub}</div>
         </button>
-        <button type="button" className={cardClass("NEUTRAL")} onClick={() => onSelect("NEUTRAL")}>
+        <button
+          type="button"
+          style={{ animationDelay: "0.18s" }}
+          className={cn("animate-fade-up", cardClass("NEUTRAL"))}
+          onClick={() => onSelect("NEUTRAL")}
+        >
           <div className="mb-1 text-xl">🤔</div>
           <div className="text-xs font-semibold text-ink">반반이에요</div>
           <div className="mt-0.5 text-[10px] text-ink-muted">둘 다 비슷해요</div>

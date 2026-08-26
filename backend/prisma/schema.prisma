@@ -25,6 +25,7 @@ model User {
   providerId String?
 
   pets Pet[]
+  courses Course[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -59,4 +60,82 @@ model Pet {
 
   @@index([userId])
   @@map("pets")
+}
+
+model Course {
+  id        String   @id @default(cuid())
+  label     String
+  emoji     String?
+  nights    Int
+  transport String
+  source    String
+  shared    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  days     CourseDay[]
+  schedule CourseSchedule?
+}
+
+model CourseDay {
+  id       String @id @default(cuid())
+  dayIndex Int
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  stops    CourseStop[]
+
+  @@unique([courseId, dayIndex])
+}
+
+model CourseStop {
+  id          String  @id @default(cuid())
+  order       Int
+  placeId     String
+  name        String
+  category    String
+  district    String
+  condition   String
+  petFriendly Boolean
+  imageUrl    String?
+
+  courseDayId String
+  courseDay   CourseDay @relation(fields: [courseDayId], references: [id], onDelete: Cascade)
+
+  @@unique([courseDayId, order])
+}
+
+model CourseSchedule {
+  id   String @id @default(cuid())
+  date String
+
+  courseId String @unique
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  festivalTitles CourseScheduleFestival[]
+}
+
+model CourseScheduleFestival {
+  id    String @id @default(cuid())
+  title String
+
+  courseScheduleId String
+  courseSchedule CourseSchedule @relation(fields: [courseScheduleId], references: [id], onDelete: Cascade)
+}
+
+model Place {
+  id           String   @id
+  name         String
+  category     String
+  district     String
+  condition    String
+  petFriendly  Boolean
+  smallDogOnly Boolean  @default(false)
+  lat          Float
+  lng          Float
+  imageUrl     String?
+  source       String
+  sourceTier   Int
+  updatedAt    DateTime @updatedAt
 }

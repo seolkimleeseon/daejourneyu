@@ -59,7 +59,8 @@ export async function fetchDaejeonParks(numOfRows = 50, pageNo = 1): Promise<Dae
     return items
       .map((item) => ({
         id: item.ntatcSeq,
-        name: item.title,
+        // 원본 title에 "중   리"처럼 고정폭 공백 패딩이 낀 경우가 있어 연속 공백을 하나로 접는다.
+        name: item.title.replace(/\s+/g, " ").trim(),
         address: item.address,
         section: item.section,
         lat: Number(item.latitude),

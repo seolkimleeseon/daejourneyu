@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
+import { StopThumbnail } from "@/components/course/StopThumbnail";
+import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import type { Place } from "@/types";
@@ -55,7 +57,7 @@ export function PlacesStep({
   };
 
   return (
-    <div className="px-4 pb-6 pt-1">
+    <div className="animate-fade-up px-4 pb-6 pt-1">
       {days.length > 1 ? (
         <div className="mb-3 flex gap-1.5 overflow-x-auto pb-0.5">
           {days.map((day, index) => (
@@ -131,6 +133,7 @@ export function PlacesStep({
                 >
                   {isStart ? "●" : ""}
                 </div>
+                <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} size={44} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1 text-sm font-bold text-ink">
                     {place.name}

@@ -38,11 +38,11 @@ export function ResultShareActions({
 
   return (
     <div className={className ?? "mt-2 flex gap-2"}>
-      <Button variant="secondary" className="flex-1" onClick={handleSaveImage}>
-        🖼️ 이미지 저장
+      <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleSaveImage}>
+        <span className="text-lg">🖼️</span> 이미지 저장
       </Button>
-      <Button variant="secondary" className="flex-1" onClick={handleKakaoShare}>
-        💬 카카오톡 공유
+      <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleKakaoShare}>
+        <span className="text-lg">💬</span> 카카오톡 공유
       </Button>
     </div>
   );

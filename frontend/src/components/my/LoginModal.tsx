@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 interface LoginModalProps {
   open: boolean;
   onClose: () => void;
+  /** 로그인 화면에서 돌아온 뒤 호출부가 이어갈 동작을 표현한다. 현재는 next 경로 복귀로 대체된다. */
+  onLoggedIn?: () => void;
 }
 
 /**

@@ -6,6 +6,10 @@ dist/
 public/sw.js
 public/workbox-*.js
 
+# 로컬 SQLite DB 파일(Prisma) — 커밋하지 않고 각자 마이그레이션+시드로 생성
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
 # JetBrains IDE 개인 설정
 .idea/
 

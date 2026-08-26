@@ -20,7 +20,7 @@ export function Button({ variant = "primary", className, children, ...rest }: Bu
   return (
     <button
       className={cn(
-        "flex w-full min-h-12 items-center justify-center rounded-lg px-4 text-sm font-bold transition-colors",
+        "flex w-full min-h-12 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold transition-colors",
         variantClasses[variant],
         variant === "text" && "min-h-10 font-normal",
         className

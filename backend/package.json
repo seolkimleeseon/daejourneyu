@@ -6,9 +6,17 @@
     "predev": "node scripts/free-port.js",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "sync:places": "tsx scripts/syncPlaces.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -17,7 +25,8 @@
     "express": "4.19.2",
     "fast-xml-parser": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
-    "prisma": "^6.19.3"
+    "prisma": "^6.19.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -3,7 +3,10 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
+import { DragReorderList } from "@/components/course/DragReorderList";
+import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
+import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { routeDistanceKm } from "@/lib/nearestNeighborRoute";
 import type { Place } from "@/types";
 
@@ -11,7 +14,7 @@ interface ReviewStepProps {
   days: Place[][];
   activeDay: number;
   onSetActiveDay: (day: number) => void;
-  onMove: (dayIndex: number, from: number, direction: -1 | 1) => void;
+  onReorderDay: (dayIndex: number, next: Place[]) => void;
   name: string;
   onChangeName: (name: string) => void;
   defaultName: string;
@@ -22,7 +25,7 @@ export function ReviewStep({
   days,
   activeDay,
   onSetActiveDay,
-  onMove,
+  onReorderDay,
   name,
   onChangeName,
   defaultName,
@@ -36,8 +39,8 @@ export function ReviewStep({
   const displayName = name.trim() || defaultName;
 
   return (
-    <div className="px-4 pb-6 pt-1">
-      <div className="mb-4 rounded-xl bg-brand-100 px-4 py-3 text-xs font-semibold text-brand-700">
+    <div className="animate-fade-up px-4 pb-6 pt-1">
+      <div className="mb-4 rounded-2xl bg-brand-100 px-4 py-3 text-xs font-semibold text-brand-700">
         ✓ 시작 지점 기준으로 가까운 곳끼리 이어 최적 동선을 짰어요
       </div>
 
@@ -73,52 +76,51 @@ export function ReviewStep({
               : "rounded-full border border-brand-300 bg-brand-100 px-3 py-1 text-[11px] font-bold text-brand-700"
           }
         >
-          {editMode ? "✓ 완료" : "✏️ 편집"}
+          {editMode ? "✓ 완료" : "✏️ 순서 편집"}
         </button>
       </div>
 
-      <div ref={captureRef} className="mb-3 overflow-hidden rounded-xl border border-line bg-card">
-        {currentDay.map((place, index) => (
-          <div key={place.id} className="flex items-center gap-3 border-b border-line px-3.5 py-3 last:border-b-0">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-purple-light text-[10px] font-bold text-accent-purple">
-              {index + 1}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1 text-sm font-bold text-ink">
-                {place.name}
-                {!place.petFriendly ? (
-                  <Tag tone="coral" className="cursor-default px-2 py-0.5 text-[10px]">
-                    🚫
-                  </Tag>
-                ) : null}
-              </div>
-              <div className="mt-0.5 text-[10px] text-ink-muted">
-                {place.district} · {place.category}
-              </div>
-            </div>
-            {editMode ? (
-              <div className="flex shrink-0 gap-1">
+      <div ref={captureRef} className="mb-3 overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
+        <DragReorderList
+          items={currentDay}
+          getId={(place) => place.id}
+          onReorder={(next) => onReorderDay(activeDay, next)}
+          renderRow={(place, index, ref, dragHandleProps) => (
+            <div
+              ref={ref}
+              className="flex items-center gap-2.5 border-b border-line px-3.5 py-3 last:border-b-0"
+            >
+              {editMode ? (
                 <button
                   type="button"
-                  disabled={index === 0}
-                  onClick={() => onMove(activeDay, index, -1)}
-                  className="h-7 w-7 rounded-lg bg-surface text-xs text-ink-muted disabled:opacity-30"
+                  {...dragHandleProps}
+                  className="flex h-9 w-6 shrink-0 touch-none items-center justify-center text-base text-ink-muted"
+                  aria-label="순서 바꾸기(드래그)"
                 >
-                  ↑
+                  ⠿
                 </button>
-                <button
-                  type="button"
-                  disabled={index === currentDay.length - 1}
-                  onClick={() => onMove(activeDay, index, 1)}
-                  className="h-7 w-7 rounded-lg bg-surface text-xs text-ink-muted disabled:opacity-30"
-                >
-                  ↓
-                </button>
+              ) : null}
+              <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 text-sm font-bold text-ink">
+                  {place.name}
+                  {!place.petFriendly ? (
+                    <Tag tone="coral" className="cursor-default px-2 py-0.5 text-[10px]">
+                      🚫
+                    </Tag>
+                  ) : null}
+                </div>
+                <div className="mt-0.5 text-[10px] text-ink-muted">
+                  {place.district} · {place.category}
+                </div>
               </div>
-            ) : null}
-          </div>
-        ))}
+            </div>
+          )}
+        />
       </div>
+      {editMode ? (
+        <div className="mb-3 -mt-1 text-center text-[11px] text-ink-muted">⠿ 을 눌러 위아래로 드래그하면 순서가 바뀌어요</div>
+      ) : null}
 
       <ResultShareActions
         className="mb-5 flex gap-2"

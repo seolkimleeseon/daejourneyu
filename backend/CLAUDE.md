@@ -56,6 +56,7 @@ npm start        # node dist/index.js
 아래는 README의 **권장 사항일 뿐 확정된 결정이 아니다.** 이 방향으로 코드를 작성하기 전에
 반드시 팀에 확인할 것.
 
-- DB: Prisma + PostgreSQL 또는 Supabase — `routes`의 임시 배열을 교체
+- DB: Prisma + SQLite(로컬)로 결정됨 — `Course`에 이어 `Place`도 이 방식으로 영속화됨(최종 방향인
+  PostgreSQL/Supabase 전환은 `prisma/schema.prisma` 상단 주석 참고)
 - 인증: NextAuth.js(카카오 로그인)와의 역할 분담
 - 배포: 백엔드 Railway/Render, DB Supabase
