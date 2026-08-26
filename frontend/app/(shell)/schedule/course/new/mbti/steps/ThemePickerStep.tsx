@@ -15,15 +15,16 @@ const THEME_OPTIONS: { theme: CourseTheme; emoji: string; sub: string }[] = [
 export function ThemePickerStep({ onPick }: ThemePickerStepProps) {
   return (
     <div className="px-5 pb-6 pt-2">
-      <div className="mb-1 text-center text-3xl">🎯</div>
-      <div className="mb-4 text-center text-sm font-bold text-ink">어떤 코스를 원하세요?</div>
+      <div className="animate-fade-up mb-1 text-center text-3xl">🎯</div>
+      <div className="animate-fade-up mb-4 text-center text-sm font-bold text-ink">어떤 코스를 원하세요?</div>
       <div className="flex flex-col gap-2">
-        {THEME_OPTIONS.map((option) => (
+        {THEME_OPTIONS.map((option, i) => (
           <button
             key={option.theme}
             type="button"
             onClick={() => onPick(option.theme)}
-            className="rounded-lg border-[1.5px] border-line-strong bg-card p-3 text-center transition-colors active:border-brand-300 active:bg-brand-100"
+            style={{ animationDelay: `${0.1 + i * 0.06}s` }}
+            className="animate-fade-up rounded-lg border-[1.5px] border-line-strong bg-card p-3 text-center transition-colors active:border-brand-300 active:bg-brand-100"
           >
             <div className="mb-1 text-2xl">{option.emoji}</div>
             <div className="text-xs font-semibold text-ink">{option.theme}형</div>

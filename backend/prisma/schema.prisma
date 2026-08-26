@@ -1,0 +1,122 @@
+// 대저니유 백엔드 DB 스키마
+//
+// 지금은 로컬 개발 편의를 위해 SQLite(파일 하나, 설치 없이 바로 동작)로 돌리지만,
+// 팀 계획(루트/backend CLAUDE.md)의 최종 방향은 PostgreSQL(Supabase 호스팅)이다.
+// 전환 방법: 1) datasource의 provider를 "postgresql"로, 2) .env의 DATABASE_URL을
+// Supabase connection string으로 교체, 3) `npx prisma migrate dev`로 새 마이그레이션 생성.
+// SQLite는 enum·String[]을 지원하지 않아 아래 스키마는 두 프로바이더 모두에서 그대로
+// 동작하도록 enum 대신 String(+ 앱 레벨 유니언 타입), 배열 대신 관계 테이블을 사용했다.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 이메일/비밀번호 자체 인증. 카카오 로그인은 player3 쪽 구현을 따른다(이 프로젝트에서 중복 구현하지 않음).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  nickname     String
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  courses  Course[]
+}
+
+// 프론트 타입(src/types/course.ts)의 Course와 1:1 대응.
+// nights: 0 = 당일치기. transport: "자차" | "대중교통". source: "ai" | "manual" | "saved".
+model Course {
+  id        String   @id @default(cuid())
+  label     String
+  /** 티켓 카드 대표 이모지. 사용자가 코스 상세에서 직접 고를 수 있다. null이면 프론트가 기본값(🐾)을 쓴다. */
+  emoji     String?
+  nights    Int
+  transport String
+  source    String
+  shared    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  days     CourseDay[]
+  schedule CourseSchedule?
+}
+
+// Course.days(일차별 2차원 배열)의 바깥쪽 차원. dayIndex로 순서를 보존한다.
+model CourseDay {
+  id       String @id @default(cuid())
+  dayIndex Int
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  stops CourseStop[]
+
+  @@unique([courseId, dayIndex])
+}
+
+// Course.days의 안쪽 배열 원소(CourseStop). placeId는 장소 데이터를 FK로 정규화하지
+// 않고 스냅샷으로 저장한다 — 프론트/백엔드 Place 모델이 아직 일치하지 않기 때문
+// (루트 CLAUDE.md "현재 연동 상태" 참고). order로 방문 순서를 보존한다.
+model CourseStop {
+  id          String  @id @default(cuid())
+  order       Int
+  placeId     String
+  name        String
+  category    String
+  district    String
+  condition   String
+  petFriendly Boolean
+  /** 장소 사진 URL(있는 소스에서 담아온 경우만). 없으면 프론트가 카테고리 이모지로 대체 표시. */
+  imageUrl    String?
+
+  courseDayId String
+  courseDay   CourseDay @relation(fields: [courseDayId], references: [id], onDelete: Cascade)
+
+  @@unique([courseDayId, order])
+}
+
+// 코스에 실제 날짜를 붙여 "내 여정"에 등록한 것 — 코스 자체와 별개 개념(루트 CLAUDE.md 도메인 용어).
+// 코스 하나당 예정 일정은 하나만 존재한다(courseId unique).
+model CourseSchedule {
+  id   String @id @default(cuid())
+  date String // YYYY-MM-DD
+
+  courseId String @unique
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  festivalTitles CourseScheduleFestival[]
+}
+
+// 일정 주변에 매칭된 축제 제목(다건). 캘린더에서 "🎪 근처 축제: ..."로 부가 표시된다.
+model CourseScheduleFestival {
+  id    String @id @default(cuid())
+  title String
+
+  courseScheduleId String
+  courseSchedule   CourseSchedule @relation(fields: [courseScheduleId], references: [id], onDelete: Cascade)
+}
+
+// 9개 공공데이터/시드 소스(관광공사 반려동물 동반여행지·대전관광공사 동반시설·식약처 인증맛집·
+// 대전시 공원/문화/숙박/관광지/모범음식점·고캠핑·문체부 반려동물 동반가능 시설 현황)를 정규화해
+// 영속화한 장소. backend/scripts/syncPlaces.ts로만 upsert되고 API는 읽기 전용으로 서빙한다.
+// id는 소스별 접두사(pettour-/park-/petacp- 등)를 유지해 재실행 시 자연스럽게 upsert(중복 방지)되게 한다.
+model Place {
+  id           String   @id
+  name         String
+  category     String // 산책|놀이터|맛집|문화 (프론트 PlaceCategory)
+  district     String // 프론트 DaejeonDistrict
+  condition    String
+  petFriendly  Boolean
+  smallDogOnly Boolean  @default(false)
+  lat          Float
+  lng          Float
+  imageUrl     String?
+  source       String // pettour|petfac|foodsafety|park|daejeon-culture|daejeon-lodging|daejeon-tourspot|daejeon-restaurant|camp|petacp
+  /** 낮을수록 신뢰도 높음: 1=반려동물 동반 여부가 인증/필터링된 소스, 2=공식 공공데이터지만 동반 인증까지는 아닌 소스 */
+  sourceTier   Int
+  updatedAt    DateTime @updatedAt
+}

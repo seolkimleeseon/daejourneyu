@@ -47,7 +47,7 @@ export function ConditionsStep({
   onNext,
 }: ConditionsStepProps) {
   return (
-    <div className="px-4 pb-6 pt-1">
+    <div className="animate-fade-up px-4 pb-6 pt-1">
       <div className="mb-1.5 px-1 text-xs font-bold text-ink-muted">함께 가는 사람</div>
       <ChipRow options={COMPANIONS} current={companion} onChange={onChangeCompanion} />
       <div className="mb-1.5 px-1 text-xs font-bold text-ink-muted">예산 · 1인 기준</div>

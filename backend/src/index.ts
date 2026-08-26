@@ -12,6 +12,9 @@ import petFacilitiesRouter from "./routes/petFacilities";
 import verifiedPetRestaurantsRouter from "./routes/verifiedPetRestaurants";
 import daejeonPlacesRouter from "./routes/daejeonPlaces";
 import campgroundsRouter from "./routes/campgrounds";
+import coursesRouter from "./routes/courses";
+import aiRouter from "./routes/ai";
+import authRouter from "./routes/auth";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -34,6 +37,9 @@ app.use("/api/pet-facilities", petFacilitiesRouter);
 app.use("/api/verified-pet-restaurants", verifiedPetRestaurantsRouter);
 app.use("/api/daejeon-places", daejeonPlacesRouter);
 app.use("/api/campgrounds", campgroundsRouter);
+app.use("/api/courses", coursesRouter);
+app.use("/api/ai", aiRouter);
+app.use("/api/auth", authRouter);
 
 app.listen(PORT, () => {
   console.log(`🐾 대저니유 API listening on http://localhost:${PORT}`);

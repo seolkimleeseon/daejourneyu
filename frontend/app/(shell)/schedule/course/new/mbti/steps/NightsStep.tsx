@@ -19,7 +19,7 @@ export function NightsStep({ theme, nights, onChangeNights, onNext }: NightsStep
   const clamp = (value: number) => Math.max(0, Math.min(MAX_NIGHTS, value));
 
   return (
-    <div className="px-4 pb-6 pt-1">
+    <div className="animate-fade-up px-4 pb-6 pt-1">
       <div className="mb-4 text-center text-sm font-bold text-ink">며칠 코스로 만들까요?</div>
       <div className="rounded-2xl border border-line bg-card p-4">
         <div className="flex items-center justify-center gap-5">

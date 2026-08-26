@@ -8,7 +8,7 @@ interface TransportStepProps {
 
 export function TransportStep({ onPick }: TransportStepProps) {
   return (
-    <div className="px-4 pb-6 pt-1">
+    <div className="animate-fade-up px-4 pb-6 pt-1">
       <div className="mb-4 text-center text-sm font-bold text-ink">이동 수단을 골라주세요</div>
       <div className="flex gap-2">
         <button
