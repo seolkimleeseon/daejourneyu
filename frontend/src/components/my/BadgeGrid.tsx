@@ -1,4 +1,5 @@
 import type { Badge } from "@/lib/badges";
+import { BADGE_CATEGORIES } from "@/lib/badges";
 
 /**
  * 마이탭의 뱃지 섹션. 위쪽 그리드는 "내가 모은 것", 아래 목록은 "아직 받을 수 있는 것"이다.
@@ -8,10 +9,16 @@ import type { Badge } from "@/lib/badges";
  *
  * 못 받은 뱃지를 감추면 무엇을 더 할 수 있는지 안 보이고, 반대로 자물쇠로만 채우면 무슨
  * 뱃지인지조차 안 보여 카탈로그처럼 읽힌다. 그래서 흐린 이모지와 획득 조건을 같이 보여준다.
+ *
+ * 계열(category)은 지금 8종 기준으로 그룹당 1~2개뿐이라 섹션 헤더로 묶으면 오히려 잘게 쪼개진다.
+ * 그래서 각 줄에 칩으로만 붙여둔다 — 계열당 4개쯤 쌓이면 그때 헤더로 묶는 게 낫다.
  */
 export function BadgeGrid({ badges }: { badges: Badge[] }) {
   const got = badges.filter((badge) => badge.got);
-  const locked = badges.filter((badge) => !badge.got);
+  // 헤더로 묶지는 않되 같은 계열끼리 이웃하게 정렬해, 나중에 헤더를 켤 때도 순서가 그대로다.
+  const locked = badges
+    .filter((badge) => !badge.got)
+    .sort((a, b) => BADGE_CATEGORIES.indexOf(a.category) - BADGE_CATEGORIES.indexOf(b.category));
 
   return (
     <div>
@@ -57,7 +64,12 @@ export function BadgeGrid({ badges }: { badges: Badge[] }) {
                   {badge.emoji}
                 </span>
                 <div className="min-w-0">
-                  <div className="text-[11px] font-bold text-ink-muted">{badge.name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-ink-muted">{badge.name}</span>
+                    <span className="shrink-0 rounded-md bg-surface px-1.5 py-0.5 text-[9px] text-ink-muted">
+                      {badge.category}
+                    </span>
+                  </div>
                   <div className="mt-0.5 text-[10px] leading-tight text-ink-muted">{badge.how}</div>
                 </div>
               </div>
