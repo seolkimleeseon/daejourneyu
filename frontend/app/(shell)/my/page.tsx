@@ -13,8 +13,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useReviews } from "@/hooks/useReviews";
-import { computeMyBadges } from "@/lib/badges";
-import { mockCourses, mockCourseSchedules } from "@/mocks";
+import { useMyBadges } from "@/hooks/useMyBadges";
 
 export default function MyPage() {
   const router = useRouter();
@@ -31,14 +30,7 @@ export default function MyPage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
-  const badges = computeMyBadges({
-    isLoggedIn,
-    pets,
-    activePet,
-    courses: mockCourses,
-    schedules: mockCourseSchedules,
-    reviews,
-  });
+  const { got: gotBadges, gotCount, total: badgeTotal } = useMyBadges();
 
   const handlePassportClick = () => {
     if (!hydrated) return;
@@ -87,7 +79,11 @@ export default function MyPage() {
 
         {isLoggedIn ? (
           <div className="mt-2">
-            <BadgeGrid badges={badges} />
+            <BadgeGrid
+              badges={gotBadges}
+              total={badgeTotal}
+              onSeeAll={() => router.push("/my/badges")}
+            />
           </div>
         ) : null}
 
@@ -97,6 +93,11 @@ export default function MyPage() {
             label="내가 쓴 후기"
             trailing={isLoggedIn ? `${myReviewCount}개 ›` : "›"}
             onClick={handleReviewsClick}
+          />
+          <MenuItem
+            label="여행 뱃지"
+            trailing={`${gotCount}/${badgeTotal} ›`}
+            onClick={() => router.push("/my/badges")}
           />
           <MenuItem
             label="알림 설정 · 준비 중"
