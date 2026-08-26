@@ -13,12 +13,13 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useReviews } from "@/hooks/useReviews";
-import { computeMyBadges } from "@/lib/badges";
-import { mockCourses, mockCourseSchedules } from "@/mocks";
+import { useMyBadges } from "@/hooks/useMyBadges";
 
 export default function MyPage() {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  /** 세션 복구 전에는 로그인 여부를 알 수 없다 — 이때 탭하면 로그인 화면으로 잘못 보내게 된다. */
+  const hydrated = useAuthStore((state) => state.hydrated);
   const pets = usePetStore((state) => state.pets);
   const activePetIndex = usePetStore((state) => state.activePetIndex);
   const switchActivePet = usePetStore((state) => state.switchActivePet);
@@ -29,25 +30,24 @@ export default function MyPage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
-  const badges = computeMyBadges({
-    isLoggedIn,
-    pets,
-    activePet,
-    courses: mockCourses,
-    schedules: mockCourseSchedules,
-    reviews,
-  });
+  const { badges } = useMyBadges();
 
   const handlePassportClick = () => {
+    if (!hydrated) return;
     if (!isLoggedIn) {
       setLoginOpen(true);
       return;
     }
-    // TODO(step3): 반려동물 등록/수정 폼(petRegister) 포팅 후 해당 화면으로 이동
-    showToast("반려동물 등록 화면은 다음 스텝에서 제공돼요");
+    // 반려동물이 있으면 수정, 없으면 등록으로 — 두 경우 모두 PetRegisterForm 하나를 재사용한다.
+    router.push(
+      activePet
+        ? `/onboarding/pet-register?mode=edit&petId=${activePet.id}&from=my`
+        : "/onboarding/pet-register?from=my"
+    );
   };
 
   const handleReviewsClick = () => {
+    if (!hydrated) return;
     if (!isLoggedIn) {
       setLoginOpen(true);
       return;
@@ -61,20 +61,25 @@ export default function MyPage() {
     <>
       <TopBar title="마이" />
       <div className="px-4 pb-6 pt-3">
-        <PetPassportCard pet={activePet} isLoggedIn={isLoggedIn} onClick={handlePassportClick} />
+        <PetPassportCard
+          pet={activePet}
+          isLoggedIn={isLoggedIn}
+          loading={!hydrated}
+          onClick={handlePassportClick}
+        />
 
         {isLoggedIn && pets.length > 0 ? (
           <PetSwitcher
             pets={pets}
             activeIndex={activePetIndex}
             onSwitch={switchActivePet}
-            onAddPet={() => showToast("반려동물 추가 화면은 다음 스텝에서 제공돼요")}
+            onAddPet={() => router.push("/onboarding/pet-register?from=my")}
           />
         ) : null}
 
         {isLoggedIn ? (
           <div className="mt-2">
-            <BadgeGrid badges={badges} />
+            <BadgeGrid badges={badges} onOpenAll={() => router.push("/my/badges")} />
           </div>
         ) : null}
 
@@ -90,7 +95,7 @@ export default function MyPage() {
             trailing="›"
             onClick={() => showToast("알림 설정은 준비 중이에요")}
           />
-          {isLoggedIn ? (
+          {!hydrated ? null : isLoggedIn ? (
             <MenuItem label="로그아웃" tone="danger" onClick={() => setLogoutOpen(true)} />
           ) : (
             <MenuItem

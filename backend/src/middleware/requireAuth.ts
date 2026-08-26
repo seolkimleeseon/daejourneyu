@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { verifyAuthToken } from "../lib/auth";
+import { ACCESS_TOKEN_COOKIE, verifyAccessToken } from "../lib/auth";
 
 declare global {
   namespace Express {
@@ -9,15 +9,14 @@ declare global {
   }
 }
 
-/** Authorization: Bearer <token> 헤더를 검증해 req.userId를 채운다. 없거나 유효하지 않으면 401. */
+/** httpOnly 쿠키를 검증해 req.userId를 채운다. */
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-  const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
+  const token = req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined;
   if (!token) return res.status(401).json({ error: "로그인이 필요해요" });
 
-  const userId = verifyAuthToken(token);
-  if (!userId) return res.status(401).json({ error: "로그인이 만료됐어요. 다시 로그인해주세요" });
+  const payload = verifyAccessToken(token);
+  if (!payload) return res.status(401).json({ error: "로그인이 만료됐어요. 다시 로그인해주세요" });
 
-  req.userId = userId;
+  req.userId = payload.userId;
   next();
 }
