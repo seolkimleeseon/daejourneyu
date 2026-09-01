@@ -10,9 +10,11 @@ import { LoginModal } from "@/components/my/LoginModal";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
+import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { findUpcomingTrip } from "@/lib/schedule";
-import { mockArticles, mockCourseSchedules, mockCourses } from "@/mocks";
+import { mockArticles } from "@/mocks";
 
 export default function HomePage() {
   const router = useRouter();
@@ -20,15 +22,15 @@ export default function HomePage() {
   const activePet = usePetStore((state) => state.activePet());
   const showToast = useToastStore((state) => state.show);
   const { data: places = [] } = usePlaces();
+  useSyncCoursesFromApi();
+  const courses = useCourseStore((state) => state.courses);
+  const schedules = useCourseStore((state) => state.schedules);
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
   const upcomingTrip = useMemo(
-    () =>
-      isLoggedIn
-        ? findUpcomingTrip(mockCourseSchedules, mockCourses, new Date().toISOString().slice(0, 10))
-        : null,
-    [isLoggedIn]
+    () => (isLoggedIn ? findUpcomingTrip(schedules, courses, new Date().toISOString().slice(0, 10)) : null),
+    [isLoggedIn, schedules, courses]
   );
 
   const latestArticle = useMemo(

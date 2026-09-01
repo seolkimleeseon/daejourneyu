@@ -19,7 +19,6 @@ import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { useSheetStore } from "@/stores/useSheetStore";
-import { mockCourseSchedules } from "@/mocks";
 import type { CourseStop, Place } from "@/types";
 
 /** 티켓 배경(브랜드 민트) 위에서도 태그 경계가 보이도록 배경을 흰색으로 고정한다 —
@@ -53,8 +52,9 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const courses = useCourseStore((state) => state.courses);
   const updateCourse = useCourseStore((state) => state.updateCourse);
   const deleteCourse = useCourseStore((state) => state.deleteCourse);
+  const schedules = useCourseStore((state) => state.schedules);
   const course = courses.find((item) => item.id === params.courseId);
-  const schedule = mockCourseSchedules.find((item) => item.courseId === params.courseId);
+  const schedule = schedules.find((item) => item.courseId === params.courseId);
 
   const captureRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

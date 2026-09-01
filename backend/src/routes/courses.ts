@@ -28,6 +28,14 @@ type Course = {
   days: CourseStop[][];
 };
 
+type CourseSchedule = {
+  id: string;
+  courseId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  festivalTitles: string[];
+};
+
 const courseWithRelations = {
   days: {
     orderBy: { dayIndex: "asc" as const },
@@ -59,6 +67,21 @@ function toCourse(row: CourseRow): Course {
     ),
   };
 }
+
+const scheduleWithRelations = { festivalTitles: true };
+type CourseScheduleRow = Prisma.CourseScheduleGetPayload<{ include: typeof scheduleWithRelations }>;
+
+function toCourseSchedule(row: CourseScheduleRow): CourseSchedule {
+  return {
+    id: row.id,
+    courseId: row.courseId,
+    date: row.date,
+    festivalTitles: row.festivalTitles.map((f) => f.title),
+  };
+}
+
+/** YYYY-MM-DD 형식만 허용한다 — Date 파싱에 기대면 "2026-2-3" 같은 값도 통과해버린다. */
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const TRANSPORTS: Transport[] = ["자차", "대중교통"];
 const SOURCES: CourseSource[] = ["ai", "manual", "saved"];
@@ -117,6 +140,16 @@ router.get("/", async (req, res) => {
     include: courseWithRelations,
   });
   res.json(rows.map(toCourse));
+});
+
+// GET /api/courses/schedules — 내 코스들에 등록된 일정 전체(홈 D-day 카드·캘린더 세그가 씀).
+// ":id" 라우트보다 먼저 등록해야 "schedules"가 :id로 잡아먹히지 않는다.
+router.get("/schedules", async (req, res) => {
+  const rows = await prisma.courseSchedule.findMany({
+    where: { course: { userId: req.userId! } },
+    include: scheduleWithRelations,
+  });
+  res.json(rows.map(toCourseSchedule));
 });
 
 // GET /api/courses/:id — 코스 상세. 다른 사람 코스면 존재 여부도 노출하지 않고 404로 통일한다.
@@ -208,6 +241,40 @@ router.delete("/:id", async (req, res) => {
   }
 
   await prisma.course.delete({ where: { id: req.params.id } });
+  res.status(204).send();
+});
+
+// PUT /api/courses/:id/schedule — 코스에 날짜를 붙여 "내 일정"에 등록(이미 있으면 날짜만 교체).
+// 코스당 일정은 하나뿐이라(schema.prisma의 courseId @unique) upsert로 충분하다.
+router.put("/:id/schedule", async (req, res) => {
+  const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
+  if (!existing || existing.userId !== req.userId) {
+    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  }
+
+  const date = (req.body as Record<string, unknown> | null)?.date;
+  if (typeof date !== "string" || !DATE_RE.test(date)) {
+    return res.status(400).json({ error: "날짜는 YYYY-MM-DD 형식이어야 해요" });
+  }
+
+  const schedule = await prisma.courseSchedule.upsert({
+    where: { courseId: req.params.id },
+    create: { courseId: req.params.id, date },
+    update: { date },
+    include: scheduleWithRelations,
+  });
+
+  res.json(toCourseSchedule(schedule));
+});
+
+// DELETE /api/courses/:id/schedule — 일정 취소. 일정이 원래 없었어도 성공으로 다룬다(멱등).
+router.delete("/:id/schedule", async (req, res) => {
+  const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
+  if (!existing || existing.userId !== req.userId) {
+    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+  }
+
+  await prisma.courseSchedule.deleteMany({ where: { courseId: req.params.id } });
   res.status(204).send();
 });
 
