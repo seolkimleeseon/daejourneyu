@@ -23,7 +23,8 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // credentials: 인증 쿠키를 주고받기 위해 필요(프론트가 rewrites로 프록시하지 않고 직접 호출하는 경우 대비)
-app.use(cors({ origin: "http://localhost:3000", credentials: true })); // Next.js 개발 서버 허용
+// FRONTEND_ORIGIN 미설정 시(로컬 개발) localhost:3000을 허용한다.
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN ?? "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
