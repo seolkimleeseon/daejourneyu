@@ -1,33 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { TopBar } from "@/components/shell/TopBar";
 import { Tag } from "@/components/ui/Tag";
 import { PlaceCard } from "@/components/place/PlaceCard";
 import { DistrictMap } from "@/components/map/DistrictMap";
 import { TravelingDog } from "@/components/map/TravelingDog";
 import { usePlaces } from "@/hooks/usePlaces";
-import { CATEGORIES, filterPlaces } from "@/lib/placeFilters";
+import { CATEGORIES } from "@/lib/placeFilters";
 import type { DaejeonDistrict, PlaceCategory } from "@/types";
 
 type MapStep = "districts" | "traveling" | "list";
 
 export default function MapPage() {
-  const { data: places = [], isLoading } = usePlaces();
   const [step, setStep] = useState<MapStep>("districts");
   const [district, setDistrict] = useState<DaejeonDistrict | null>(null);
   const [category, setCategory] = useState<PlaceCategory | null>(null);
+  const { data: list = [], isLoading } = usePlaces({ district, category });
 
   useEffect(() => {
     if (step !== "traveling") return;
     const timer = setTimeout(() => setStep("list"), 1150);
     return () => clearTimeout(timer);
   }, [step]);
-
-  const list = useMemo(
-    () => filterPlaces({ places, district, category }),
-    [places, district, category]
-  );
 
   const handleSelectDistrict = (next: DaejeonDistrict) => {
     setDistrict(next);

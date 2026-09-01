@@ -57,6 +57,17 @@ DB를 다시 띄운 뒤 백엔드를 재시작할 필요는 없다 — Prisma가
 양쪽 다 **테스트 스위트가 아직 없다.** 검증은 `npm run build`(타입 체크)까지가 현재 최선이며,
 테스트가 없다는 이유로 검증을 건너뛰지 말고 최소한 빌드는 통과시킨다.
 
+## 배포
+
+Vercel(프론트) + Railway(백엔드) + Supabase(DB)로 스테이징 배포돼 있다. 계정 연결·환경변수·
+겪었던 문제까지 전체 절차는 `docs/deployment.md` 참고 — 재배포하거나 새로 세팅할 때 그 문서
+순서를 따라가면 이미 겪은 함정(Root Directory 미지정, Vercel Production Branch 등)을 피할 수 있다.
+
+| | URL |
+|---|---|
+| 프론트 | https://daejourneyu.vercel.app |
+| 백엔드 | https://daejourneyu-production.up.railway.app |
+
 ## 현재 연동 상태 (중요)
 
 README의 "홈에서 백엔드 `/api/places`를 불러온다"는 설명은 **더 이상 맞지 않는다.** 초기 스캐폴딩

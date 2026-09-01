@@ -5,8 +5,8 @@ import type { Pet, Place } from "@/types";
 import type { UpcomingTrip } from "@/lib/schedule";
 import { cn } from "@/lib/cn";
 import { CrowdTicker } from "./CrowdTicker";
-
-const WEATHERS = ["☀️ 18°C · 맑음", "⛅ 22°C · 구름 조금", "🌤️ 25°C · 대체로 맑음", "🌥️ 20°C · 흐림"];
+import { useWeather } from "@/hooks/useWeather";
+import { formatWeatherSummary, pickCurrentForecast } from "@/lib/weather";
 
 interface HomeStatusCardProps {
   pet: Pet | null;
@@ -21,15 +21,17 @@ interface HomeStatusCardProps {
  * 도려내어 티켓 느낌을 냄) + 혼잡도 티커, 순서로 구성된다.
  */
 export function HomeStatusCard({ pet, isLoggedIn, upcomingTrip, crowdPlaces }: HomeStatusCardProps) {
-  const [weatherIndex, setWeatherIndex] = useState(0);
-  const [spinning, setSpinning] = useState(false);
+  const { data, isFetching, isError, refetch } = useWeather();
+  const current = data ? pickCurrentForecast(data.forecast) : null;
+  const weatherText = isError ? "날씨 정보 없음" : current ? formatWeatherSummary(current) : "날씨 불러오는 중…";
+  const district = data?.district ?? "대전";
 
+  // 기상청 예보는 3시간마다만 바뀌어 새로고침해도 값이 그대로일 때가 많다 — 눌렸다는 걸
+  // 알 수 있게 아이콘을 최소 시간 회전시킨다.
+  const [spinning, setSpinning] = useState(false);
   const handleRefresh = () => {
     setSpinning(true);
-    setTimeout(() => {
-      setWeatherIndex((i) => (i + 1) % WEATHERS.length);
-      setSpinning(false);
-    }, 300);
+    void refetch().finally(() => setTimeout(() => setSpinning(false), 600));
   };
 
   const greeting = upcomingTrip
@@ -64,14 +66,15 @@ export function HomeStatusCard({ pet, isLoggedIn, upcomingTrip, crowdPlaces }: H
 
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-medium text-brand-700">
-            {WEATHERS[weatherIndex]} · 📍 유성구
+            {weatherText} · 📍 {district}
           </span>
           <button
             type="button"
             onClick={handleRefresh}
+            aria-label="날씨 새로고침"
             className={cn(
               "flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-card/75 text-[11px] text-brand-700",
-              spinning && "animate-spin"
+              (isFetching || spinning) && "animate-spin"
             )}
           >
             ↻

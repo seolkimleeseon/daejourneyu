@@ -2,6 +2,7 @@ import { cached } from "./cache";
 import { mapWithConcurrency, Semaphore } from "./concurrency";
 
 const GEOCODE_ENDPOINT = "https://dapi.kakao.com/v2/local/search/address.json";
+const REGION_CODE_ENDPOINT = "https://dapi.kakao.com/v2/local/geo/coord2regioncode.json";
 const KEYWORD_ENDPOINT = "https://dapi.kakao.com/v2/local/search/keyword.json";
 const IMAGE_SEARCH_ENDPOINT = "https://dapi.kakao.com/v2/search/image";
 
@@ -76,6 +77,44 @@ export async function geocodeAddress(address: string): Promise<GeocodedPoint | n
   });
 }
 
+interface KakaoRegionDocument {
+  region_type: string; // "H"=행정동, "B"=법정동
+  region_1depth_name: string; // 시/도
+  region_2depth_name: string; // 구/군
+}
+
+interface KakaoRegionCodeResponse {
+  documents: KakaoRegionDocument[];
+}
+
+export interface RegionInfo {
+  city: string; // 예: "대전광역시"
+  district: string; // 예: "유성구"
+}
+
+/**
+ * 좌표를 행정구역(시/구)으로 변환한다(역지오코딩). 날씨 카드의 "내 위치 기준 구" 판별용.
+ * 좌표를 소수 3자리(≈100m)로 뭉개 캐시 키로 쓴다 — 행정구역은 그 정도 오차로는 안 바뀐다.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<RegionInfo | null> {
+  const key = assertKakaoRestKey();
+  const cacheKey = `kakao:region:${lat.toFixed(3)}:${lng.toFixed(3)}`;
+
+  return cached(cacheKey, 30 * 24 * 60 * 60 * 1000, async () => {
+    const search = new URLSearchParams({ x: String(lng), y: String(lat) });
+    const res = await kakaoFetch(`${REGION_CODE_ENDPOINT}?${search.toString()}`, {
+      headers: { Authorization: `KakaoAK ${key}` },
+    });
+    if (!res.ok) {
+      throw new Error(`카카오 역지오코딩 요청 실패: ${res.status} ${res.statusText}`);
+    }
+    const data = (await res.json()) as KakaoRegionCodeResponse;
+    const region = data.documents.find((doc) => doc.region_type === "H") ?? data.documents[0];
+    if (!region) return null;
+    return { city: region.region_1depth_name, district: region.region_2depth_name };
+  });
+}
+
 interface KakaoKeywordDocument {
   id: string;
   place_name: string;
@@ -115,8 +154,13 @@ interface KakaoImageSearchResponse {
   documents: KakaoImageDocument[];
 }
 
-/** 이 도메인에서 오는 이미지는 실사진이 아니라 오지큐(OGQ)마켓 스티커/이모티콘이라 항상 제외한다. */
-const NON_PHOTO_DOMAINS = ["storep-phinf.pstatic.net"];
+/**
+ * 이 도메인들에서 오는 이미지는 항상 제외한다.
+ * - storep-phinf.pstatic.net: 실사진이 아니라 오지큐(OGQ)마켓 스티커/이모티콘
+ * - uf.daum.net: 옛 다음 블로그 이미지 서버. 인증서가 깨져 있어(ERR_CERT_COMMON_NAME_INVALID)
+ *   브라우저가 로딩 자체를 거부한다.
+ */
+const NON_PHOTO_DOMAINS = ["storep-phinf.pstatic.net", "uf.daum.net"];
 /** 가로:세로 비율이 이보다 넓으면(또는 좁으면) 블로그 표지 카드뉴스·리뷰 배너일 확률이 높아 제외한다. */
 const MAX_ASPECT_RATIO = 1.8;
 const MIN_DIMENSION = 300;

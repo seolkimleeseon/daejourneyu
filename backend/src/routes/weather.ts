@@ -9,8 +9,8 @@ router.get("/", async (req, res) => {
   const lng = req.query.lng ? Number(req.query.lng) : undefined;
 
   try {
-    const forecast = await fetchDaejeonForecast(lat, lng);
-    res.json({ forecast });
+    const { district, forecast } = await fetchDaejeonForecast(lat, lng);
+    res.json({ district, forecast });
   } catch (error) {
     res.status(502).json({ error: error instanceof Error ? error.message : "날씨 정보를 불러오지 못했어요" });
   }
