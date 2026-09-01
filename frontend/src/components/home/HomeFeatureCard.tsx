@@ -12,7 +12,7 @@ interface HomeFeatureCardProps {
   onClick: () => void;
 }
 
-/** "이번 달 대전 소식" 아래에 쓰는 큰 피처 카드 — 작은 정사각 타일(HomeTile)보다 한 체급 큰 강조 카드. */
+/** 홈 하단 "축제 캘린더" 진입에 쓰는 큰 피처 카드 — 작은 정사각 타일(HomeTile)보다 한 체급 큰 강조 카드. */
 export function HomeFeatureCard({
   emoji,
   eyebrow,

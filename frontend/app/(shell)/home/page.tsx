@@ -108,21 +108,12 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="mb-2 px-1 text-xs font-bold text-ink-muted">이번 달 대전 소식</div>
+        <div className="mb-2 px-1 text-xs font-bold text-ink-muted">축제 캘린더</div>
         <div className="flex flex-col gap-2.5">
-          <HomeFeatureCard
-            emoji="📰"
-            eyebrow="MONTHLY BRIEFING"
-            titleLines={["이번 달", "대전 소식"]}
-            subtitle="신규 · 핫플 · 인기 장소를 모아봤어요"
-            ctaLabel="월간 브리핑 보기"
-            gradientClass="bg-gradient-to-br from-accent-amber to-accent-coral"
-            onClick={() => router.push("/home/weekly-briefing")}
-          />
           <HomeFeatureCard
             emoji="🎆"
             eyebrow="DAEJEON FESTIVAL"
-            titleLines={["이번 달", "대전 축제"]}
+            titleLines={["축제", "캘린더"]}
             subtitle="반려동물과 함께 갈 수 있는 축제를 확인해보세요"
             ctaLabel="축제 일정 보기"
             gradientClass="bg-gradient-to-br from-accent-purple to-accent-navy"
