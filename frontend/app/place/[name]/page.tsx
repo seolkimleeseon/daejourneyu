@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Tag } from "@/components/ui/Tag";
 import { Button } from "@/components/ui/Button";
 import { LoginModal } from "@/components/my/LoginModal";
+import { PlaceMap } from "@/components/place/PlaceMap";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useReviews } from "@/hooks/useReviews";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -74,6 +75,11 @@ export default function PlaceDetailPage({ params }: { params: { name: string } }
           </div>
           <div className="mt-1 text-xs text-ink-muted">{place.condition}</div>
         </Card>
+
+        <div className="mb-2 px-1 text-xs font-bold text-ink-muted">위치</div>
+        <div className="mb-5">
+          <PlaceMap name={place.name} lat={place.lat} lng={place.lng} />
+        </div>
 
         <div className="mb-2 flex items-center justify-between px-1">
           <span className="text-xs font-bold text-ink-muted">후기 {placeReviews.length}개</span>
