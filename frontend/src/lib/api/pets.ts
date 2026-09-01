@@ -1,4 +1,5 @@
 import type { Pet } from "@/types";
+import { apiUrl } from "./authFetch";
 
 export interface PetFieldErrors {
   name?: string;
@@ -22,7 +23,7 @@ async function requestPets(
   body?: PetInput
 ): Promise<Response | null> {
   try {
-    return await fetch(`/api/pets${path}`, {
+    return await fetch(apiUrl(`/api/pets${path}`), {
       method,
       credentials: "include",
       headers: body ? { "Content-Type": "application/json" } : undefined,

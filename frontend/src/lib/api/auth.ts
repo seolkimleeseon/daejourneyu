@@ -1,4 +1,5 @@
 import type { User } from "@/types";
+import { apiUrl } from "./authFetch";
 
 /** 필드별 검증 메시지. 서버가 프론트 폼과 같은 규칙으로 다시 검사한 결과다. */
 export interface AuthFieldErrors {
@@ -25,13 +26,13 @@ export interface LoginInput {
 /**
  * 인증 API 호출. 토큰은 httpOnly 쿠키로 오가므로 프론트가 직접 다루지 않고,
  * credentials만 붙여 브라우저가 쿠키를 싣도록 한다.
- * 경로는 next.config.mjs의 rewrites가 백엔드(:4000)로 프록시한다.
+ * 로컬은 next.config.mjs의 rewrites가, 배포 환경은 apiUrl()이 백엔드로 직접 연결한다.
  */
 async function requestAuth(path: string, body?: unknown): Promise<AuthResult> {
   let response: Response;
 
   try {
-    response = await fetch(`/api/auth/${path}`, {
+    response = await fetch(apiUrl(`/api/auth/${path}`), {
       method: body ? "POST" : "GET",
       credentials: "include",
       headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -69,7 +70,7 @@ export function meRequest(): Promise<AuthResult> {
 
 export async function logoutRequest(): Promise<void> {
   try {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
   } catch {
     // 서버에 못 닿아도 클라이언트 세션은 비운다.
   }

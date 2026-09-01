@@ -8,6 +8,7 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/cn";
+import { apiUrl } from "@/lib/api/authFetch";
 import { mockPlaces } from "@/mocks";
 import type { Course, CourseStop } from "@/types";
 
@@ -80,7 +81,7 @@ export default function ChatbotPage() {
     appendMessage({ id: pendingId, role: "bot", text: "생각하는 중...", pending: true });
 
     try {
-      const res = await fetch("/api/ai/course-suggestion", {
+      const res = await fetch(apiUrl("/api/ai/course-suggestion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces: mockPlaces }),

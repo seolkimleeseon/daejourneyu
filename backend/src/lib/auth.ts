@@ -43,11 +43,14 @@ export function verifyAccessToken(token: string): TokenPayload | null {
 
 /** 로그인 성공 시 토큰을 httpOnly 쿠키로 심는다 — JS가 읽을 수 없어 XSS로 탈취되지 않는다. */
 export function setAuthCookie(res: Response, token: string) {
+  const isProd = process.env.NODE_ENV === "production";
   res.cookie(ACCESS_TOKEN_COOKIE, token, {
     httpOnly: true,
-    sameSite: "lax",
-    // 로컬 개발은 http라 secure를 켜면 쿠키가 아예 저장되지 않는다.
-    secure: process.env.NODE_ENV === "production",
+    // 프로덕션은 프론트(Vercel)가 백엔드(Railway)를 브라우저에서 직접(크로스 오리진) 호출하므로
+    // sameSite:"none"이 필요하다 — none은 secure 없이는 브라우저가 거부하므로 반드시 같이 켠다.
+    // 로컬은 next.config.mjs rewrite로 동일 출처가 되어 기존처럼 "lax"(+http)로 충분하다.
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
     path: "/",
     maxAge: TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
   });
