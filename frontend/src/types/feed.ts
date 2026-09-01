@@ -13,6 +13,8 @@ export interface FeedPost {
   caption: string;
   text: string;
   stops: CourseStop[];
+  /** 자랑하기로 올라온 게시물이 어떤 코스에서 나왔는지. 목데이터 게시물에는 없다. */
+  courseId?: string;
   tags: string[];
   likes: number;
   liked: boolean;

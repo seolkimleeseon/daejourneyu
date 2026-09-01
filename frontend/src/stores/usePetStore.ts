@@ -1,9 +1,10 @@
 import { create } from "zustand";
-import type { Pet } from "@/types";
+import type { MbtiResult, Pet } from "@/types";
 import {
   createPetRequest,
   deletePetRequest,
   fetchPets,
+  savePetMbtiApi,
   updatePetRequest,
   type PetDeleteResult,
   type PetInput,
@@ -28,6 +29,8 @@ interface PetState {
   addPet: (input: PetInput) => Promise<PetResult>;
   updatePet: (petId: string, input: PetInput) => Promise<PetResult>;
   removePet: (petId: string) => Promise<PetDeleteResult>;
+  /** MBTI 퀴즈 결과를 해당 반려동물에 저장한다. */
+  saveMbti: (petId: string, mbti: MbtiResult) => Promise<PetResult>;
 }
 
 export const usePetStore = create<PetState>((set, get) => ({
@@ -58,6 +61,16 @@ export const usePetStore = create<PetState>((set, get) => ({
 
   updatePet: async (petId, input) => {
     const result = await updatePetRequest(petId, input);
+    if (result.ok) {
+      set((state) => ({
+        pets: state.pets.map((pet) => (pet.id === petId ? result.pet : pet)),
+      }));
+    }
+    return result;
+  },
+
+  saveMbti: async (petId, mbti) => {
+    const result = await savePetMbtiApi(petId, mbti);
     if (result.ok) {
       set((state) => ({
         pets: state.pets.map((pet) => (pet.id === petId ? result.pet : pet)),

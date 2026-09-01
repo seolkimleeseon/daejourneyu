@@ -18,6 +18,7 @@ import aiRouter from "./routes/ai";
 import authRouter from "./routes/auth";
 import petsRouter from "./routes/pets";
 import authKakaoRouter from "./routes/authKakao";
+import postsRouter from "./routes/posts";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -48,6 +49,7 @@ app.use("/api/ai", aiRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/auth/kakao", authKakaoRouter);
 app.use("/api/pets", petsRouter);
+app.use("/api/posts", postsRouter);
 
 // 라우터에서 넘어온 예외를 500으로 변환한다 — 스택은 서버 로그에만 남긴다.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

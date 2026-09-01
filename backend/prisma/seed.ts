@@ -159,11 +159,70 @@ const courses: SeedCourse[] = [
   },
 ];
 
+type SeedPost = {
+  id: string;
+  userId: string;
+  courseId?: string;
+  authorName: string;
+  authorEmoji: string;
+  petTypeName: string;
+  caption: string;
+  text: string;
+  tags: string[];
+  likes: number;
+  saves: number;
+  stops: SeedStop[];
+};
+
+/** 둘러보기 초기 게시물 — 프론트 목데이터(mocks/posts.ts)를 옮긴 것이라 카피는 잠정 데이터다. */
+const posts: SeedPost[] = [
+  {
+    id: "post-1",
+    userId: "user-2",
+    authorName: "보리",
+    authorEmoji: "🦮",
+    petTypeName: "정겹게 달려가는 페스티벌러",
+    caption: "대청호 1박 2일, 대형견도 편했어요",
+    text: "첫날 산책로, 둘째 날 반려동물 놀이터까지 여유롭게 돌았어요.",
+    tags: ["대형견 OK", "자차", "1박 2일"],
+    likes: 24,
+    saves: 12,
+    stops: [
+      stop("place-3", "대청호 오백리길", "산책", "동구", "전 견종 · 목줄 필수"),
+      stop("place-4", "유성 반려동물 놀이터", "놀이터", "유성구", "대형견 구역 분리"),
+    ],
+  },
+  {
+    id: "post-2",
+    userId: "user-1",
+    courseId: "course-1",
+    authorName: "콩이맘",
+    authorEmoji: "🐕",
+    petTypeName: "여기저기 뛰어다니는 모험견",
+    caption: "콩이랑 유성 나들이",
+    text: "놀이터에서 실컷 뛰고 베이커리에서 마무리했어요.",
+    tags: ["대형견 OK", "당일치기"],
+    likes: 9,
+    saves: 5,
+    stops: [
+      stop("place-1", "한밭수목원", "산책", "서구", "전 견종 · 목줄 필수"),
+      stop("place-5", "댕댕 베이커리", "맛집", "유성구", "실내 동반 가능"),
+    ],
+  },
+];
+
 async function main() {
   await prisma.user.upsert({
     where: { id: "user-1" },
     update: {},
     create: { id: "user-1", email: "kong.owner@example.com", nickname: "콩이맘" },
+  });
+
+  // 둘러보기에 "남의 글"이 하나는 있어야 내 글/남의 글 구분과 담기 동작을 볼 수 있다.
+  await prisma.user.upsert({
+    where: { id: "user-2" },
+    update: {},
+    create: { id: "user-2", email: "bori.owner@example.com", nickname: "보리아빠" },
   });
 
   for (const course of courses) {
@@ -202,7 +261,30 @@ async function main() {
     });
   }
 
-  console.log(`✅ 시드 완료: 사용자 1명, 코스 ${courses.length}개`);
+  for (const post of posts) {
+    await prisma.post.upsert({
+      where: { id: post.id },
+      update: {},
+      create: {
+        id: post.id,
+        caption: post.caption,
+        text: post.text,
+        tags: post.tags,
+        authorName: post.authorName,
+        authorEmoji: post.authorEmoji,
+        petTypeName: post.petTypeName,
+        likes: post.likes,
+        saves: post.saves,
+        userId: post.userId,
+        courseId: post.courseId ?? null,
+        stops: { create: post.stops.map((s, order) => ({ ...s, order })) },
+      },
+    });
+  }
+
+  console.log(
+    `✅ 시드 완료: 사용자 2명, 코스 ${courses.length}개, 둘러보기 게시물 ${posts.length}개`
+  );
 }
 
 main()

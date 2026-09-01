@@ -9,6 +9,5 @@ export * from "./pets";
 export * from "./users";
 export * from "./courses";
 export * from "./reviews";
-export * from "./posts";
 export * from "./articles";
 export * from "./festivals";
