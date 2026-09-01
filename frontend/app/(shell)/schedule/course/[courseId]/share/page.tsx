@@ -1,13 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { TopBar } from "@/components/shell/TopBar";
-import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
-
-export default function CourseSharePage() {
-  return (
-    <>
-      <TopBar title="코스 공유하기" showBack />
-      <TabPlaceholder emoji="🧭" message="둘러보기 공유는 다음 스텝에서 채웁니다." />
-    </>
-  );
+/**
+ * 코스 상세의 '이 코스 둘러보기에 공유하기' 진입점.
+ * 실제 화면은 게시물을 만드는 쪽(FEED)이 소유하므로 `/feed/share`로 넘긴다 — 여기서는 코스만 실어 보낸다.
+ */
+export default function CourseSharePage({ params }: { params: { courseId: string } }) {
+  redirect(`/feed/share?courseId=${encodeURIComponent(params.courseId)}`);
 }

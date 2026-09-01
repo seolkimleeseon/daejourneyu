@@ -16,11 +16,10 @@ import { ArticleCard } from "@/components/feed/ArticleCard";
 import { FeedPager } from "@/components/feed/FeedPager";
 import { FeedEmptyState } from "@/components/feed/FeedEmptyState";
 import { LoginModal } from "@/components/my/LoginModal";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, useDeletePost } from "@/hooks/usePosts";
 import { useArticles } from "@/hooks/useArticles";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
-import { useFeedStore } from "@/stores/useFeedStore";
 import { useToastStore } from "@/stores/useToastStore";
 import {
   searchPosts,
@@ -49,11 +48,10 @@ export default function FeedPage() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const hydrated = useAuthStore((state) => state.hydrated);
   const activePet = usePetStore((state) => state.activePet());
-  const deletedPostIds = useFeedStore((state) => state.deletedPostIds);
-  const deletePost = useFeedStore((state) => state.deletePost);
   const showToast = useToastStore((state) => state.show);
 
-  const { data: rawPosts = [], isLoading: postsLoading } = usePosts();
+  const { data: posts, isLoading: postsLoading } = usePosts();
+  const deletePost = useDeletePost();
   const { data: articles = [], isLoading: articlesLoading } = useArticles();
 
   const [segment, setSegment] = useState<FeedSegment>("course");
@@ -64,11 +62,6 @@ export default function FeedPage() {
   const [myPostPage, setMyPostPage] = useState(0);
   const [loginOpen, setLoginOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-
-  const posts = useMemo(
-    () => rawPosts.filter((post) => !deletedPostIds.includes(post.id)),
-    [rawPosts, deletedPostIds]
-  );
 
   const keyword = query.trim();
   const searching = keyword.length > 0;
@@ -110,11 +103,16 @@ export default function FeedPage() {
     setSegment(next);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!pendingDeleteId) return;
-    deletePost(pendingDeleteId);
+    const targetId = pendingDeleteId;
     setPendingDeleteId(null);
-    showToast("내 글을 삭제했어요");
+    try {
+      await deletePost.mutateAsync(targetId);
+      showToast("내 글을 삭제했어요");
+    } catch {
+      showToast("삭제하지 못했어요. 잠시 후 다시 시도해주세요");
+    }
   };
 
   return (
@@ -241,8 +239,8 @@ export default function FeedPage() {
         title="이 글을 삭제할까요?"
         description="삭제하면 되돌릴 수 없어요"
       >
-        <Button variant="primary" onClick={confirmDelete}>
-          삭제하기
+        <Button variant="primary" disabled={deletePost.isPending} onClick={confirmDelete}>
+          {deletePost.isPending ? "삭제 중…" : "삭제하기"}
         </Button>
         <Button variant="secondary" onClick={() => setPendingDeleteId(null)}>
           취소
