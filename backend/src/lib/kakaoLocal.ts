@@ -2,6 +2,7 @@ import { cached } from "./cache";
 import { mapWithConcurrency, Semaphore } from "./concurrency";
 
 const GEOCODE_ENDPOINT = "https://dapi.kakao.com/v2/local/search/address.json";
+const REGION_CODE_ENDPOINT = "https://dapi.kakao.com/v2/local/geo/coord2regioncode.json";
 const KEYWORD_ENDPOINT = "https://dapi.kakao.com/v2/local/search/keyword.json";
 const IMAGE_SEARCH_ENDPOINT = "https://dapi.kakao.com/v2/search/image";
 
@@ -73,6 +74,44 @@ export async function geocodeAddress(address: string): Promise<GeocodedPoint | n
       lng: Number(first.x),
       matchedAddress: first.address_name,
     };
+  });
+}
+
+interface KakaoRegionDocument {
+  region_type: string; // "H"=행정동, "B"=법정동
+  region_1depth_name: string; // 시/도
+  region_2depth_name: string; // 구/군
+}
+
+interface KakaoRegionCodeResponse {
+  documents: KakaoRegionDocument[];
+}
+
+export interface RegionInfo {
+  city: string; // 예: "대전광역시"
+  district: string; // 예: "유성구"
+}
+
+/**
+ * 좌표를 행정구역(시/구)으로 변환한다(역지오코딩). 날씨 카드의 "내 위치 기준 구" 판별용.
+ * 좌표를 소수 3자리(≈100m)로 뭉개 캐시 키로 쓴다 — 행정구역은 그 정도 오차로는 안 바뀐다.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<RegionInfo | null> {
+  const key = assertKakaoRestKey();
+  const cacheKey = `kakao:region:${lat.toFixed(3)}:${lng.toFixed(3)}`;
+
+  return cached(cacheKey, 30 * 24 * 60 * 60 * 1000, async () => {
+    const search = new URLSearchParams({ x: String(lng), y: String(lat) });
+    const res = await kakaoFetch(`${REGION_CODE_ENDPOINT}?${search.toString()}`, {
+      headers: { Authorization: `KakaoAK ${key}` },
+    });
+    if (!res.ok) {
+      throw new Error(`카카오 역지오코딩 요청 실패: ${res.status} ${res.statusText}`);
+    }
+    const data = (await res.json()) as KakaoRegionCodeResponse;
+    const region = data.documents.find((doc) => doc.region_type === "H") ?? data.documents[0];
+    if (!region) return null;
+    return { city: region.region_1depth_name, district: region.region_2depth_name };
   });
 }
 
