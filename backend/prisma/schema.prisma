@@ -6,8 +6,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // 앱 런타임은 트랜잭션 모드 풀러(pgbouncer)를 통해 접속한다.
+  url       = env("DATABASE_URL")
+  // 마이그레이션은 풀러를 거치면 실패할 수 있어 direct/session 접속으로 따로 뺀다(Supabase+Prisma 권장 패턴).
+  directUrl = env("DIRECT_URL")
 }
 
 model User {

@@ -15,3 +15,4 @@ backend/prisma/*.db-journal
 
 # Claude Code 개인 로컬 지침 (커밋 안 함)
 CLAUDE.local.md
+.vercel
