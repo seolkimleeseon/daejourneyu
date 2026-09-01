@@ -10,7 +10,7 @@ import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
 import { TileButton } from "@/components/ui/TileButton";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useMbtiResultStore } from "@/stores/useMbtiResultStore";
+import { usePetStore } from "@/stores/usePetStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { resolveMbtiType } from "@/lib/mbti";
 import { mockCourseSchedules } from "@/mocks";
@@ -24,7 +24,8 @@ export default function SchedulePage() {
   const [segment, setSegment] = useState<ScheduleSegment>("내 코스");
   const storeCourses = useCourseStore((state) => state.courses);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const savedMbtiCode = useMbtiResultStore((state) => state.code);
+  // 검사 결과는 반려동물에 저장돼 있다(PUT /api/pets/:id/mbti).
+  const savedMbtiCode = usePetStore((state) => state.activePet()?.mbti?.code ?? null);
   useSyncCoursesFromApi();
 
   const courses = [...storeCourses].reverse();

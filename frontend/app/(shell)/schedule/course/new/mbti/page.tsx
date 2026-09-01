@@ -19,7 +19,7 @@ import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useMbtiResultStore } from "@/stores/useMbtiResultStore";
+import { usePetStore } from "@/stores/usePetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { ensureCategoryMinimum } from "@/lib/petTourMapper";
 import { mockPlaces } from "@/mocks";
@@ -60,8 +60,10 @@ function MbtiCourseWizard() {
   const showToast = useToastStore((state) => state.show);
   const { data: apiPlaces } = usePickablePlaces();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const savedMbtiCode = useMbtiResultStore((state) => state.code);
-  const setSavedMbtiCode = useMbtiResultStore((state) => state.setCode);
+  const activePet = usePetStore((state) => state.activePet());
+  const saveMbti = usePetStore((state) => state.saveMbti);
+  // 검사 결과는 반려동물에 저장된다 — 다시 들어와도(새로고침해도) 그대로 남아 있어야 한다.
+  const savedMbtiCode = activePet?.mbti?.code ?? null;
 
   // 로그인 상태에서 저장된 MBTI 결과가 있고, "MBTI 맞춤 코스" 타일에서 바로가기로 들어온 경우엔
   // 인트로/퀴즈/결과 단계를 건너뛰고 바로 코스 생성(기간→조건→이동→코스)으로 진입한다.
@@ -96,11 +98,29 @@ function MbtiCourseWizard() {
     if (currentQuestion + 1 >= MBTI_QUESTIONS.length) {
       const code = scoreAnswers(next);
       setMbtiCode(code);
-      setSavedMbtiCode(code);
+      void persistMbti(code);
       setPhase("result");
     } else {
       setCurrentQuestion((prev) => prev + 1);
     }
+  };
+
+  /**
+   * 검사 결과를 활성 반려동물에 저장한다.
+   * 로그인 전이거나 등록된 반려동물이 없으면 저장할 대상이 없으므로 화면 흐름만 이어간다 —
+   * 이 경우 결과는 이번 코스 만들기에만 쓰이고 남지 않는다.
+   */
+  const persistMbti = async (code: string) => {
+    if (!isLoggedIn || !activePet) return;
+
+    const type = resolveMbtiType(code);
+    const result = await saveMbti(activePet.id, {
+      code: type.code,
+      name: type.name,
+      theme: topTheme(type),
+      traits: type.traits,
+    });
+    if (!result.ok) showToast(result.message ?? "여행 유형을 저장하지 못했어요");
   };
 
   const goNightsFrom = (chosenTheme: CourseTheme, from: "quiz" | "theme") => {

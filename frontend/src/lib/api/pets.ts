@@ -1,4 +1,4 @@
-import type { Pet } from "@/types";
+import type { MbtiResult, Pet } from "@/types";
 
 export interface PetFieldErrors {
   name?: string;
@@ -78,4 +78,23 @@ export async function deletePetRequest(petId: string): Promise<PetDeleteResult> 
 
   const data = (await response.json().catch(() => ({}))) as { error?: string };
   return { ok: false, message: data.error ?? "삭제에 실패했어요" };
+}
+
+/**
+ * MBTI 퀴즈 결과를 반려동물에 저장한다(PUT /api/pets/:petId/mbti).
+ * 등록 폼(PATCH)과 엔드포인트를 나눈 이유: MBTI는 폼에 없는 값이라 폼 저장이 결과를 덮어써선 안 된다.
+ */
+export async function savePetMbtiApi(petId: string, mbti: MbtiResult): Promise<PetResult> {
+  let response: Response | null = null;
+  try {
+    response = await fetch(`/api/pets/${petId}/mbti`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(mbti),
+    });
+  } catch {
+    return { ok: false, message: NETWORK_ERROR };
+  }
+  return toPetResult(response);
 }
