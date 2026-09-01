@@ -17,6 +17,7 @@ interface FilterPlacesInput {
   category?: PlaceCategory | null;
 }
 
+/** 목데이터 폴백 전용 클라이언트 필터. 실 API 경로는 서버 쿼리스트링(`?district=&category=`)으로 거른다. */
 export function filterPlaces({ places, district, category }: FilterPlacesInput): Place[] {
   return places.filter((place) => {
     if (district && place.district !== district) return false;
