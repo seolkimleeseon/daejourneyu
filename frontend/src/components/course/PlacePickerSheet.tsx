@@ -15,10 +15,16 @@ import type { DaejeonDistrict, PlaceCategory } from "@/types";
 /** MIN_RESULTS_BEFORE_RELAX 미만이면 구 필터를 풀거나 카카오맵으로 더 찾아본다 */
 const MIN_RESULTS_BEFORE_RELAX = 4;
 
+// 카카오 키워드 검색은 업체에 실제로 태그된 문구만 매칭한다(리뷰 전문 검색이 아니다) — 그래서
+// 카테고리마다 실제로 결과가 나오는 문구가 다르다(직접 카카오맵에서 검색해 확인함):
+//   - "반려동물 동반"은 거의 매칭이 안 됨(0건)
+//   - "애견동반"은 맛집·카페엔 실제 태그로 잘 걸려 정확도가 오른다
+//   - 공원·문화시설은 애초에 이런 반려동물 태그가 없어서 넣으면 오히려 0건이 된다 — 일반 카테고리어를 유지한다
+//   - 놀이터는 카카오에 "반려견놀이터"라는 실제 업종 카테고리가 있어 원래 문구로도 잘 잡힌다
 const CATEGORY_KAKAO_KEYWORD: Record<PlaceCategory, string> = {
   산책: "공원",
   놀이터: "반려동물 놀이터",
-  맛집: "맛집",
+  맛집: "애견동반 맛집",
   문화: "문화시설",
 };
 
@@ -154,13 +160,25 @@ export function PlacePickerSheet() {
     return counts;
   }, [places, district, query]);
   const kakaoTargets = useMemo<KakaoSearchTarget[]>(() => {
+    const q = query.trim();
+    // 검색어를 직접 입력했으면, 카테고리 단어 대신 그 검색어 자체로 카카오에 물어본다 — DB에 없는
+    // 장소라도 사용자가 정확한 이름을 알고 있으면 찾을 수 있어야 한다(전에는 이 텍스트를 카카오
+    // 검색엔 전혀 안 넘기고, 카테고리 기본 검색 결과를 사후에 이름으로 걸러내기만 했다).
+    if (q) {
+      return [
+        {
+          category: activeCategory ?? "문화",
+          query: `대전 ${district !== "전체" ? district : ""} ${q}`.replace(/\s+/g, " ").trim(),
+        },
+      ];
+    }
     const categoriesToCheck = activeCategory ? [activeCategory] : CATEGORIES;
     const sparse = categoriesToCheck.filter((cat) => categoryCounts[cat] < MIN_RESULTS_BEFORE_RELAX);
     return sparse.map((cat) => ({
       category: cat,
       query: `대전 ${district !== "전체" ? district : ""} ${CATEGORY_KAKAO_KEYWORD[cat]}`.replace(/\s+/g, " ").trim(),
     }));
-  }, [categoryCounts, activeCategory, district]);
+  }, [query, categoryCounts, activeCategory, district]);
   const { places: kakaoPlaces, isLoading: isKakaoLoading } = useKakaoPlacesMulti(
     kakaoTargets,
     isOpen && kakaoTargets.length > 0
