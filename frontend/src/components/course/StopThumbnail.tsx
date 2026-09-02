@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CATEGORY_EMOJI, CATEGORY_TONE } from "@/lib/courseFormat";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { cn } from "@/lib/cn";
 import type { PlaceCategory } from "@/types";
 
@@ -37,8 +38,8 @@ export function StopThumbnail({ category, imageUrl, badge, size = 52, className 
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className={cn("flex h-full w-full items-center justify-center text-xl", tone.bg)}>
-            {CATEGORY_EMOJI[category] ?? "📍"}
+          <div className={cn("flex h-full w-full items-center justify-center", tone.bg)}>
+            <Emoji3D emoji={CATEGORY_EMOJI[category] ?? "📍"} size={Math.round(size * 0.6)} />
           </div>
         )}
       </div>

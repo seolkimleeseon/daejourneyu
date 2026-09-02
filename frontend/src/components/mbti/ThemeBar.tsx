@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import type { CourseTheme } from "@/lib/mbti";
 
 interface ThemeBarProps {
@@ -20,8 +21,8 @@ export function ThemeBar({ theme, percent, delay = 0 }: ThemeBarProps) {
       style={{ animationDelay: `${delay}s` } as CSSProperties}
       className="mb-2 flex animate-fade-up items-center gap-2 rounded-lg border border-line bg-card p-2"
     >
-      <div className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg text-xs ${meta.iconBgClass}`}>
-        {meta.emoji}
+      <div className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${meta.iconBgClass}`}>
+        <Emoji3D emoji={meta.emoji} size={18} />
       </div>
       <div className="flex-1">
         <div className="text-[10px] font-semibold text-ink">{theme}형</div>

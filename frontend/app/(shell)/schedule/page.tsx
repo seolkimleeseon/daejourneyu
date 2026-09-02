@@ -61,6 +61,7 @@ export default function SchedulePage() {
           <div className="mb-1 px-1 text-xs font-bold text-ink-muted">코스 만들기</div>
           <div className="mb-5 grid grid-cols-3 gap-2">
             <TileButton
+              icon3D
               variant="filled"
               tone="brand"
               emoji={savedMbtiType ? savedMbtiType.emoji : "✨"}
@@ -71,6 +72,7 @@ export default function SchedulePage() {
               }
             />
             <TileButton
+              icon3D
               variant="filled"
               tone="purple"
               emoji="🤖"
@@ -79,6 +81,7 @@ export default function SchedulePage() {
               onClick={() => router.push("/home/chatbot")}
             />
             <TileButton
+              icon3D
               variant="filled"
               tone="coral"
               emoji="📍"
