@@ -23,6 +23,7 @@ export default function SchedulePage() {
   const [segment, setSegment] = useState<ScheduleSegment>("내 코스");
   const storeCourses = useCourseStore((state) => state.courses);
   const hasSynced = useCourseStore((state) => state.hasSynced);
+  const storeSchedules = useCourseStore((state) => state.schedules);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   // 검사 결과는 반려동물에 저장돼 있다(PUT /api/pets/:id/mbti).
   const savedMbtiCode = usePetStore((state) => state.activePet()?.mbti?.code ?? null);
@@ -30,7 +31,7 @@ export default function SchedulePage() {
 
   const courses = [...storeCourses].reverse();
   const preview = courses.slice(0, VAULT_PREVIEW_COUNT);
-  const scheduledCourseIds = new Set(mockCourseSchedules.map((schedule) => schedule.courseId));
+  const scheduledCourseIds = new Set(storeSchedules.map((schedule) => schedule.courseId));
 
   // 로그인 + 저장된 MBTI 결과가 있을 때만 "바로 추천" 지름길을 보여준다.
   // 둘 중 하나라도 없으면 로그인 안 했을 때와 동일하게 기본 테스트 진입 타일을 보여준다.
