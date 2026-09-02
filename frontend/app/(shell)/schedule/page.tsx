@@ -139,10 +139,8 @@ export default function SchedulePage() {
             </>
           )}
         </div>
-      ) : isLoggedIn ? (
-        <ScheduleCalendar />
       ) : (
-        <LoginRequiredGate message="내 여행 일정을 캘린더로 보려면 로그인해주세요" />
+        <ScheduleCalendar />
       )}
     </>
   );

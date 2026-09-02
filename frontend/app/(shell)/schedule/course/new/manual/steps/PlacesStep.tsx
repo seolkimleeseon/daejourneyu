@@ -183,13 +183,13 @@ export function PlacesStep({
         ＋ {dayLabel ? `${dayLabel}에 ` : ""}장소 추가하기
       </button>
 
-      <Button disabled={totalCount < 2 || !allDaysReady} onClick={onNext}>
+      <Button disabled={!allDaysReady} onClick={onNext}>
         최적 동선 확인하기
       </Button>
-      {totalCount < 2 ? (
-        <div className="mt-2 text-center text-[11px] text-ink-muted">최소 2곳을 담아주세요</div>
-      ) : !allDaysReady ? (
-        <div className="mt-2 text-center text-[11px] text-ink-muted">비어 있는 일차가 있어요</div>
+      {!allDaysReady ? (
+        <div className="mt-2 text-center text-[11px] text-ink-muted">
+          {totalCount === 0 ? "장소를 1곳 이상 담아주세요" : "비어 있는 일차가 있어요"}
+        </div>
       ) : null}
     </div>
   );
