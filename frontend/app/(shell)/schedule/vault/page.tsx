@@ -15,6 +15,7 @@ export default function CourseVaultPage() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   useSyncCoursesFromApi();
   const storeCourses = useCourseStore((state) => state.courses);
+  const hasSynced = useCourseStore((state) => state.hasSynced);
   const courses = [...storeCourses].reverse();
   const scheduledCourseIds = new Set(mockCourseSchedules.map((schedule) => schedule.courseId));
 
@@ -23,6 +24,15 @@ export default function CourseVaultPage() {
       <>
         <TopBar title="코스 보관함" showBack />
         <LoginRequiredGate message="보관함에 담긴 코스는 로그인해야 볼 수 있어요" />
+      </>
+    );
+  }
+
+  if (!hasSynced) {
+    return (
+      <>
+        <TopBar title="코스 보관함" showBack />
+        <div className="py-16 text-center text-xs text-ink-muted">불러오는 중…</div>
       </>
     );
   }

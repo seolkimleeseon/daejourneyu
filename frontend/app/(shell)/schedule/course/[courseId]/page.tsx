@@ -50,6 +50,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   useSyncCoursesFromApi();
   const courses = useCourseStore((state) => state.courses);
+  const hasSynced = useCourseStore((state) => state.hasSynced);
   const updateCourse = useCourseStore((state) => state.updateCourse);
   const deleteCourse = useCourseStore((state) => state.deleteCourse);
   const schedules = useCourseStore((state) => state.schedules);
@@ -78,6 +79,16 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   }
 
   if (!course) {
+    // 로그인 직후엔 courses가 아직 mockCourses(초기값)일 수 있어, 실제로 존재하는 코스인데도
+    // 서버 목록이 도착하기 전이라 "찾을 수 없음"으로 오판할 수 있다 — 동기화가 끝난 뒤에만 진짜로 없다고 안내한다.
+    if (!hasSynced) {
+      return (
+        <>
+          <TopBar title="코스 상세" showBack />
+          <div className="py-16 text-center text-xs text-ink-muted">불러오는 중…</div>
+        </>
+      );
+    }
     return (
       <>
         <TopBar title="코스 상세" showBack />

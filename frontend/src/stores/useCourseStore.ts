@@ -4,8 +4,15 @@ import { mockCourses } from "@/mocks";
 import { createCourseApi, deleteCourseApi, updateCourseApi, type CourseUpdateInput } from "@/lib/api/courses";
 import { deleteScheduleApi, upsertScheduleApi } from "@/lib/api/schedule";
 
+/** addCourse가 서버 응답을 받기 전 임시로 붙이는 id 접두사. setCourses가 이 접두사의 미확정
+ * 항목을 서버 목록으로 덮어쓰지 않도록 구분하는 데 쓰인다. */
+const OPTIMISTIC_ID_PREFIX = "course-";
+
 interface CourseState {
   courses: Course[];
+  /** GET /api/courses 응답으로 최소 1번 교체됐는지. 로그인 사용자에게 courses의 초기값(mockCourses)을
+   * 실제 데이터인 것처럼 잠깐 보여주지 않으려면, 화면에서 이 값이 true가 되기 전엔 로딩 상태를 보여줘야 한다. */
+  hasSynced: boolean;
   /** 백엔드에서 불러온 목록으로 교체한다 — 서버가 정본이 된 뒤에는 이 값이 화면에 쓰인다. */
   setCourses: (courses: Course[]) => void;
   addCourse: (course: Omit<Course, "id">) => Course;
@@ -25,15 +32,36 @@ interface CourseState {
 // SchedulePage 진입 시 GET /api/courses 결과로 setCourses해 서버 상태와 맞춘다.
 export const useCourseStore = create<CourseState>((set, get) => ({
   courses: mockCourses,
-  setCourses: (courses) => set({ courses }),
+  hasSynced: false,
+  // 서버 목록으로 완전히 덮어쓰되, 아직 createCourseApi 응답을 못 받아 실제 id로 바뀌지 않은
+  // 낙관적 항목은 유지한다 — 안 그러면 "저장 직후 다른 화면으로 이동 → 그 화면이 GET /api/courses를
+  // 다시 쏨" 타이밍에 막 저장한 코스가 잠깐 사라졌다가 다음 새로고침에야 나타나는 것처럼 보인다.
+  setCourses: (courses) =>
+    set((state) => ({
+      hasSynced: true,
+      courses: [
+        ...courses,
+        ...state.courses.filter(
+          (c) => c.id.startsWith(OPTIMISTIC_ID_PREFIX) && !courses.some((serverCourse) => serverCourse.id === c.id)
+        ),
+      ],
+    })),
   addCourse: (course) => {
-    const newCourse: Course = { ...course, id: `course-${Date.now()}` };
+    const tempId = `${OPTIMISTIC_ID_PREFIX}${Date.now()}`;
+    const newCourse: Course = { ...course, id: tempId };
     set({ courses: [...get().courses, newCourse] });
     // 화면은 낙관적으로 즉시 갱신하고, 백엔드 저장은 별도로 진행한다.
-    // 실패해도 로컬 보관함에는 남아 있으니 조용히 로그만 남긴다.
-    createCourseApi(course).catch((error) => {
-      console.error("코스를 백엔드에 저장하지 못했어요:", error);
-    });
+    // 응답이 오면 임시 id를 서버가 발급한 진짜 id로 교체한다 — 안 그러면 이 코스를 상세/일정
+    // 등록 화면에서 서버 id로 다시 조회할 때 찾을 수 없다.
+    createCourseApi(course)
+      .then((serverCourse) => {
+        set({
+          courses: get().courses.map((c) => (c.id === tempId ? serverCourse : c)),
+        });
+      })
+      .catch((error) => {
+        console.error("코스를 백엔드에 저장하지 못했어요:", error);
+      });
     return newCourse;
   },
   updateCourse: (id, patch) => {

@@ -23,6 +23,7 @@ export default function SchedulePage() {
   const router = useRouter();
   const [segment, setSegment] = useState<ScheduleSegment>("내 코스");
   const storeCourses = useCourseStore((state) => state.courses);
+  const hasSynced = useCourseStore((state) => state.hasSynced);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   // 검사 결과는 반려동물에 저장돼 있다(PUT /api/pets/:id/mbti).
   const savedMbtiCode = usePetStore((state) => state.activePet()?.mbti?.code ?? null);
@@ -90,6 +91,8 @@ export default function SchedulePage() {
 
           {!isLoggedIn ? (
             <LoginRequiredGate compact message="보관함에 저장한 코스를 보려면 로그인해주세요" />
+          ) : !hasSynced ? (
+            <div className="py-10 text-center text-xs text-ink-muted">코스 보관함을 불러오는 중…</div>
           ) : (
             <>
               <div className="mb-1 flex items-center justify-between px-1">
