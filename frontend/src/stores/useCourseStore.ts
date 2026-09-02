@@ -5,8 +5,10 @@ import { createCourseApi, deleteCourseApi, updateCourseApi, type CourseUpdateInp
 import { deleteScheduleApi, upsertScheduleApi } from "@/lib/api/schedule";
 
 /** addCourse가 서버 응답을 받기 전 임시로 붙이는 id 접두사. setCourses가 이 접두사의 미확정
- * 항목을 서버 목록으로 덮어쓰지 않도록 구분하는 데 쓰인다. */
-const OPTIMISTIC_ID_PREFIX = "course-";
+ * 항목을 서버 목록으로 덮어쓰지 않도록 구분하는 데 쓰인다.
+ * ⚠ mockCourses의 id("course-1", "course-2")와 겹치면 안 된다 — 겹치면 서버 동기화 후에도
+ * "아직 응답 안 온 낙관적 항목"으로 오인해 목데이터가 영원히 안 지워지는 버그가 생긴다. */
+const OPTIMISTIC_ID_PREFIX = "optimistic-";
 
 interface CourseState {
   courses: Course[];

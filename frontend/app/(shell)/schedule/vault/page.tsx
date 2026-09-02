@@ -8,7 +8,6 @@ import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
-import { mockCourseSchedules } from "@/mocks";
 
 export default function CourseVaultPage() {
   const router = useRouter();
@@ -16,8 +15,9 @@ export default function CourseVaultPage() {
   useSyncCoursesFromApi();
   const storeCourses = useCourseStore((state) => state.courses);
   const hasSynced = useCourseStore((state) => state.hasSynced);
+  const storeSchedules = useCourseStore((state) => state.schedules);
   const courses = [...storeCourses].reverse();
-  const scheduledCourseIds = new Set(mockCourseSchedules.map((schedule) => schedule.courseId));
+  const scheduledCourseIds = new Set(storeSchedules.map((schedule) => schedule.courseId));
 
   if (!isLoggedIn) {
     return (

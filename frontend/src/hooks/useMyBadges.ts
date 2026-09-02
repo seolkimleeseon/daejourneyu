@@ -1,8 +1,9 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
+import { useCourseStore } from "@/stores/useCourseStore";
 import { useReviews } from "@/hooks/useReviews";
+import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { computeMyBadges, type Badge } from "@/lib/badges";
-import { mockCourses, mockCourseSchedules } from "@/mocks";
 
 interface MyBadges {
   badges: Badge[];
@@ -20,14 +21,17 @@ export function useMyBadges(): MyBadges {
   const pets = usePetStore((state) => state.pets);
   const activePet = usePetStore((state) => state.activePet());
   const { data: reviews = [] } = useReviews();
+  // 마이탭 진입이 SCHEDULE 탭을 거치지 않을 수 있으므로(딥링크 등) 여기서도 직접 동기화한다.
+  useSyncCoursesFromApi();
+  const courses = useCourseStore((state) => state.courses);
+  const schedules = useCourseStore((state) => state.schedules);
 
-  // TODO(api): 코스·일정이 서버로 옮겨지면 목데이터 대신 해당 훅으로 교체한다.
   const badges = computeMyBadges({
     isLoggedIn,
     pets,
     activePet,
-    courses: mockCourses,
-    schedules: mockCourseSchedules,
+    courses,
+    schedules,
     reviews,
   });
 

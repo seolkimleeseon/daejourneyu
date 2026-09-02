@@ -13,7 +13,6 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { resolveMbtiType } from "@/lib/mbti";
-import { mockCourseSchedules } from "@/mocks";
 
 type ScheduleSegment = "내 코스" | "캘린더";
 
