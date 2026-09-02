@@ -71,7 +71,7 @@ GitHub App이 이 레포(또는 전체 레포)에 접근 허용돼 있는지 먼
 4. **Variables** 탭(또는 Raw Editor)에 아래 등록:
    - `DATABASE_URL`, `DIRECT_URL` — 1번에서 만든 Supabase 값
    - `JWT_SECRET` — **로컬 `.env` 값을 재사용하지 말고 새로 발급**(`openssl rand -hex 32`)
-   - `PUBLIC_DATA_API_KEY`, `ANTHROPIC_API_KEY`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`
+   - `PUBLIC_DATA_API_KEY`, `GEMINI_API_KEY`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`
    - `FRONTEND_ORIGIN`, `KAKAO_REDIRECT_URI`는 3번(Vercel) 끝나고 도메인이 나온 뒤에 채운다(닭과
      달걀 관계 — 순서 문제일 뿐 지금 비워둬도 서버는 정상 기동한다)
 5. **Settings > Networking > Generate Domain**으로 공개 URL 발급.
