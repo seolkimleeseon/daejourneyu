@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { LoginModal } from "@/components/my/LoginModal";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { useToastStore } from "@/stores/useToastStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -24,26 +25,70 @@ interface ChatMessage {
   action?: { label: string; href: string };
 }
 
-const FAQ_ITEMS: { q: string; a: string; actionLabel?: string; href?: string }[] = [
+interface FaqItem {
+  q: string;
+  a: string;
+  /** 정확히 같은 문장이 아니어도 이 키워드 중 하나라도 포함되면 같은 답으로 매칭한다(자유 입력 대응). */
+  keywords: string[];
+  actionLabel?: string;
+  href?: string;
+}
+
+const FAQ_ITEMS: FaqItem[] = [
   {
     q: "이 앱은 뭐 하는 곳이야?",
     a: "대전 5개 구의 반려동물 동반 여행지를 소개하고, 그걸 묶어 여행 코스로 만들어주는 앱이에요 🐾",
+    keywords: ["뭐 하는", "뭐하는", "무슨 서비스", "무슨 앱", "서비스 설명", "앱 설명", "서비스 소개", "앱 소개", "설명해줘", "소개해줘", "뭐야"],
   },
   {
     q: "코스는 어떻게 만들어?",
     a: "내 여정 탭에서 MBTI 추천·AI 추천·직접 짓기 중 하나로 만들 수 있어요. 저장하면 보관함에 담겨요.",
+    keywords: ["코스 어떻게", "코스는 어떻게", "코스 만들", "코스 짜"],
     actionLabel: "코스 만들러 가기",
     href: "/schedule",
   },
   {
     q: "MBTI가 뭐야?",
     a: "반려동물의 여행 성향을 진단하는 테스트예요. 결과에 따라 어울리는 코스 테마를 추천해드려요.",
+    keywords: ["mbti가", "mbti는", "mbti 뭐", "엠비티아이"],
     actionLabel: "MBTI 검사하러 가기",
     href: "/schedule/course/new/mbti",
   },
 ];
 
 const QUICK_PROMPTS = ["조용히 산책하기 좋은 곳", "당일치기 코스 추천해줘", "실내 카페 위주로", "소형견도 갈 수 있는 곳"];
+
+const THINKING_PHRASES = ["킁킁 냄새 맡는 중...", "지도를 펼치는 중...", "발자국 따라가는 중...", "코스를 그리는 중..."];
+
+/** "생각하는 중..." 고정 문구 대신 문구를 순환시키며 발바닥이 통통 튀는 로딩 인터랙션. */
+function ThinkingIndicator() {
+  const [phraseIndex, setPhraseIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setPhraseIndex((prev) => (prev + 1) % THINKING_PHRASES.length), 1100);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <div className="flex gap-0.5">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="inline-block animate-bounce" style={{ animationDelay: `${i * 0.15}s` }}>
+            <Emoji3D emoji="🐾" size={16} />
+          </span>
+        ))}
+      </div>
+      <span className="text-xs text-ink-muted">{THINKING_PHRASES[phraseIndex]}</span>
+    </div>
+  );
+}
+
+function matchFaq(text: string): FaqItem | undefined {
+  const normalized = text.replace(/\s/g, "");
+  return FAQ_ITEMS.find(
+    (item) => item.q === text || item.keywords.some((keyword) => normalized.includes(keyword.replace(/\s/g, "")))
+  );
+}
 
 function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -86,11 +131,20 @@ export default function ChatbotPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces: mockPlaces }),
       });
-      const data: CourseSuggestion | { error: string } = await res.json();
+      // 코스 추천 요청이어도 AI가 판단해서 잡담/설명이면 chat으로, 실제 코스 요청이면 course로 답한다
+      // (백엔드 /api/ai/course-suggestion 참고) — 매번 코스를 억지로 지어내지 않게 하기 위함.
+      const data:
+        | { responseType: "chat"; message: string }
+        | (CourseSuggestion & { responseType: "course" })
+        | { error: string } = await res.json();
       if (!res.ok || "error" in data) {
         replacePending(pendingId, {
-          text: "error" in data ? data.error : "코스를 만들지 못했어요. 잠시 후 다시 시도해주세요",
+          text: "error" in data ? data.error : "답을 만들지 못했어요. 잠시 후 다시 시도해주세요",
         });
+        return;
+      }
+      if (data.responseType === "chat") {
+        replacePending(pendingId, { text: data.message });
         return;
       }
       const stops = data.days.flat();
@@ -100,7 +154,7 @@ export default function ChatbotPage() {
         course: data,
       });
     } catch {
-      replacePending(pendingId, { text: "코스를 만들지 못했어요. 잠시 후 다시 시도해주세요" });
+      replacePending(pendingId, { text: "답을 만들지 못했어요. 잠시 후 다시 시도해주세요" });
     }
   };
 
@@ -110,7 +164,7 @@ export default function ChatbotPage() {
     appendMessage({ id: makeId(), role: "user", text });
     setInput("");
 
-    const faq = FAQ_ITEMS.find((item) => item.q === text);
+    const faq = matchFaq(text);
     if (faq) {
       appendMessage({
         id: makeId(),
@@ -145,17 +199,25 @@ export default function ChatbotPage() {
 
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
         {messages.map((message) => (
-          <div key={message.id} className={cn("mb-2.5 flex", message.role === "user" ? "justify-end" : "justify-start")}>
+          <div
+            key={message.id}
+            className={cn("mb-3 flex items-end gap-1.5", message.role === "user" ? "justify-end" : "justify-start")}
+          >
+            {message.role === "bot" ? (
+              <span className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-purple-light">
+                <Emoji3D emoji="🤖" size={22} shadow={false} />
+              </span>
+            ) : null}
             <div
               className={cn(
-                "max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+                "max-w-[76%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
                 message.role === "user"
                   ? "bg-accent-purple text-white"
                   : "border border-line bg-card text-ink"
               )}
             >
               {message.pending ? (
-                <span className="text-ink-muted">생각하는 중...</span>
+                <ThinkingIndicator />
               ) : (
                 <span className="whitespace-pre-line">{message.text}</span>
               )}
@@ -175,7 +237,9 @@ export default function ChatbotPage() {
                           {stop.district} · {stop.category}
                         </div>
                       </div>
-                      <span className="shrink-0 text-xs">{stop.petFriendly ? "🐾" : "🚫"}</span>
+                      <span className="shrink-0 text-xs">
+                        {stop.petFriendly ? <Emoji3D emoji="🐾" size={16} shadow={false} /> : "🚫"}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -187,7 +251,7 @@ export default function ChatbotPage() {
                   onClick={() => handleSaveCourse(message.course!)}
                   className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-brand text-xs font-bold text-white"
                 >
-                  <span>🐾</span>이 코스 저장하기
+                  <Emoji3D emoji="🐾" size={16} shadow={false} />이 코스 저장하기
                 </button>
               ) : null}
 
@@ -220,13 +284,13 @@ export default function ChatbotPage() {
           ))}
         </div>
         <div className="mb-1.5 text-[10px] font-bold text-ink-muted">✨ 빠른 추천</div>
-        <div className="mb-2.5 flex gap-1.5 overflow-x-auto pb-0.5">
+        <div className="mb-2.5 flex flex-wrap gap-1.5">
           {QUICK_PROMPTS.map((q) => (
             <button
               key={q}
               type="button"
               onClick={() => handleSend(q)}
-              className="shrink-0 rounded-full border border-line-strong bg-card px-3 py-1.5 text-[11px] font-semibold text-ink-muted"
+              className="rounded-full bg-line px-3 py-1.5 text-[11px] font-semibold text-ink-muted"
             >
               {q}
             </button>

@@ -2,7 +2,9 @@
 
 import type { Course } from "@/types";
 import { Tag } from "@/components/ui/Tag";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { nightsLabel, resolveCourseEmoji, SOURCE_LABEL, SOURCE_TONE } from "@/lib/courseFormat";
+import type { CourseSource } from "@/types";
 
 interface CourseCardProps {
   course: Course;
@@ -10,6 +12,12 @@ interface CourseCardProps {
   hasUpcomingSchedule?: boolean;
   onClick: () => void;
 }
+
+const GLOW_CLASS: Record<CourseSource, string> = {
+  ai: "bg-accent-purple",
+  manual: "bg-brand-300",
+  saved: "bg-accent-coral",
+};
 
 /** 코스 보관함의 티켓 카드. 흰 바탕 위주로 절제하고, 출처(ai/manual/saved)는 오른쪽 컬러 배지로 표시한다. */
 export function CourseCard({ course, hasUpcomingSchedule, onClick }: CourseCardProps) {
@@ -21,8 +29,8 @@ export function CourseCard({ course, hasUpcomingSchedule, onClick }: CourseCardP
       onClick={onClick}
       className="mb-2.5 flex w-full cursor-pointer items-stretch overflow-hidden rounded-2xl border border-line bg-card shadow-sm active:bg-surface"
     >
-      <div className="flex w-[68px] shrink-0 items-center justify-center border-r border-dashed border-line bg-surface text-3xl">
-        {emoji}
+      <div className="flex w-[72px] shrink-0 items-center justify-center border-r border-dashed border-line bg-surface">
+        <Emoji3D emoji={emoji} size={44} glowClassName={GLOW_CLASS[course.source]} />
       </div>
 
       <div className="min-w-0 flex-1 px-4 py-3">

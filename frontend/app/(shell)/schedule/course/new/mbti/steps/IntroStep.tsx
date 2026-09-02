@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 
 interface IntroStepProps {
   onStart: () => void;
@@ -13,8 +14,8 @@ const STATS = ["질문 12개", "16가지 유형", "약 1분"];
 export function IntroStep({ onStart, onSkipToTheme }: IntroStepProps) {
   return (
     <div className="px-5 pb-6 pt-4 text-center">
-      <div className="animate-pop-in mx-auto mb-5 flex h-32 w-32 items-center justify-center rounded-full bg-brand-100 text-6xl">
-        🐾
+      <div className="animate-pop-in mx-auto mb-5 flex h-32 w-32 items-center justify-center rounded-full bg-brand-100">
+        <Emoji3D emoji="🐾" size={84} />
       </div>
       <div className="animate-fade-up mb-2 text-lg font-extrabold leading-relaxed text-ink">
         내 댕이의
