@@ -6,7 +6,8 @@ import { Tag } from "@/components/ui/Tag";
 import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
-import { resolvePlaceImageUrl } from "@/lib/courseFormat";
+import { CourseShareCard } from "@/components/course/CourseShareCard";
+import { nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { routeDistanceKm } from "@/lib/nearestNeighborRoute";
 import type { Place } from "@/types";
 
@@ -34,7 +35,7 @@ export function ReviewStep({
   const [editMode, setEditMode] = useState(false);
   const currentDay = days[activeDay] ?? [];
   const distanceKm = routeDistanceKm(currentDay);
-  const captureRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const totalCount = days.reduce((sum, day) => sum + day.length, 0);
   const displayName = name.trim() || defaultName;
 
@@ -80,7 +81,7 @@ export function ReviewStep({
         </button>
       </div>
 
-      <div ref={captureRef} className="mb-3 overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
+      <div className="mb-3 overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
         <DragReorderList
           items={currentDay}
           getId={(place) => place.id}
@@ -122,9 +123,16 @@ export function ReviewStep({
         <div className="mb-3 -mt-1 text-center text-[11px] text-ink-muted">⠿ 을 눌러 위아래로 드래그하면 순서가 바뀌어요</div>
       ) : null}
 
+      {/* 저장/공유용 캡처 전용 카드 — 화면엔 안 보이고 이미지 저장·카카오 공유할 때만 쓰인다. */}
+      <div style={{ position: "fixed", top: 0, left: -9999 }} aria-hidden="true">
+        <div ref={shareCardRef}>
+          <CourseShareCard title={displayName} tags={[nightsLabel(days.length - 1)]} days={days} />
+        </div>
+      </div>
+
       <ResultShareActions
         className="mb-5 flex gap-2"
-        captureRef={captureRef}
+        captureRef={shareCardRef}
         fileName={`대저니유-${displayName}`}
         kakaoTitle={displayName}
         kakaoDescription={`${totalCount}곳 · 대저니유에서 직접 지은 반려동물 여행 코스예요 🐾`}
