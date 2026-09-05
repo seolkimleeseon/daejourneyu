@@ -23,6 +23,14 @@ interface KakaoMarker {
   setMap(map: KakaoMap | null): void;
 }
 
+interface KakaoPolyline {
+  setMap(map: KakaoMap | null): void;
+}
+
+interface KakaoEvent {
+  addListener(target: KakaoMarker, type: "click", handler: () => void): void;
+}
+
 export interface KakaoMaps {
   load(callback: () => void): void;
   LatLng: new (lat: number, lng: number) => KakaoLatLng;
@@ -31,6 +39,15 @@ export interface KakaoMaps {
     options: { center: KakaoLatLng; level?: number; draggable?: boolean },
   ) => KakaoMap;
   Marker: new (options: { position: KakaoLatLng; map?: KakaoMap }) => KakaoMarker;
+  Polyline: new (options: {
+    path: KakaoLatLng[];
+    map?: KakaoMap;
+    strokeWeight?: number;
+    strokeColor?: string;
+    strokeOpacity?: number;
+    strokeStyle?: "solid" | "shortdash" | "shortdot" | "shortdashdot";
+  }) => KakaoPolyline;
+  event: KakaoEvent;
 }
 
 declare global {
