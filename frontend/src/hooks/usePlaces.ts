@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { DaejeonDistrict, Place, PlaceCategory } from "@/types";
 import { mockPlaces } from "@/mocks";
 import { filterPlaces } from "@/lib/placeFilters";
+import { apiUrl } from "@/lib/api/authFetch";
 
 export interface PlacesFilter {
   district?: DaejeonDistrict | null;
@@ -29,7 +30,7 @@ async function fetchPlaces(filter: PlacesFilter): Promise<Place[]> {
   const query = search.toString();
 
   try {
-    const res = await fetch(`/api/places${query ? `?${query}` : ""}`);
+    const res = await fetch(apiUrl(`/api/places${query ? `?${query}` : ""}`));
     if (!res.ok) throw new Error(`GET /api/places → ${res.status}`);
     return (await res.json()) as Place[];
   } catch (error) {

@@ -6,8 +6,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // 앱 런타임은 트랜잭션 모드 풀러(pgbouncer)를 통해 접속한다.
+  url       = env("DATABASE_URL")
+  // 마이그레이션은 풀러를 거치면 실패할 수 있어 direct/session 접속으로 따로 뺀다(Supabase+Prisma 권장 패턴).
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -26,6 +29,7 @@ model User {
 
   pets Pet[]
   courses Course[]
+  posts Post[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -77,6 +81,7 @@ model Course {
 
   days     CourseDay[]
   schedule CourseSchedule?
+  posts    Post[]
 }
 
 model CourseDay {
@@ -138,4 +143,58 @@ model Place {
   source       String
   sourceTier   Int
   updatedAt    DateTime @updatedAt
+}
+
+/// 둘러보기(FEED)에 공유된 "코스 게시물". 코스 보관함에서 '코스 자랑하기'로 올라온다.
+model Post {
+  id String @id @default(cuid())
+
+  /// 올릴 때의 코스 이름. 코스를 지우거나 이름을 바꿔도 이미 올린 글은 그대로 남아야 한다.
+  caption String
+  /// 작성자가 남긴 한마디. 비워 둘 수 있다.
+  text String @default("")
+  /// 일정·이동수단·자치구처럼 코스에서 자동으로 뽑아 붙인 태그.
+  tags String[]
+
+  /// 작성자 표시용 스냅샷 — 활성 반려동물은 언제든 바뀌므로 글에 고정해 둔다.
+  authorName  String
+  authorEmoji String
+  /// 반려동물 MBTI 풀네임. 아직 검사 전이면 안내 문구가 그대로 들어온다.
+  petTypeName String
+
+  /// TODO(api): 좋아요/담기 토글이 서버로 넘어오기 전까지는 0에서 움직이지 않는다.
+  likes Int @default(0)
+  saves Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 어떤 코스를 자랑한 글인지. 코스를 지워도 글은 남겨야 하므로 SetNull로 끊는다.
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  stops PostStop[]
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+/// 게시물에 박제된 방문 장소. 코스가 나중에 바뀌어도 글에 보이는 동선은 올릴 때 그대로여야 한다.
+model PostStop {
+  id          String  @id @default(cuid())
+  order       Int
+  placeId     String
+  name        String
+  category    String
+  district    String
+  condition   String
+  petFriendly Boolean
+  imageUrl    String?
+
+  postId String
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, order])
 }

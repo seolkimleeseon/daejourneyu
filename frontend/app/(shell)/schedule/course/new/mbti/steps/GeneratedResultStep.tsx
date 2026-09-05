@@ -6,6 +6,7 @@ import { Tag } from "@/components/ui/Tag";
 import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
+import { CourseShareCard } from "@/components/course/CourseShareCard";
 import { nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import type { CourseTheme } from "@/lib/mbti";
 import type { Place, Transport } from "@/types";
@@ -36,11 +37,11 @@ export function GeneratedResultStep({
   onGoHome,
 }: GeneratedResultStepProps) {
   const [editMode, setEditMode] = useState(false);
-  const captureRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="px-4 pb-6 pt-1">
-      <div ref={captureRef} className="rounded-2xl bg-surface p-2">
+      <div className="rounded-2xl bg-surface p-2">
         <div className="animate-pop-in mb-4 rounded-2xl bg-brand-100 p-4 text-center">
           <div className="text-sm font-extrabold text-brand-700">오늘의 &lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
@@ -127,9 +128,20 @@ export function GeneratedResultStep({
         ) : null}
       </div>
 
+      {/* 저장/공유용 캡처 전용 카드 — 화면엔 안 보이고 이미지 저장·카카오 공유할 때만 쓰인다. */}
+      <div style={{ position: "fixed", top: 0, left: -9999 }} aria-hidden="true">
+        <div ref={shareCardRef}>
+          <CourseShareCard
+            title={courseTitle}
+            tags={[nightsLabel(nights), `${theme}형`, transport]}
+            days={days}
+          />
+        </div>
+      </div>
+
       <ResultShareActions
         className="mb-4 mt-3 flex gap-2"
-        captureRef={captureRef}
+        captureRef={shareCardRef}
         fileName={`대저니유-${courseTitle}`}
         kakaoTitle={courseTitle}
         kakaoDescription={`${nightsLabel(nights)} · ${theme}형 코스 · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}

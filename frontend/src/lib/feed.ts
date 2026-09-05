@@ -1,5 +1,7 @@
-import type { Article, FeedPost } from "@/types";
+import type { Article, Course, FeedPost } from "@/types";
+import type { PostCreateInput } from "@/lib/api/posts";
 import type { FeedInteraction } from "@/stores/useFeedStore";
+import { nightsLabel } from "@/lib/courseFormat";
 
 export interface ResolvedPostInteraction {
   liked: boolean;
@@ -121,4 +123,44 @@ export function paginate<T>(items: T[], page: number, perPage: number): PageSlic
 export function formatFeedDate(date: string): string {
   const [, month, day] = date.split("-");
   return `${Number(month)}월 ${Number(day)}일`;
+}
+
+/** 자랑하기 글에 자동으로 붙는 태그 — 코스에서 뽑아낼 수 있는 것만 넣는다(일정·이동수단·자치구). */
+function buildCourseTags(course: Course): string[] {
+  const stops = course.days.flat();
+  const districts = [...new Set(stops.map((stop) => stop.district))];
+  return [nightsLabel(course.nights), course.transport, ...districts];
+}
+
+export interface CoursePostAuthor {
+  name: string;
+  emoji: string;
+  petTypeName: string;
+}
+
+/**
+ * 보관함 코스 하나를 둘러보기에 올릴 형태로 옮긴다.
+ * 사용자가 직접 쓰는 건 한마디(text)뿐이고, 제목·동선·태그는 코스에서 그대로 끌어온다.
+ * id와 좋아요·담기 수는 서버(POST /api/posts)가 정하므로 여기서 만들지 않는다.
+ */
+export function buildPostInputFromCourse(
+  course: Course,
+  text: string,
+  author: CoursePostAuthor
+): PostCreateInput {
+  return {
+    caption: course.label,
+    text: text.trim(),
+    stops: course.days.flat(),
+    tags: buildCourseTags(course),
+    authorName: author.name,
+    authorEmoji: author.emoji,
+    petTypeName: author.petTypeName,
+    courseId: course.id,
+  };
+}
+
+/** 이 코스를 이미 자랑했는지 — 같은 코스로 두 번 들어와도 글이 두 개 생기지 않게 막는 데 쓴다. */
+export function findPostByCourseId(posts: FeedPost[], courseId: string): FeedPost | null {
+  return posts.find((post) => post.courseId === courseId) ?? null;
 }

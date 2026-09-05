@@ -120,6 +120,57 @@ function parsePetInput(body: unknown): ParsedPetInput {
   };
 }
 
+/** 코스 추천 테마로 쓰이는 장소 카테고리. 프론트 PlaceCategory와 같은 목록을 유지한다. */
+const MBTI_THEMES = ["산책", "놀이터", "맛집", "문화"] as const;
+type MbtiTheme = (typeof MBTI_THEMES)[number];
+
+/** MBTI 4글자 코드. 퀴즈(scoreAnswers)가 만들어내는 조합만 허용한다. */
+const MBTI_CODE_PATTERN = /^[EI][SN][TF][JP]$/;
+const MAX_TRAITS = 10;
+const MAX_TRAIT_LENGTH = 20;
+const MAX_MBTI_NAME_LENGTH = 40;
+
+interface ParsedMbtiInput {
+  error: string | null;
+  data: { mbtiCode: string; mbtiName: string; mbtiTheme: MbtiTheme; mbtiTraits: string[] };
+}
+
+/**
+ * 퀴즈 결과를 검증한다. 이름·성향 문구는 프론트 사전(lib/mbti.ts)에서 오지만,
+ * API를 직접 두드릴 수 있으므로 형식은 서버에서 다시 본다.
+ */
+function parseMbtiInput(body: unknown): ParsedMbtiInput {
+  const { code, name, theme, traits } = (body ?? {}) as Record<string, unknown>;
+  const empty = { mbtiCode: "", mbtiName: "", mbtiTheme: "산책" as MbtiTheme, mbtiTraits: [] };
+
+  if (typeof code !== "string" || !MBTI_CODE_PATTERN.test(code)) {
+    return { error: "MBTI 코드가 올바르지 않아요", data: empty };
+  }
+  if (typeof name !== "string" || name.trim().length === 0 || name.length > MAX_MBTI_NAME_LENGTH) {
+    return { error: "MBTI 유형 이름이 올바르지 않아요", data: empty };
+  }
+  if (!MBTI_THEMES.includes(theme as MbtiTheme)) {
+    return { error: "추천 테마가 올바르지 않아요", data: empty };
+  }
+  if (
+    !Array.isArray(traits) ||
+    traits.length > MAX_TRAITS ||
+    !traits.every((t) => typeof t === "string" && t.length > 0 && t.length <= MAX_TRAIT_LENGTH)
+  ) {
+    return { error: "성향 태그가 올바르지 않아요", data: empty };
+  }
+
+  return {
+    error: null,
+    data: {
+      mbtiCode: code,
+      mbtiName: name.trim(),
+      mbtiTheme: theme as MbtiTheme,
+      mbtiTraits: traits as string[],
+    },
+  };
+}
+
 // GET /api/pets — 로그인한 사용자의 반려동물 목록(등록 순)
 router.get(
   "/",
@@ -160,6 +211,24 @@ router.patch(
     if (Object.keys(errors).length > 0) return res.status(400).json({ errors });
 
     // 남의 반려동물을 수정하지 못하도록 소유자까지 조건에 넣는다.
+    const target = await prisma.pet.findFirst({ where: { id: req.params.petId, userId: req.userId } });
+    if (!target) return res.status(404).json({ error: "반려동물을 찾을 수 없어요" });
+
+    const pet = await prisma.pet.update({ where: { id: target.id }, data });
+    res.json({ pet: toPublicPet(pet) });
+  })
+);
+
+// PUT /api/pets/:petId/mbti — 반려동물 MBTI 퀴즈 결과 저장. 다시 보면 덮어쓴다.
+// 등록 폼(PATCH)과 분리한 이유: MBTI는 폼이 아니라 퀴즈에서만 채워지고, 폼 저장이 결과를 지우면 안 된다.
+router.put(
+  "/:petId/mbti",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { error, data } = parseMbtiInput(req.body);
+    if (error) return res.status(400).json({ error });
+
+    // 남의 반려동물에 결과를 심지 못하도록 소유자까지 조건에 넣는다.
     const target = await prisma.pet.findFirst({ where: { id: req.params.petId, userId: req.userId } });
     if (!target) return res.status(404).json({ error: "반려동물을 찾을 수 없어요" });
 

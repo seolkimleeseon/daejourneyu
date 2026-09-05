@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { PickablePlace } from "@/lib/petTourMapper";
+import { apiUrl } from "@/lib/api/authFetch";
 
 async function fetchPickablePlaces(): Promise<PickablePlace[]> {
-  const res = await fetch("/api/places");
+  const res = await fetch(apiUrl("/api/places"));
   if (!res.ok) throw new Error("장소 정보를 불러오지 못했어요");
   return (await res.json()) as PickablePlace[];
 }

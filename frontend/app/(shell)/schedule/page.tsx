@@ -10,10 +10,9 @@ import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
 import { TileButton } from "@/components/ui/TileButton";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useMbtiResultStore } from "@/stores/useMbtiResultStore";
+import { usePetStore } from "@/stores/usePetStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { resolveMbtiType } from "@/lib/mbti";
-import { mockCourseSchedules } from "@/mocks";
 
 type ScheduleSegment = "내 코스" | "캘린더";
 
@@ -23,13 +22,16 @@ export default function SchedulePage() {
   const router = useRouter();
   const [segment, setSegment] = useState<ScheduleSegment>("내 코스");
   const storeCourses = useCourseStore((state) => state.courses);
+  const hasSynced = useCourseStore((state) => state.hasSynced);
+  const storeSchedules = useCourseStore((state) => state.schedules);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const savedMbtiCode = useMbtiResultStore((state) => state.code);
+  // 검사 결과는 반려동물에 저장돼 있다(PUT /api/pets/:id/mbti).
+  const savedMbtiCode = usePetStore((state) => state.activePet()?.mbti?.code ?? null);
   useSyncCoursesFromApi();
 
   const courses = [...storeCourses].reverse();
   const preview = courses.slice(0, VAULT_PREVIEW_COUNT);
-  const scheduledCourseIds = new Set(mockCourseSchedules.map((schedule) => schedule.courseId));
+  const scheduledCourseIds = new Set(storeSchedules.map((schedule) => schedule.courseId));
 
   // 로그인 + 저장된 MBTI 결과가 있을 때만 "바로 추천" 지름길을 보여준다.
   // 둘 중 하나라도 없으면 로그인 안 했을 때와 동일하게 기본 테스트 진입 타일을 보여준다.
@@ -60,6 +62,7 @@ export default function SchedulePage() {
           <div className="mb-1 px-1 text-xs font-bold text-ink-muted">코스 만들기</div>
           <div className="mb-5 grid grid-cols-3 gap-2">
             <TileButton
+              icon3D
               variant="filled"
               tone="brand"
               emoji={savedMbtiType ? savedMbtiType.emoji : "✨"}
@@ -70,6 +73,7 @@ export default function SchedulePage() {
               }
             />
             <TileButton
+              icon3D
               variant="filled"
               tone="purple"
               emoji="🤖"
@@ -78,6 +82,7 @@ export default function SchedulePage() {
               onClick={() => router.push("/home/chatbot")}
             />
             <TileButton
+              icon3D
               variant="filled"
               tone="coral"
               emoji="📍"
@@ -89,6 +94,8 @@ export default function SchedulePage() {
 
           {!isLoggedIn ? (
             <LoginRequiredGate compact message="보관함에 저장한 코스를 보려면 로그인해주세요" />
+          ) : !hasSynced ? (
+            <div className="py-10 text-center text-xs text-ink-muted">코스 보관함을 불러오는 중…</div>
           ) : (
             <>
               <div className="mb-1 flex items-center justify-between px-1">
@@ -133,10 +140,8 @@ export default function SchedulePage() {
             </>
           )}
         </div>
-      ) : isLoggedIn ? (
-        <ScheduleCalendar />
       ) : (
-        <LoginRequiredGate message="내 여행 일정을 캘린더로 보려면 로그인해주세요" />
+        <ScheduleCalendar />
       )}
     </>
   );

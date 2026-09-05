@@ -103,8 +103,8 @@ export default function ManualCourseWizardPage() {
 
   const saveCourse = () => {
     const flat = reviewDays.flat();
-    if (flat.length < 2) {
-      showToast("최소 2곳이 필요해요");
+    if (flat.length < 1) {
+      showToast("장소를 1곳 이상 담아주세요");
       return;
     }
     const label = courseName.trim() || defaultCourseName();

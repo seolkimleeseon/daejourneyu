@@ -1,10 +1,11 @@
 import { useQueries } from "@tanstack/react-query";
 import { mapKakaoPlaceToPlace, type ApiKakaoPlace } from "@/lib/kakaoPlaceMapper";
+import { apiUrl } from "@/lib/api/authFetch";
 import type { PickablePlace } from "@/lib/petTourMapper";
 import type { PlaceCategory } from "@/types";
 
 async function fetchKakaoPlaces(query: string, category: PlaceCategory): Promise<PickablePlace[]> {
-  const res = await fetch(`/api/kakao-places?query=${encodeURIComponent(query)}&size=10`);
+  const res = await fetch(apiUrl(`/api/kakao-places?query=${encodeURIComponent(query)}&size=10`));
   if (!res.ok) throw new Error("카카오맵 장소를 불러오지 못했어요");
   const data = (await res.json()) as { places: ApiKakaoPlace[] };
   return data.places

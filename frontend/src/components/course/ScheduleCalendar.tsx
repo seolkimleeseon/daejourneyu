@@ -7,7 +7,6 @@ import { Tag } from "@/components/ui/Tag";
 import { cn } from "@/lib/cn";
 import { nightsLabel } from "@/lib/courseFormat";
 import { useCourseStore } from "@/stores/useCourseStore";
-import { mockCourseSchedules } from "@/mocks";
 import type { CourseSource } from "@/types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -39,6 +38,7 @@ function toYmd(year: number, month0: number, day: number) {
 export function ScheduleCalendar() {
   const router = useRouter();
   const courses = useCourseStore((state) => state.courses);
+  const schedules = useCourseStore((state) => state.schedules);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month0, setMonth0] = useState(today.getMonth());
@@ -68,7 +68,7 @@ export function ScheduleCalendar() {
   };
 
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
-  const selectedSchedules = mockCourseSchedules.filter((schedule) => schedule.date === selectedDate);
+  const selectedSchedules = schedules.filter((schedule) => schedule.date === selectedDate);
 
   return (
     <div className="px-4 pb-6 pt-4">
@@ -95,7 +95,7 @@ export function ScheduleCalendar() {
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`empty-${i}`} />;
-          const hasSchedule = mockCourseSchedules.some((schedule) => schedule.date === cell.date);
+          const hasSchedule = schedules.some((schedule) => schedule.date === cell.date);
           const isToday = cell.date === todayYmd;
           const isSelected = cell.date === selectedDate;
           return (

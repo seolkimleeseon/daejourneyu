@@ -154,8 +154,13 @@ interface KakaoImageSearchResponse {
   documents: KakaoImageDocument[];
 }
 
-/** 이 도메인에서 오는 이미지는 실사진이 아니라 오지큐(OGQ)마켓 스티커/이모티콘이라 항상 제외한다. */
-const NON_PHOTO_DOMAINS = ["storep-phinf.pstatic.net"];
+/**
+ * 이 도메인들에서 오는 이미지는 항상 제외한다.
+ * - storep-phinf.pstatic.net: 실사진이 아니라 오지큐(OGQ)마켓 스티커/이모티콘
+ * - uf.daum.net: 옛 다음 블로그 이미지 서버. 인증서가 깨져 있어(ERR_CERT_COMMON_NAME_INVALID)
+ *   브라우저가 로딩 자체를 거부한다.
+ */
+const NON_PHOTO_DOMAINS = ["storep-phinf.pstatic.net", "uf.daum.net"];
 /** 가로:세로 비율이 이보다 넓으면(또는 좁으면) 블로그 표지 카드뉴스·리뷰 배너일 확률이 높아 제외한다. */
 const MAX_ASPECT_RATIO = 1.8;
 const MIN_DIMENSION = 300;

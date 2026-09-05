@@ -10,10 +10,12 @@ import { LoginModal } from "@/components/my/LoginModal";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
+import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { findActiveTrip } from "@/lib/schedule";
 import { toCrowdPlace, type CrowdPlace } from "@/lib/crowd";
-import { mockArticles, mockCourseSchedules, mockCourses } from "@/mocks";
+import { mockArticles } from "@/mocks";
 
 /** Fisher-Yates — 예정된 여행이 없을 때 보여줄 반려동반 여행지를 매번 다른 순서로 섞는다. */
 function shuffle<T>(items: T[]): T[] {
@@ -30,15 +32,15 @@ export default function HomePage() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const activePet = usePetStore((state) => state.activePet());
   const showToast = useToastStore((state) => state.show);
+  useSyncCoursesFromApi();
+  const courses = useCourseStore((state) => state.courses);
+  const schedules = useCourseStore((state) => state.schedules);
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
   const activeTrip = useMemo(
-    () =>
-      isLoggedIn
-        ? findActiveTrip(mockCourseSchedules, mockCourses, new Date().toISOString().slice(0, 10))
-        : null,
-    [isLoggedIn]
+    () => (isLoggedIn ? findActiveTrip(schedules, courses, new Date().toISOString().slice(0, 10)) : null),
+    [isLoggedIn, schedules, courses]
   );
 
   // 7일 이내 예정되었거나 진행 중인 여행이 있으면 그 코스의 장소로, 없으면 문체부 반려동물

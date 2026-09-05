@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { WeatherResponse } from "@/lib/weather";
+import { apiUrl } from "@/lib/api/authFetch";
 
 function getBrowserCoords(): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
@@ -18,7 +19,7 @@ function getBrowserCoords(): Promise<{ lat: number; lng: number } | null> {
 async function fetchWeather(): Promise<WeatherResponse> {
   const coords = await getBrowserCoords();
   const search = coords ? `?lat=${coords.lat}&lng=${coords.lng}` : "";
-  const res = await fetch(`/api/weather${search}`);
+  const res = await fetch(apiUrl(`/api/weather${search}`));
   if (!res.ok) throw new Error("날씨 정보를 불러오지 못했어요");
   return (await res.json()) as WeatherResponse;
 }
