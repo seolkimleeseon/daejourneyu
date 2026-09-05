@@ -11,32 +11,55 @@ import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
-import { findUpcomingTrip } from "@/lib/schedule";
+import { findActiveTrip } from "@/lib/schedule";
+import { toCrowdPlace, type CrowdPlace } from "@/lib/crowd";
 import { mockArticles, mockCourseSchedules, mockCourses } from "@/mocks";
+
+/** Fisher-Yates — 예정된 여행이 없을 때 보여줄 반려동반 여행지를 매번 다른 순서로 섞는다. */
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 export default function HomePage() {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const activePet = usePetStore((state) => state.activePet());
   const showToast = useToastStore((state) => state.show);
-  const { data: places = [] } = usePlaces();
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const upcomingTrip = useMemo(
+  const activeTrip = useMemo(
     () =>
       isLoggedIn
-        ? findUpcomingTrip(mockCourseSchedules, mockCourses, new Date().toISOString().slice(0, 10))
+        ? findActiveTrip(mockCourseSchedules, mockCourses, new Date().toISOString().slice(0, 10))
         : null,
     [isLoggedIn]
   );
+
+  // 7일 이내 예정되었거나 진행 중인 여행이 있으면 그 코스의 장소로, 없으면 문체부 반려동물
+  // 동반가능 시설 현황(source=petacp) 중에서 랜덤하게 골라 혼잡도 티커를 채운다.
+  const { data: travelPlaces = [], isPending: travelPlacesLoading } = usePlaces({ source: "petacp" });
 
   const latestArticle = useMemo(
     () => [...mockArticles].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null,
     []
   );
 
-  const crowdPlaces = useMemo(() => places.filter((place) => place.petFriendly).slice(0, 6), [places]);
+  const crowdPlaces = useMemo<CrowdPlace[]>(() => {
+    if (activeTrip) {
+      return activeTrip.stops.map((stop) => ({ id: stop.placeId, name: stop.name, category: stop.category }));
+    }
+    return shuffle(travelPlaces.filter((place) => place.petFriendly))
+      .slice(0, 6)
+      .map(toCrowdPlace);
+  }, [activeTrip, travelPlaces]);
+
+  const crowdLoading = !activeTrip && travelPlacesLoading;
 
   return (
     <>
@@ -66,8 +89,9 @@ export default function HomePage() {
         <HomeStatusCard
           pet={activePet}
           isLoggedIn={isLoggedIn}
-          upcomingTrip={upcomingTrip}
+          upcomingTrip={activeTrip}
           crowdPlaces={crowdPlaces}
+          crowdLoading={crowdLoading}
         />
 
         {latestArticle ? (
