@@ -125,11 +125,17 @@ export default function ChatbotPage() {
     const pendingId = makeId();
     appendMessage({ id: pendingId, role: "bot", text: "생각하는 중...", pending: true });
 
+    // 응답이 너무 오래 걸리면(기본 fetch는 브라우저 기본 타임아웃까지 무한정 기다린다) 안내
+    // 메시지로 대신 끊는다 — 사용자가 "생각하는 중..." 애니메이션만 하염없이 보는 걸 막는다.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch(apiUrl("/api/ai/course-suggestion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces: mockPlaces }),
+        signal: controller.signal,
       });
       // 코스 추천 요청이어도 AI가 판단해서 잡담/설명이면 chat으로, 실제 코스 요청이면 course로 답한다
       // (백엔드 /api/ai/course-suggestion 참고) — 매번 코스를 억지로 지어내지 않게 하기 위함.
@@ -153,8 +159,15 @@ export default function ChatbotPage() {
         stops,
         course: data,
       });
-    } catch {
-      replacePending(pendingId, { text: "답을 만들지 못했어요. 잠시 후 다시 시도해주세요" });
+    } catch (error) {
+      const timedOut = error instanceof DOMException && error.name === "AbortError";
+      replacePending(pendingId, {
+        text: timedOut
+          ? "지금은 답변하기 어려워요. 잠시 후 다시 시도해주세요"
+          : "답을 만들지 못했어요. 잠시 후 다시 시도해주세요",
+      });
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
