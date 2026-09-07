@@ -1,5 +1,5 @@
 import { Emoji3D } from "@/components/ui/Emoji3D";
-import { CATEGORY_EMOJI, nightsLabel } from "@/lib/courseFormat";
+import { nightsLabel } from "@/lib/courseFormat";
 import type { Place } from "@/types";
 
 interface CourseShareCardProps {
@@ -152,7 +152,7 @@ export function CourseShareCard({ title, tags, days }: CourseShareCardProps) {
                         textOverflow: "ellipsis",
                       }}
                     >
-                      {CATEGORY_EMOJI[place.category] ?? "📍"} {place.name}
+                      {place.name}
                     </span>
                   </div>
                   <div
