@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToastStore } from "@/stores/useToastStore";
 import { saveElementAsImage } from "@/lib/captureImage";
@@ -12,6 +12,8 @@ interface ResultShareActionsProps {
   fileName: string;
   kakaoTitle: string;
   kakaoDescription: string;
+  /** 카카오톡 공유 링크가 이동할 경로. 없으면 홈으로 연결한다(예: 저장 전이라 갈 상세 페이지가 없는 경우). */
+  path?: string;
   className?: string;
 }
 
@@ -21,25 +23,32 @@ export function ResultShareActions({
   fileName,
   kakaoTitle,
   kakaoDescription,
+  path,
   className,
 }: ResultShareActionsProps) {
   const showToast = useToastStore((state) => state.show);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveImage = async () => {
+    setIsSaving(true);
     showToast("이미지를 만드는 중이에요...");
-    const ok = await saveElementAsImage(captureRef.current, fileName);
-    showToast(ok ? "이미지로 저장했어요 🖼️" : "이미지 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    try {
+      const ok = await saveElementAsImage(captureRef.current, fileName);
+      showToast(ok ? "이미지로 저장했어요 🖼️" : "이미지 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleKakaoShare = () => {
-    const result = shareTextToKakao({ title: kakaoTitle, description: kakaoDescription });
+    const result = shareTextToKakao({ title: kakaoTitle, description: kakaoDescription, path });
     if (!result.ok) showToast(result.reason ?? "카카오톡 공유를 열지 못했어요");
   };
 
   return (
     <div className={className ?? "mt-2 flex gap-2"}>
-      <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleSaveImage}>
-        <span className="text-lg">🖼️</span> 이미지 저장
+      <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleSaveImage} disabled={isSaving}>
+        <span className="text-lg">{isSaving ? "⏳" : "🖼️"}</span> {isSaving ? "저장 중..." : "이미지 저장"}
       </Button>
       <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleKakaoShare}>
         <span className="text-lg">💬</span> 카카오톡 공유
