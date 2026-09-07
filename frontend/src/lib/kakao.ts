@@ -41,7 +41,7 @@ function ensureKakaoInit(): boolean {
 interface ShareTextParams {
   title: string;
   description: string;
-  /** 카카오톡 메시지에서 이동할 경로. 아직 코스를 서버에 저장하지 않아 앱 홈으로 고정한다. */
+  /** 카카오톡 메시지에서 이동할 경로. 안 넘기면 홈으로 연결한다(예: 코스 저장 전이라 갈 상세 페이지가 없는 경우). */
   path?: string;
 }
 

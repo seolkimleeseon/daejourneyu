@@ -180,3 +180,13 @@ body {
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-steel-500);
 }
+
+/* 스크롤은 그대로 되지만 스크롤바만 안 보이게 — 칩 로우·일차 탭처럼 가로 스크롤이
+   필수는 아닌데 스크롤바 줄 때문에 UI가 지저분해 보이는 곳에 붙인다. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

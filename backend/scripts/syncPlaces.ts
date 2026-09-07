@@ -50,12 +50,12 @@ function isFinitePoint(lat: number, lng: number): boolean {
   return Number.isFinite(lat) && Number.isFinite(lng);
 }
 
-/** 관광타입(12:관광지 14:문화시설 28:레포츠 32:숙박 39:음식점) → 앱 카테고리. 나머지는 스킵. */
+/** 관광타입(12:관광지 14:문화시설 28:레포츠 39:음식점) → 앱 카테고리. 32(숙박)은 문화가 아니라
+ * 완전히 스킵한다 — 모텔/호텔이 "문화형" 코스 추천에 섞여 나오던 버그의 원인이었다. 나머지도 스킵. */
 const PETTOUR_CATEGORY: Record<string, PlaceCategory> = {
   "12": "산책",
   "14": "문화",
   "28": "산책",
-  "32": "문화",
   "39": "맛집",
 };
 
@@ -84,10 +84,10 @@ async function loadPetTourSpots(): Promise<PlaceRow[]> {
   return rows;
 }
 
-/** 프론트 PlaceCategory엔 숙박이 없어(팀 결정, 커밋 fddd7ed) 숙박류는 문화로 묶는다. */
+/** 프론트 PlaceCategory엔 숙박이 없다. 예전엔(팀 결정, 커밋 fddd7ed) 숙박류를 문화로 묶었는데
+ * 모텔/호텔이 "문화형" 코스 추천에 섞여 나오는 문제가 있어 완전히 스킵하는 것으로 바꿨다. */
 function normalizeCategory(raw: string): PlaceCategory | null {
   if (raw === "산책" || raw === "놀이터" || raw === "맛집" || raw === "문화") return raw;
-  if (raw === "숙박") return "문화";
   return null;
 }
 

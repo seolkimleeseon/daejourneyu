@@ -7,9 +7,7 @@ import { CourseStepBar } from "@/components/course/CourseStepBar";
 import { IntroStep } from "./steps/IntroStep";
 import { QuestionStep } from "./steps/QuestionStep";
 import { ResultStep } from "./steps/ResultStep";
-import { ThemePickerStep } from "./steps/ThemePickerStep";
 import { NightsStep } from "./steps/NightsStep";
-import { ConditionsStep } from "./steps/ConditionsStep";
 import { TransportStep } from "./steps/TransportStep";
 import { GeneratedResultStep } from "./steps/GeneratedResultStep";
 import { LoginModal } from "@/components/my/LoginModal";
@@ -25,9 +23,9 @@ import { ensureCategoryMinimum } from "@/lib/petTourMapper";
 import { mockPlaces } from "@/mocks";
 import type { Place, Transport } from "@/types";
 
-type Phase = "intro" | "quiz" | "result" | "theme" | "nights" | "conditions" | "transport" | "generated";
+type Phase = "intro" | "quiz" | "result" | "nights" | "transport" | "generated";
 
-const GENERATE_STEP_LABELS = ["기간", "조건", "이동", "코스"] as const;
+const GENERATE_STEP_LABELS = ["기간", "이동", "코스"] as const;
 const MIN_PER_CATEGORY = 3;
 const COURSE_TITLES: Record<CourseTheme, string> = {
   산책: "청량 힐링 산책 데이",
@@ -66,21 +64,17 @@ function MbtiCourseWizard() {
   const savedMbtiCode = activePet?.mbti?.code ?? null;
 
   // 로그인 상태에서 저장된 MBTI 결과가 있고, "MBTI 맞춤 코스" 타일에서 바로가기로 들어온 경우엔
-  // 인트로/퀴즈/결과 단계를 건너뛰고 바로 코스 생성(기간→조건→이동→코스)으로 진입한다.
+  // 인트로/퀴즈 단계를 건너뛰고 바로 저장된 결과 화면부터 보여준다. 거기서 "이 성향으로 코스
+  // 만들기"를 눌러야 코스 생성(기간→이동→코스)으로 넘어간다.
   // 로그인 안 했거나 저장된 결과가 없으면(=quick이어도) 평소와 똑같이 인트로부터 시작한다.
   const quickStart = searchParams.get("quick") === "1" && isLoggedIn && !!savedMbtiCode;
-  const quickTheme = quickStart ? topTheme(resolveMbtiType(savedMbtiCode!)) : null;
 
-  const [phase, setPhase] = useState<Phase>(quickStart ? "nights" : "intro");
-  const [entryPath, setEntryPath] = useState<"quiz" | "theme">(quickStart ? "theme" : "quiz");
+  const [phase, setPhase] = useState<Phase>(quickStart ? "result" : "intro");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<MbtiAnswer[]>(() => Array(MBTI_QUESTIONS.length).fill(null));
   const [mbtiCode, setMbtiCode] = useState(quickStart ? savedMbtiCode! : "");
-  const [theme, setTheme] = useState<CourseTheme>(quickTheme ?? "산책");
+  const [theme, setTheme] = useState<CourseTheme>("산책");
   const [nights, setNights] = useState(0);
-  const [companion, setCompanion] = useState("나와 강아지");
-  const [budget, setBudget] = useState("3~7만원");
-  const [season, setSeason] = useState("여름");
   const [transport, setTransport] = useState<Transport>("자차");
   const [generatedDays, setGeneratedDays] = useState<Place[][]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -123,9 +117,8 @@ function MbtiCourseWizard() {
     if (!result.ok) showToast(result.message ?? "여행 유형을 저장하지 못했어요");
   };
 
-  const goNightsFrom = (chosenTheme: CourseTheme, from: "quiz" | "theme") => {
+  const goNightsFrom = (chosenTheme: CourseTheme) => {
     setTheme(chosenTheme);
-    setEntryPath(from);
     setNights(0);
     setPhase("nights");
   };
@@ -180,15 +173,13 @@ function MbtiCourseWizard() {
     router.push("/schedule");
   };
 
-  const stepBarActive = ["nights", "conditions", "transport", "generated"].indexOf(phase);
+  const stepBarActive = ["nights", "transport", "generated"].indexOf(phase);
 
   const titleByPhase: Record<Phase, string> = {
     intro: "반려동물 여행 MBTI",
     quiz: "반려동물 여행 MBTI",
     result: "테스트 결과",
-    theme: "테마 고르기",
     nights: `${theme}형 코스`,
-    conditions: `${theme}형 코스`,
     transport: `${theme}형 코스`,
     generated: `${theme}형 코스`,
   };
@@ -202,17 +193,11 @@ function MbtiCourseWizard() {
       case "result":
         setPhase("intro");
         return;
-      case "theme":
-        setPhase("intro");
-        return;
       case "nights":
-        setPhase(entryPath === "quiz" ? "result" : "theme");
-        return;
-      case "conditions":
-        setPhase("nights");
+        setPhase("result");
         return;
       case "transport":
-        setPhase("conditions");
+        setPhase("nights");
         return;
       case "generated":
         setPhase("transport");
@@ -227,9 +212,7 @@ function MbtiCourseWizard() {
       <TopBar title={titleByPhase[phase]} showBack={phase !== "quiz"} onBack={handleBack} />
       {stepBarActive >= 0 ? <CourseStepBar active={stepBarActive} labels={GENERATE_STEP_LABELS} /> : null}
 
-      {phase === "intro" ? (
-        <IntroStep onStart={startQuiz} onSkipToTheme={() => setPhase("theme")} />
-      ) : null}
+      {phase === "intro" ? <IntroStep onStart={startQuiz} /> : null}
 
       {phase === "quiz" ? (
         <QuestionStep
@@ -246,31 +229,11 @@ function MbtiCourseWizard() {
       ) : null}
 
       {phase === "result" ? (
-        <ResultStep
-          code={mbtiCode}
-          onContinue={(chosenTheme) => goNightsFrom(chosenTheme, "quiz")}
-          onRetake={startQuiz}
-        />
-      ) : null}
-
-      {phase === "theme" ? (
-        <ThemePickerStep onPick={(chosenTheme) => goNightsFrom(chosenTheme, "theme")} />
+        <ResultStep code={mbtiCode} onContinue={(chosenTheme) => goNightsFrom(chosenTheme)} onRetake={startQuiz} />
       ) : null}
 
       {phase === "nights" ? (
-        <NightsStep theme={theme} nights={nights} onChangeNights={setNights} onNext={() => setPhase("conditions")} />
-      ) : null}
-
-      {phase === "conditions" ? (
-        <ConditionsStep
-          companion={companion}
-          budget={budget}
-          season={season}
-          onChangeCompanion={setCompanion}
-          onChangeBudget={setBudget}
-          onChangeSeason={setSeason}
-          onNext={() => setPhase("transport")}
-        />
+        <NightsStep theme={theme} nights={nights} onChangeNights={setNights} onNext={() => setPhase("transport")} />
       ) : null}
 
       {phase === "transport" ? (
@@ -286,8 +249,6 @@ function MbtiCourseWizard() {
         <GeneratedResultStep
           theme={theme}
           nights={nights}
-          companion={companion}
-          budget={budget}
           transport={transport}
           days={generatedDays}
           courseTitle={COURSE_TITLES[theme]}

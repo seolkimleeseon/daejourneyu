@@ -22,11 +22,13 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
   const showToast = useToastStore((state) => state.show);
 
   const course = useCourseStore((state) => state.courses.find((c) => c.id === params.courseId));
-  const schedule = useCourseStore((state) => state.schedules.find((s) => s.courseId === params.courseId));
-  const setSchedule = useCourseStore((state) => state.setSchedule);
+  const courseSchedules = useCourseStore((state) =>
+    state.schedules.filter((s) => s.courseId === params.courseId).sort((a, b) => a.date.localeCompare(b.date))
+  );
+  const addSchedule = useCourseStore((state) => state.addSchedule);
   const removeSchedule = useCourseStore((state) => state.removeSchedule);
 
-  const [date, setDate] = useState(schedule?.date ?? todayYmd());
+  const [date, setDate] = useState(todayYmd());
   const [saving, setSaving] = useState(false);
 
   if (!isLoggedIn) {
@@ -50,9 +52,9 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setSchedule(course.id, date);
+      await addSchedule(course.id, date);
       showToast("일정을 등록했어요");
-      router.back();
+      router.push(`/schedule?tab=calendar&date=${date}`);
     } catch {
       showToast("일정 등록에 실패했어요. 잠시 후 다시 시도해주세요");
     } finally {
@@ -60,12 +62,11 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
     }
   };
 
-  const handleRemove = async () => {
+  const handleRemove = async (scheduleId: string) => {
     setSaving(true);
     try {
-      await removeSchedule(course.id);
+      await removeSchedule(scheduleId);
       showToast("일정을 취소했어요");
-      router.back();
     } catch {
       showToast("일정 취소에 실패했어요. 잠시 후 다시 시도해주세요");
     } finally {
@@ -82,7 +83,31 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
           <span className="text-sm font-bold text-ink">{course.label}</span>
         </Card>
 
-        <label className="mt-4 block text-xs font-semibold text-ink-muted">언제 갈까요?</label>
+        {courseSchedules.length > 0 ? (
+          <div className="mt-4">
+            <div className="mb-1.5 text-xs font-semibold text-ink-muted">등록된 일정</div>
+            <div className="flex flex-col gap-1.5">
+              {courseSchedules.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between rounded-lg border border-line bg-card px-3 py-2 text-sm"
+                >
+                  <span className="text-ink">📅 {s.date}</span>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => handleRemove(s.id)}
+                    className="text-xs font-semibold text-accent-coral disabled:opacity-40"
+                  >
+                    취소
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <label className="mt-4 block text-xs font-semibold text-ink-muted">새 날짜에 추가할까요?</label>
         <input
           type="date"
           value={date}
@@ -91,15 +116,8 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
         />
 
         <Button className="mt-5" onClick={handleSave} disabled={saving}>
-          <span>📅</span>
-          {schedule ? "일정 수정하기" : "일정 등록하기"}
+          <span>📅</span>일정 등록하기
         </Button>
-
-        {schedule ? (
-          <Button variant="secondary" className="mt-2 text-accent-coral" onClick={handleRemove} disabled={saving}>
-            <span>🗑️</span>일정 취소
-          </Button>
-        ) : null}
       </div>
     </>
   );

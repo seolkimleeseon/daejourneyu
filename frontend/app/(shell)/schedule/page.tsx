@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { CourseCard } from "@/components/course/CourseCard";
@@ -19,8 +19,20 @@ type ScheduleSegment = "내 코스" | "캘린더";
 const VAULT_PREVIEW_COUNT = 5;
 
 export default function SchedulePage() {
+  return (
+    <Suspense fallback={null}>
+      <ScheduleTabContent />
+    </Suspense>
+  );
+}
+
+function ScheduleTabContent() {
   const router = useRouter();
-  const [segment, setSegment] = useState<ScheduleSegment>("내 코스");
+  const searchParams = useSearchParams();
+  const initialDate = searchParams.get("date") ?? undefined;
+  const [segment, setSegment] = useState<ScheduleSegment>(
+    searchParams.get("tab") === "calendar" ? "캘린더" : "내 코스"
+  );
   const storeCourses = useCourseStore((state) => state.courses);
   const hasSynced = useCourseStore((state) => state.hasSynced);
   const storeSchedules = useCourseStore((state) => state.schedules);
@@ -141,7 +153,7 @@ export default function SchedulePage() {
           )}
         </div>
       ) : (
-        <ScheduleCalendar />
+        <ScheduleCalendar initialDate={initialDate} />
       )}
     </>
   );
