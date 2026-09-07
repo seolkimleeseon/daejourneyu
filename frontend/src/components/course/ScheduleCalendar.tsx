@@ -35,14 +35,17 @@ function toYmd(year: number, month0: number, day: number) {
  * 내 여정(SCHEDULE) 탭의 '캘린더' 세그. 홈의 축제 캘린더(app/(shell)/home/festival)와 달 그리드
  * 구조는 동일하지만, 표시 대상이 축제가 아니라 내가 코스에 등록한 일정(CourseSchedule)이다.
  */
-export function ScheduleCalendar() {
+export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const router = useRouter();
   const courses = useCourseStore((state) => state.courses);
   const schedules = useCourseStore((state) => state.schedules);
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month0, setMonth0] = useState(today.getMonth());
-  const [selectedDate, setSelectedDate] = useState(toYmd(today.getFullYear(), today.getMonth(), today.getDate()));
+  const initial = initialDate ? new Date(initialDate) : today;
+  const [year, setYear] = useState(initial.getFullYear());
+  const [month0, setMonth0] = useState(initial.getMonth());
+  const [selectedDate, setSelectedDate] = useState(
+    initialDate ?? toYmd(today.getFullYear(), today.getMonth(), today.getDate())
+  );
 
   const cells = useMemo(() => {
     const firstWeekday = new Date(year, month0, 1).getDay();

@@ -8,10 +8,10 @@ export async function fetchSchedulesApi(): Promise<CourseSchedule[]> {
   return res.json();
 }
 
-/** 코스에 날짜를 붙여 등록(이미 등록돼 있으면 날짜만 교체). */
-export async function upsertScheduleApi(courseId: string, date: string): Promise<CourseSchedule> {
+/** 코스에 날짜를 붙여 새 일정으로 등록한다. 코스 1개가 여러 날짜에 등록될 수 있다. */
+export async function createScheduleApi(courseId: string, date: string): Promise<CourseSchedule> {
   const res = await authFetch(`/api/courses/${courseId}/schedule`, {
-    method: "PUT",
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ date }),
   });
@@ -19,8 +19,8 @@ export async function upsertScheduleApi(courseId: string, date: string): Promise
   return res.json();
 }
 
-/** 일정 취소. */
-export async function deleteScheduleApi(courseId: string): Promise<void> {
-  const res = await authFetch(`/api/courses/${courseId}/schedule`, { method: "DELETE" });
+/** 등록된 일정 하나를 취소한다(일정 id 기준). */
+export async function deleteScheduleApi(scheduleId: string): Promise<void> {
+  const res = await authFetch(`/api/courses/schedule/${scheduleId}`, { method: "DELETE" });
   if (!res.ok) throw new Error("일정 취소에 실패했어요");
 }
