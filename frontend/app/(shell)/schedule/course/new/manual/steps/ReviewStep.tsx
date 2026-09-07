@@ -46,7 +46,7 @@ export function ReviewStep({
       </div>
 
       {days.length > 1 ? (
-        <div className="mb-3 flex gap-1.5 overflow-x-auto pb-0.5">
+        <div className="mb-3 flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
           {days.map((day, index) => (
             <button
               key={index}
