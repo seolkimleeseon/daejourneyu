@@ -14,8 +14,6 @@ import type { Place, Transport } from "@/types";
 interface GeneratedResultStepProps {
   theme: CourseTheme;
   nights: number;
-  companion: string;
-  budget: string;
   transport: Transport;
   days: Place[][];
   courseTitle: string;
@@ -27,8 +25,6 @@ interface GeneratedResultStepProps {
 export function GeneratedResultStep({
   theme,
   nights,
-  companion,
-  budget,
   transport,
   days,
   courseTitle,
@@ -50,12 +46,6 @@ export function GeneratedResultStep({
             </Tag>
             <Tag tone="purple" className="cursor-default border border-line bg-card">
               {transport === "자차" ? "🚗" : "🚌"} {transport}
-            </Tag>
-            <Tag tone="purple" className="cursor-default border border-line bg-card">
-              👥 {companion}
-            </Tag>
-            <Tag tone="amber" className="cursor-default border border-line bg-card">
-              💰 {budget}
             </Tag>
             <Tag tone="brand" className="cursor-default border border-line bg-card">
               🐾 동반 가능
