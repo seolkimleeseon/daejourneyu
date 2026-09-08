@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { loadKakaoMap, type KakaoLatLng } from "@/lib/kakaoMap";
+import {
+  BRAND_MARKER_ANCHOR,
+  BRAND_MARKER_SIZE,
+  BRAND_MARKER_SRC,
+} from "@/lib/kakaoBrandMarker";
+import { ROUTE_PATH_STYLE } from "@/lib/kakaoRouteStyle";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import type { CourseStop } from "@/types";
 
@@ -64,18 +70,25 @@ export function CourseRouteMap({ stops }: CourseRouteMapProps) {
         el.innerHTML = "";
         const map = new maps.Map(el, { center: points[0], level: 6 });
 
+        // 로고 커스텀 핀 — 공용 <KakaoMap>과 동일한 브랜드 마커.
+        const markerImage = new maps.MarkerImage(
+          BRAND_MARKER_SRC,
+          new maps.Size(BRAND_MARKER_SIZE.width, BRAND_MARKER_SIZE.height),
+          { offset: new maps.Point(BRAND_MARKER_ANCHOR.x, BRAND_MARKER_ANCHOR.y) },
+        );
+
         points.forEach((position) => {
-          new maps.Marker({ position, map });
+          new maps.Marker({ position, map, image: markerImage });
         });
 
         if (points.length > 1) {
           new maps.Polyline({
             path: points,
             map,
-            strokeWeight: 3,
-            strokeColor: "#35AD90",
-            strokeOpacity: 0.8,
-            strokeStyle: "solid",
+            strokeWeight: ROUTE_PATH_STYLE.weight,
+            strokeColor: ROUTE_PATH_STYLE.color,
+            strokeOpacity: ROUTE_PATH_STYLE.opacity,
+            strokeStyle: ROUTE_PATH_STYLE.style,
           });
         }
 

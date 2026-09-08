@@ -28,6 +28,19 @@ export interface KakaoMarker {
   setMap(map: KakaoMap | null): void;
 }
 
+export interface KakaoSize {
+  readonly _w?: number;
+}
+
+export interface KakaoPoint {
+  readonly _x?: number;
+}
+
+/** new maps.MarkerImage(src, size, { offset })로 만든 커스텀 마커 이미지. */
+export interface KakaoMarkerImage {
+  readonly _src?: string;
+}
+
 export interface KakaoPolyline {
   setMap(map: KakaoMap | null): void;
 }
@@ -58,7 +71,19 @@ export interface KakaoMaps {
     container: HTMLElement,
     options: { center: KakaoLatLng; level?: number; draggable?: boolean },
   ) => KakaoMap;
-  Marker: new (options: { position: KakaoLatLng; map?: KakaoMap }) => KakaoMarker;
+  Marker: new (options: {
+    position: KakaoLatLng;
+    map?: KakaoMap;
+    image?: KakaoMarkerImage;
+    title?: string;
+  }) => KakaoMarker;
+  Size: new (width: number, height: number) => KakaoSize;
+  Point: new (x: number, y: number) => KakaoPoint;
+  MarkerImage: new (
+    src: string,
+    size: KakaoSize,
+    options?: { offset?: KakaoPoint },
+  ) => KakaoMarkerImage;
   Polyline: new (options: {
     path: KakaoLatLng[];
     map?: KakaoMap;

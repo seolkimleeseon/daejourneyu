@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadKakaoMap } from "@/lib/kakaoMap";
+import {
+  BRAND_MARKER_ANCHOR,
+  BRAND_MARKER_SIZE,
+  BRAND_MARKER_SRC,
+} from "@/lib/kakaoBrandMarker";
+import { ROUTE_PATH_STYLE } from "@/lib/kakaoRouteStyle";
 
 export interface KakaoMapMarker {
   id: string | number;
@@ -9,9 +15,6 @@ export interface KakaoMapMarker {
   lng: number;
   onClick?: () => void;
 }
-
-/** app/globals.css의 --color-brand(#35ad90)와 동일 — 캔버스로 그리는 선이라 CSS 토큰을 그대로 못 쓴다. */
-const DEFAULT_PATH_COLOR = "#35ad90";
 
 interface KakaoMapProps {
   center: { lat: number; lng: number };
@@ -26,9 +29,14 @@ interface KakaoMapProps {
   errorSlot?: ReactNode;
   /** true면 markers 배열 순서대로(예: 코스 1일차 방문 순서) 선을 이어 그린다. 마커 2개 미만이면 무시. */
   path?: boolean;
+  /** 동선 선 스타일. 기본값은 브랜드 파선(kakaoRouteStyle). 개별로만 덮어쓸 수 있다. */
   pathColor?: string;
   pathWeight?: number;
   pathOpacity?: number;
+  /** 카카오 strokeStyle 값(solid/dash/dot/longdash…). 기본 dash. */
+  pathStyle?: string;
+  /** true면 카카오 기본 핀을 쓴다. 기본값(false)은 로고 커스텀 핀. */
+  plainMarkers?: boolean;
 }
 
 type MapStatus = "loading" | "ready" | "error";
@@ -46,9 +54,11 @@ export function KakaoMap({
   loadingSlot,
   errorSlot,
   path = false,
-  pathColor = DEFAULT_PATH_COLOR,
-  pathWeight = 4,
-  pathOpacity = 0.85,
+  pathColor = ROUTE_PATH_STYLE.color,
+  pathWeight = ROUTE_PATH_STYLE.weight,
+  pathOpacity = ROUTE_PATH_STYLE.opacity,
+  pathStyle = ROUTE_PATH_STYLE.style,
+  plainMarkers = false,
 }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<MapStatus>("loading");
@@ -64,8 +74,22 @@ export function KakaoMap({
         el.innerHTML = "";
 
         const map = new maps.Map(el, { center: new maps.LatLng(center.lat, center.lng), level });
+
+        // 로고 커스텀 핀. SDK 로드마다 한 번만 만들어 모든 마커가 공유한다.
+        const markerImage = plainMarkers
+          ? undefined
+          : new maps.MarkerImage(
+              BRAND_MARKER_SRC,
+              new maps.Size(BRAND_MARKER_SIZE.width, BRAND_MARKER_SIZE.height),
+              { offset: new maps.Point(BRAND_MARKER_ANCHOR.x, BRAND_MARKER_ANCHOR.y) },
+            );
+
         markers.forEach((marker) => {
-          const kakaoMarker = new maps.Marker({ position: new maps.LatLng(marker.lat, marker.lng), map });
+          const kakaoMarker = new maps.Marker({
+            position: new maps.LatLng(marker.lat, marker.lng),
+            map,
+            image: markerImage,
+          });
           if (marker.onClick) {
             maps.event.addListener(kakaoMarker, "click", marker.onClick);
           }
@@ -79,7 +103,7 @@ export function KakaoMap({
             strokeWeight: pathWeight,
             strokeColor: pathColor,
             strokeOpacity: pathOpacity,
-            strokeStyle: "solid",
+            strokeStyle: pathStyle,
           });
         }
 
@@ -94,7 +118,18 @@ export function KakaoMap({
       if (containerRef.current) containerRef.current.innerHTML = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [center.lat, center.lng, level, markers, path, pathColor, pathWeight, pathOpacity]);
+  }, [
+    center.lat,
+    center.lng,
+    level,
+    markers,
+    path,
+    pathColor,
+    pathWeight,
+    pathOpacity,
+    pathStyle,
+    plainMarkers,
+  ]);
 
   if (status === "error") {
     return <>{errorSlot}</>;
