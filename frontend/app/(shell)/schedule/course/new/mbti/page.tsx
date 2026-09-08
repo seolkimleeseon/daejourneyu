@@ -8,7 +8,6 @@ import { IntroStep } from "./steps/IntroStep";
 import { QuestionStep } from "./steps/QuestionStep";
 import { ResultStep } from "./steps/ResultStep";
 import { NightsStep } from "./steps/NightsStep";
-import { TransportStep } from "./steps/TransportStep";
 import { GeneratedResultStep } from "./steps/GeneratedResultStep";
 import { LoginModal } from "@/components/my/LoginModal";
 import { MBTI_QUESTIONS, resolveMbtiType, scoreAnswers, topTheme, type CourseTheme, type MbtiAnswer } from "@/lib/mbti";
@@ -20,11 +19,13 @@ import { usePetStore } from "@/stores/usePetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { ensureCategoryMinimum, type PickablePlace } from "@/lib/petTourMapper";
 import { mockPlaces } from "@/mocks";
-import type { DaejeonDistrict, Place, PlaceCategory, Transport } from "@/types";
+import type { DaejeonDistrict, Place, PlaceCategory } from "@/types";
 
-type Phase = "intro" | "quiz" | "result" | "nights" | "transport" | "generated";
+type Phase = "intro" | "quiz" | "result" | "nights" | "generated";
 
-const GENERATE_STEP_LABELS = ["기간", "이동", "코스"] as const;
+const GENERATE_STEP_LABELS = ["기간", "코스"] as const;
+/** 직접짓기 위저드와 동일하게 이동수단 선택 단계를 없애고 자차로 고정한다. */
+const DEFAULT_TRANSPORT = "자차" as const;
 const MIN_PER_CATEGORY = 3;
 const COURSE_TITLES: Record<CourseTheme, string> = {
   산책: "청량 힐링 산책 데이",
@@ -177,7 +178,6 @@ function MbtiCourseWizard() {
   const [mbtiCode, setMbtiCode] = useState(quickStart ? savedMbtiCode! : "");
   const [theme, setTheme] = useState<CourseTheme>("산책");
   const [nights, setNights] = useState(0);
-  const [transport, setTransport] = useState<Transport>("자차");
   const [generatedDays, setGeneratedDays] = useState<Place[][]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
 
@@ -256,7 +256,7 @@ function MbtiCourseWizard() {
     addCourse({
       label: COURSE_TITLES[theme],
       nights,
-      transport,
+      transport: DEFAULT_TRANSPORT,
       source: "ai",
       shared: false,
       days: generatedDays.map((day) =>
@@ -275,14 +275,13 @@ function MbtiCourseWizard() {
     router.push("/schedule");
   };
 
-  const stepBarActive = ["nights", "transport", "generated"].indexOf(phase);
+  const stepBarActive = ["nights", "generated"].indexOf(phase);
 
   const titleByPhase: Record<Phase, string> = {
     intro: "반려동물 여행 MBTI",
     quiz: "반려동물 여행 MBTI",
     result: "테스트 결과",
     nights: `${theme}형 코스`,
-    transport: `${theme}형 코스`,
     generated: `${theme}형 코스`,
   };
 
@@ -297,11 +296,8 @@ function MbtiCourseWizard() {
       case "nights":
         setPhase("result");
         return;
-      case "transport":
-        setPhase("nights");
-        return;
       case "generated":
-        setPhase("transport");
+        setPhase("nights");
         return;
       default:
         router.back();
@@ -334,23 +330,14 @@ function MbtiCourseWizard() {
       ) : null}
 
       {phase === "nights" ? (
-        <NightsStep theme={theme} nights={nights} onChangeNights={setNights} onNext={() => setPhase("transport")} />
-      ) : null}
-
-      {phase === "transport" ? (
-        <TransportStep
-          onPick={(picked) => {
-            setTransport(picked);
-            handleGenerate();
-          }}
-        />
+        <NightsStep theme={theme} nights={nights} onChangeNights={setNights} onNext={handleGenerate} />
       ) : null}
 
       {phase === "generated" ? (
         <GeneratedResultStep
           theme={theme}
           nights={nights}
-          transport={transport}
+          transport={DEFAULT_TRANSPORT}
           days={generatedDays}
           courseTitle={COURSE_TITLES[theme]}
           onReorderDay={handleReorderDay}
