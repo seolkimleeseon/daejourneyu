@@ -623,7 +623,7 @@ const BADGE_DEFS: BadgeDef[] = [
     rarity: 1,
     description: "성향 완료",
     how: "반려동물 MBTI 퀴즈를 끝까지 풀어보세요",
-    href: "/onboarding/mbti-intro",
+    href: "/schedule/course/new/mbti",
     tiers: [1],
     measure: (facts) => (facts.activePet?.mbti ? 1 : 0),
   },
