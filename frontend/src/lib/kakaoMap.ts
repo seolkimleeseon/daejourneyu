@@ -32,6 +32,10 @@ export interface KakaoPolyline {
   setMap(map: KakaoMap | null): void;
 }
 
+interface KakaoEvent {
+  addListener(target: KakaoMarker, type: "click", handler: () => void): void;
+}
+
 export interface KakaoPlaceSearchResult {
   /** 경도(x) */
   x: string;
@@ -57,12 +61,13 @@ export interface KakaoMaps {
   Marker: new (options: { position: KakaoLatLng; map?: KakaoMap }) => KakaoMarker;
   Polyline: new (options: {
     path: KakaoLatLng[];
+    map?: KakaoMap;
     strokeWeight?: number;
     strokeColor?: string;
     strokeOpacity?: number;
     strokeStyle?: string;
-    map?: KakaoMap;
   }) => KakaoPolyline;
+  event: KakaoEvent;
   services: {
     Places: new () => KakaoPlacesService;
     Status: { OK: string };

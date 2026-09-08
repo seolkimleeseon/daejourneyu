@@ -10,13 +10,16 @@ const router = Router();
 // DB 스냅샷이 아니라 API 응답 자체를 잠깐 담아두는 것뿐이라 "그때그때 실시간 호출" 요건은 유지된다.
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-// GET /api/places?district=서구&category=산책 — 공공데이터 API를 실시간 호출해 만든 목록에서 필터링한다.
+// GET /api/places?district=서구&category=산책&source=petacp — 공공데이터 API를 실시간 호출해 만든
+// 목록에서 필터링한다. source는 placesAggregator가 붙이는 출처 태그(예: "petacp"=문체부 반려동물
+// 동반가능 시설 현황)로, 특정 소스 하나만 골라 보여줘야 하는 화면(홈 혼잡도 랜덤 추천 등)에서 쓴다.
 router.get("/", async (req, res) => {
-  const { district, category } = req.query;
+  const { district, category, source } = req.query;
   const places = await cached("places:all", CACHE_TTL_MS, fetchAggregatedPlaces);
   const filtered = places
     .filter((place) => (typeof district === "string" ? place.district === district : true))
     .filter((place) => (typeof category === "string" ? place.category === category : true))
+    .filter((place) => (typeof source === "string" ? place.source === source : true))
     .sort((a, b) => a.sourceTier - b.sourceTier || a.name.localeCompare(b.name));
   res.json(filtered);
 });
