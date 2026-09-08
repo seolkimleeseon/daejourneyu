@@ -1,9 +1,9 @@
 /**
  * 관광공사·대전관광공사·식약처·대전시·고캠핑·문체부 등 여러 공공데이터 소스를 그때그때 실시간으로
  * 호출해 정규화·dedupe한 장소 목록을 만든다. `backend/routes/places.ts`가 요청마다(짧은 캐시를
- * 두고) 이 함수를 불러 쓴다 — 예전엔 이 결과를 `npm run sync:places`로 DB에 미리 적재해두고
- * `/api/places`가 그 스냅샷만 읽었는데(공모전 규정상 "그때그때 API 호출"이어야 해서), 그 병합
- * 로직을 스크립트에서 이 파일로 옮겨와 라우터와 스크립트(수동 백업용으로 유지)가 같이 쓴다.
+ * 두고) 이 함수를 불러 쓴다. 예전엔 이 결과를 DB(Prisma Place 테이블)에 미리 적재해두고
+ * `/api/places`가 그 스냅샷만 읽었는데, 공모전 규정상 "원천 데이터를 가공해 DB에 저장"하지 말고
+ * "그때그때 실시간 API 호출"이어야 해서 그 방식(및 수동 적재 스크립트)을 완전히 없앴다.
  */
 import { fetchDaejeonPetTourSpots } from "./petTourSpots";
 import { fetchDaejeonPetFacilities } from "./petFacilities";

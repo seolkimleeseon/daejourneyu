@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
@@ -10,10 +10,18 @@ import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { useKakaoPlacesMulti, type KakaoSearchTarget } from "@/hooks/useKakaoPlaces";
 import type { PickablePlace } from "@/lib/petTourMapper";
 import { CATEGORIES, CATEGORY_ICON, DISTRICTS } from "@/lib/placeFilters";
+import { haversine } from "@/lib/haversine";
 import type { DaejeonDistrict, PlaceCategory } from "@/types";
+
+type SortMode = "기본" | "이름순" | "거리순";
+const SORT_MODES: SortMode[] = ["기본", "이름순", "거리순"];
 
 /** MIN_RESULTS_BEFORE_RELAX 미만이면 구 필터를 풀거나 카카오맵으로 더 찾아본다 */
 const MIN_RESULTS_BEFORE_RELAX = 4;
+
+/** 실시간 API가 한 번에 900곳 넘게 내려줄 때가 있어 한 화면에 다 그리면 느려진다 —
+ * "동반 인증" 결과는 20개씩 나눠서 필요할 때마다 더 불러온다("더 보기"). */
+const PAGE_SIZE = 20;
 
 // 카카오 키워드 검색은 업체에 실제로 태그된 문구만 매칭한다(리뷰 전문 검색이 아니다) — 그래서
 // 카테고리마다 실제로 결과가 나오는 문구가 다르다(직접 카카오맵에서 검색해 확인함):
@@ -38,13 +46,25 @@ function getTrustTier(place: PickablePlace): number {
   return place.sourceTier ?? 2;
 }
 
-/** 신뢰도 티어 우선 → 같은 티어 안에서는 사진 있는 카드 우선으로 정렬한다. */
+/** "기본" 정렬 — 동반 인증 소스 우선, 같은 소스 안에서는 사진 있는 카드 우선. */
 function sortByQuality(list: PickablePlace[]): PickablePlace[] {
   return [...list].sort((a, b) => {
     const tierDiff = getTrustTier(a) - getTrustTier(b);
     if (tierDiff !== 0) return tierDiff;
     return (b.imageUrl ? 1 : 0) - (a.imageUrl ? 1 : 0);
   });
+}
+
+/**
+ * 사용자가 고른 정렬 기준을 그대로 적용한다 — "신뢰도"처럼 설명이 필요한 내부 로직 대신,
+ * 사용자가 누른 게 곧 기준이 되게 한다. "거리순"인데 위치 권한이 없으면 "기본"으로 되돌아간다.
+ */
+function applySortMode(list: PickablePlace[], mode: SortMode, coords: { lat: number; lng: number } | null): PickablePlace[] {
+  if (mode === "이름순") return [...list].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  if (mode === "거리순" && coords) {
+    return [...list].sort((a, b) => haversine(coords, a) - haversine(coords, b));
+  }
+  return sortByQuality(list);
 }
 
 function PickablePlaceCard({
@@ -114,6 +134,20 @@ export function PlacePickerSheet() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<PlaceCategory | "전체">("전체");
   const [district, setDistrict] = useState<DaejeonDistrict | "전체">("전체");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [sortMode, setSortMode] = useState<SortMode>("기본");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
+
+  // "거리순"을 처음 고를 때만 위치 권한을 물어본다 — 매번 열 때마다 물어보면 성가시다.
+  useEffect(() => {
+    if (sortMode !== "거리순" || coords || locationDenied || typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setLocationDenied(true),
+      { timeout: 5000, maximumAge: 10 * 60 * 1000 }
+    );
+  }, [sortMode, coords, locationDenied]);
   // Place 테이블(backend/scripts/syncPlaces.ts가 9개 공공데이터 소스+문체부 CSV를 정규화·dedupe해 채움)
   // 하나만 부르면 된다 — 예전엔 소스별로 훅을 따로 불러 여기서 이름 기준으로 병합했다(커밋 0b5c8ac).
   const { data: fetchedPlaces, isLoading, isError } = usePickablePlaces(isOpen);
@@ -129,8 +163,14 @@ export function PlacePickerSheet() {
       const matchesDistrict = district === "전체" || place.district === district;
       return matchesCategory && matchesDistrict && matchesQuery(place, q);
     });
-    return sortByQuality(matched);
-  }, [places, query, category, district]);
+    return applySortMode(matched, sortMode, coords);
+  }, [places, query, category, district, sortMode, coords]);
+
+  // 검색어·카테고리·구·정렬을 바꾸면 이전 필터의 "더 보기" 진행분은 의미가 없으니 20개로 되돌린다.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [query, category, district, sortMode]);
+  const visibleStrict = strict.slice(0, visibleCount);
 
   // 카테고리+구를 같이 걸면 실데이터가 적어 결과가 텅 빌 수 있다 — 구 조건만 풀어서 후보를 더 보여준다.
   const relaxed = useMemo(() => {
@@ -142,8 +182,8 @@ export function PlacePickerSheet() {
       const matchesCategory = category === "전체" || place.category === category;
       return matchesCategory && matchesQuery(place, q);
     });
-    return sortByQuality(matched);
-  }, [places, query, category, district, strict]);
+    return applySortMode(matched, sortMode, coords);
+  }, [places, query, category, district, strict, sortMode, coords]);
 
   // 정부 데이터로도 여전히 빈약하면 카카오맵 키워드 검색으로 보완한다.
   // "전체" 카테고리로 볼 때 strict.length(5개 카테고리 합산)만 보면, 산책(공원) 하나만 많아도
@@ -188,8 +228,8 @@ export function PlacePickerSheet() {
     const q = query.trim();
     const knownNames = new Set([...strict, ...relaxed].map((place) => place.name));
     const matched = kakaoPlaces.filter((place) => !knownNames.has(place.name) && matchesQuery(place, q));
-    return sortByQuality(matched); // 카카오 단일 티어지만 사진 있는 카드를 앞으로 정렬
-  }, [kakaoPlaces, strict, relaxed, query]);
+    return applySortMode(matched, sortMode, coords);
+  }, [kakaoPlaces, strict, relaxed, query, sortMode, coords]);
 
   return (
     <BottomSheet
@@ -233,6 +273,29 @@ export function PlacePickerSheet() {
           </Tag>
         ))}
       </div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold text-ink-muted">정렬</span>
+        <div className="flex flex-1 rounded-full bg-surface p-0.5">
+          {SORT_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setSortMode(mode)}
+              className={cn(
+                "flex-1 rounded-full py-1.5 text-[11px] font-semibold transition-colors",
+                sortMode === mode ? "bg-card text-brand-700 shadow-sm" : "text-ink-muted"
+              )}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+      {sortMode === "거리순" && !coords ? (
+        <div className="mb-2 text-[10px] text-ink-muted">
+          {locationDenied ? "📍 위치 접근이 안 돼서 기본순으로 보여드려요" : "📍 위치 확인 중..."}
+        </div>
+      ) : null}
 
       <div className="mb-2 text-[10px] text-ink-muted">
         {isLoading ? (
@@ -249,8 +312,8 @@ export function PlacePickerSheet() {
       </div>
 
       <div className="mb-3 grid grid-cols-2 gap-2">
-        {strict.length ? (
-          strict.map((place) => (
+        {visibleStrict.length ? (
+          visibleStrict.map((place) => (
             <PickablePlaceCard
               key={place.id}
               place={place}
@@ -264,6 +327,16 @@ export function PlacePickerSheet() {
           </div>
         )}
       </div>
+
+      {strict.length > visibleStrict.length ? (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+          className="mb-3 w-full rounded-lg border border-line bg-surface py-2.5 text-xs font-semibold text-ink-muted"
+        >
+          더 보기 · {strict.length - visibleStrict.length}곳 남음
+        </button>
+      ) : null}
 
       {relaxed.length ? (
         <>
