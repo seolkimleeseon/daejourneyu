@@ -20,7 +20,7 @@ export default function MapPage() {
 
   useEffect(() => {
     if (step !== "traveling") return;
-    const timer = setTimeout(() => setStep("list"), 1150);
+    const timer = setTimeout(() => setStep("list"), 1500);
     return () => clearTimeout(timer);
   }, [step]);
 
