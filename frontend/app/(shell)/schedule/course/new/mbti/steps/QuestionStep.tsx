@@ -1,6 +1,7 @@
 "use client";
 
 import { QuestionCard } from "@/components/mbti/QuestionCard";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import type { MbtiAnswer, MbtiQuestion } from "@/lib/mbti";
 
 interface QuestionStepProps {
@@ -25,17 +26,17 @@ export function QuestionStep({
   canGoBack,
 }: QuestionStepProps) {
   return (
-    <div className="px-5 pb-6 pt-2">
-      <div className="mb-4 flex gap-1">
+    <div className="px-5 pb-6 pt-4">
+      <div className="mb-6 flex items-center justify-between px-1">
         {Array.from({ length: total }, (_, i) => (
-          <div key={i} className={`h-1.5 flex-1 rounded ${i < index ? "bg-brand" : "bg-line-strong"}`} />
+          <Emoji3D key={i} emoji="🐾" size={20} shadow={false} className={i < index ? "opacity-100" : "opacity-20"} />
         ))}
       </div>
-      <div className="mb-3 text-center text-xs font-bold text-ink-muted">
+      <div className="mb-4 text-center text-xs font-bold text-ink-muted">
         질문 {index + 1} / {total}
       </div>
       <QuestionCard question={question} selected={selected} onSelect={onSelect} />
-      <div className="mt-2 flex justify-between">
+      <div className="mt-5 flex justify-between">
         {canGoBack ? (
           <button type="button" onClick={onBack} className="min-h-10 px-1.5 text-xs text-ink-muted">
             ‹ 이전 질문
