@@ -48,10 +48,14 @@ export function ResultShareActions({
   return (
     <div className={className ?? "mt-2 flex gap-2"}>
       <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleSaveImage} disabled={isSaving}>
-        <span className="text-lg">{isSaving ? "⏳" : "🖼️"}</span> {isSaving ? "저장 중..." : "이미지 저장"}
+        <span className="inline-flex w-5 shrink-0 justify-center text-lg leading-none">
+          {isSaving ? "⏳" : "🖼️"}
+        </span>
+        <span>{isSaving ? "저장 중..." : "이미지 저장"}</span>
       </Button>
       <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleKakaoShare}>
-        <span className="text-lg">💬</span> 카카오톡 공유
+        <span className="inline-flex w-5 shrink-0 justify-center text-lg leading-none">💬</span>
+        <span>카카오톡 공유</span>
       </Button>
     </div>
   );

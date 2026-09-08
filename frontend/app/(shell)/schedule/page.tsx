@@ -52,7 +52,7 @@ function ScheduleTabContent() {
   return (
     <>
       <TopBar title="내 여정" />
-      <div className="flex rounded-xl bg-line p-1 mx-4 mt-3">
+      <div className="flex rounded-xl bg-line p-1 mx-4 mt-4">
         {(["내 코스", "캘린더"] as const).map((tab) => (
           <button
             key={tab}
@@ -60,8 +60,8 @@ function ScheduleTabContent() {
             onClick={() => setSegment(tab)}
             className={
               segment === tab
-                ? "flex-1 rounded-lg bg-card py-2 text-center text-xs font-semibold text-ink shadow-sm"
-                : "flex-1 rounded-lg py-2 text-center text-xs font-semibold text-ink-muted"
+                ? "flex-1 rounded-lg bg-card py-2.5 text-center text-xs font-semibold text-ink shadow-sm"
+                : "flex-1 rounded-lg py-2.5 text-center text-xs font-semibold text-ink-muted"
             }
           >
             {tab}
@@ -70,9 +70,9 @@ function ScheduleTabContent() {
       </div>
 
       {segment === "내 코스" ? (
-        <div className="px-4 pb-6 pt-4">
-          <div className="mb-1 px-1 text-xs font-bold text-ink-muted">코스 만들기</div>
-          <div className="mb-5 grid grid-cols-3 gap-2">
+        <div className="px-4 pb-6 pt-5">
+          <div className="mb-2 px-1 text-xs font-bold text-ink-muted">코스 만들기</div>
+          <div className="mb-6 grid grid-cols-3 gap-2.5">
             <TileButton
               icon3D
               variant="filled"
@@ -110,7 +110,7 @@ function ScheduleTabContent() {
             <div className="py-10 text-center text-xs text-ink-muted">코스 보관함을 불러오는 중…</div>
           ) : (
             <>
-              <div className="mb-1 flex items-center justify-between px-1">
+              <div className="mb-2.5 flex items-center justify-between px-1">
                 <div className="text-xs font-bold text-ink-muted">코스 보관함</div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-ink-muted">{courses.length}개</span>
