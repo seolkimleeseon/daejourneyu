@@ -16,7 +16,7 @@ export function TopBar({ title, showBack, rightSlot, onBack }: TopBarProps) {
   const router = useRouter();
 
   return (
-    <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center justify-between border-b border-line bg-surface px-3.5">
+    <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-line bg-surface px-4">
       <button
         type="button"
         onClick={() => (onBack ? onBack() : router.back())}
@@ -24,7 +24,7 @@ export function TopBar({ title, showBack, rightSlot, onBack }: TopBarProps) {
       >
         ‹ 뒤로
       </button>
-      <span className="text-sm font-bold text-ink">{title}</span>
+      <span className="text-base font-bold text-ink">{title}</span>
       <span className="flex min-w-9 justify-end text-xs text-brand">{rightSlot}</span>
     </div>
   );

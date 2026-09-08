@@ -78,7 +78,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex justify-around border-t border-line bg-card pb-[max(8px,env(safe-area-inset-bottom))] pt-2">
+    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex w-full max-w-[480px] justify-around border-t border-line bg-card pb-[max(8px,env(safe-area-inset-bottom))] pt-2">
       {TABS.map((tab) => {
         const active = pathname === tab.href || pathname?.startsWith(`${tab.href}/`);
         return (
