@@ -15,17 +15,21 @@ import { MyPostCard } from "@/components/feed/MyPostCard";
 import { ArticleCard } from "@/components/feed/ArticleCard";
 import { FeedPager } from "@/components/feed/FeedPager";
 import { FeedEmptyState } from "@/components/feed/FeedEmptyState";
+import { InfiniteScrollSentinel } from "@/components/feed/InfiniteScrollSentinel";
 import { LoginModal } from "@/components/my/LoginModal";
-import { usePosts, useDeletePost } from "@/hooks/usePosts";
+import {
+  useFeedPosts,
+  useHottestPost,
+  useMyPosts,
+  useDeletePost,
+} from "@/hooks/usePosts";
 import { useArticles } from "@/hooks/useArticles";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import {
-  searchPosts,
-  sortPosts,
   sortArticles,
-  findHottestPost,
   paginate,
   type PostSortMode,
   type ArticleSortMode,
@@ -50,7 +54,6 @@ export default function FeedPage() {
   const activePet = usePetStore((state) => state.activePet());
   const showToast = useToastStore((state) => state.show);
 
-  const { data: posts, isLoading: postsLoading } = usePosts();
   const deletePost = useDeletePost();
   const { data: articles = [], isLoading: articlesLoading } = useArticles();
 
@@ -63,31 +66,36 @@ export default function FeedPage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  const keyword = query.trim();
+  // 한 글자마다 요청이 나가지 않게 검색어만 늦춰 보낸다. 화면 입력값은 그대로 즉시 반영된다.
+  const keyword = useDebouncedValue(query.trim(), 300);
   const searching = keyword.length > 0;
 
-  /** 검색 중에는 유형 필터를 무시하고 항상 전체 코스를 훑는다(프로토타입 jyFeedListHtml과 동일). */
-  const coursePosts = useMemo(() => {
-    const scoped = searching
-      ? searchPosts(posts, keyword)
-      : sameTypeOnly
-        ? posts.filter((post) => post.sameTypeMatch)
-        : posts;
-    return sortPosts(scoped, postSort);
-  }, [posts, keyword, searching, sameTypeOnly, postSort]);
+  /**
+   * 검색·유형 필터·정렬은 전부 서버가 한다. 커서로 이어 받으므로 화면은 받은 만큼만 들고 있다.
+   * 검색 중에 유형 필터를 무시하는 규칙(프로토타입 jyFeedListHtml과 동일)도 서버가 지킨다.
+   */
+  const {
+    data: coursePosts,
+    total: courseTotal,
+    isLoading: postsLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useFeedPosts({ keyword, sort: postSort, sameTypeOnly, enabled: segment === "course" });
 
-  /** 배너는 필터·검색과 무관하게 전체에서 가장 많이 담긴 코스를 보여준다. */
-  const hottestPost = useMemo(() => findHottestPost(posts), [posts]);
-  const showHotBanner = !searching && postSort === "saves" && hottestPost !== null;
+  /** 배너는 필터·검색과 무관하게 전체에서 가장 많이 담긴 코스라, 목록 페이지가 아니라 따로 받아온다. */
+  const showHotBanner = !searching && postSort === "saves";
+  const { data: hottestPost } = useHottestPost(segment === "course" && showHotBanner);
 
   const sortedArticles = useMemo(
     () => sortArticles(articles, articleSort),
     [articles, articleSort]
   );
 
-  const myPosts = useMemo(
-    () => sortPosts(posts.filter((post) => post.isMine), postSort),
-    [posts, postSort]
+  /** 내 글은 개수가 적어 한 번에 받고, 페이지 나누기는 지금처럼 화면에서 한다. */
+  const { data: myPosts, isLoading: myPostsLoading } = useMyPosts(
+    postSort,
+    segment === "mine" && isLoggedIn
   );
   const myPage = paginate(myPosts, myPostPage, MY_POSTS_PER_PAGE);
 
@@ -143,11 +151,11 @@ export default function FeedPage() {
                 {searching ? (
                   <p className="px-0.5 text-[11px] text-ink-muted">
                     🔍 전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
-                    {coursePosts.length}개
+                    {courseTotal}개
                   </p>
                 ) : (
                   <>
-                    {showHotBanner ? <HotPostCard post={hottestPost} /> : null}
+                    {showHotBanner && hottestPost ? <HotPostCard post={hottestPost} /> : null}
                     <SameTypeFilter
                       active={sameTypeOnly}
                       petTypeName={activePet?.mbti?.name ?? null}
@@ -157,7 +165,16 @@ export default function FeedPage() {
                 )}
 
                 {coursePosts.length > 0 ? (
-                  coursePosts.map((post) => <PostCard key={post.id} post={post} />)
+                  <>
+                    {coursePosts.map((post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))}
+                    <InfiniteScrollSentinel
+                      hasMore={hasNextPage}
+                      loading={isFetchingNextPage}
+                      onLoadMore={fetchNextPage}
+                    />
+                  </>
                 ) : (
                   <FeedEmptyState
                     emoji={searching ? "🔍" : "🧭"}
@@ -200,7 +217,9 @@ export default function FeedPage() {
               ✎ 새 코스 자랑하기
             </Link>
 
-            {myPosts.length > 0 ? (
+            {myPostsLoading ? (
+              <LoadingState />
+            ) : myPosts.length > 0 ? (
               <>
                 <div className="px-0.5 text-[10px] text-ink-muted">
                   총 <b className="text-ink">{myPosts.length}</b>개 · {myPage.page + 1}/

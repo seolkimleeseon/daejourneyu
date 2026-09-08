@@ -7,7 +7,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { Button } from "@/components/ui/Button";
 import { FeedEmptyState } from "@/components/feed/FeedEmptyState";
 import { ShareCourseSummary } from "@/components/feed/ShareCourseSummary";
-import { usePosts, useCreatePost } from "@/hooks/usePosts";
+import { useMyPosts, useCreatePost } from "@/hooks/usePosts";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
@@ -47,7 +47,8 @@ function CourseShareToFeedPageInner() {
   const activePet = usePetStore((state) => state.activePet());
   const createPost = useCreatePost();
   const showToast = useToastStore((state) => state.show);
-  const { data: posts } = usePosts();
+  // 이미 자랑한 코스인지 보는 용도라 내 글만 있으면 된다.
+  const { data: posts } = useMyPosts("recent", isLoggedIn);
 
   const [text, setText] = useState("");
 

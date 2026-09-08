@@ -30,6 +30,8 @@ type FeedPost = {
   liked: boolean;
   saves: number;
   saved: boolean;
+  /** ISO 문자열. 최신순 정렬을 서버가 하므로 화면은 표시용으로만 쓴다. */
+  createdAt: string;
 };
 
 const postWithRelations = {
@@ -63,6 +65,7 @@ function toFeedPost(row: PostRow, viewerId: string | undefined): FeedPost {
     liked: false,
     saves: row.saves,
     saved: false,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 
@@ -106,13 +109,105 @@ function validatePostInput(body: unknown): body is PostCreateInput {
 
 const router = Router();
 
-// GET /api/posts — 둘러보기 목록. 비로그인도 볼 수 있고, 로그인했으면 내 글에 isMine이 붙는다.
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
+
+function parseLimit(raw: unknown): number {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_LIMIT;
+  return Math.min(Math.floor(parsed), MAX_LIMIT);
+}
+
+function firstQueryValue(raw: unknown): string | undefined {
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw) && typeof raw[0] === "string") return raw[0];
+  return undefined;
+}
+
+/**
+ * 검색 범위는 프론트가 쓰던 searchPosts와 맞춘다 — 코스 이름·한마디·작성자·태그·방문 장소명.
+ * 태그만 부분일치가 아니라 정확일치인데, 태그 값이 "당일치기"·"자차"·"유성구"처럼 고정 어휘라
+ * 부분일치가 필요한 자치구 검색은 stops.district가 대신 받는다(Postgres는 String[] 부분검색을 못 한다).
+ */
+function buildSearchWhere(keyword: string): Prisma.PostWhereInput {
+  return {
+    OR: [
+      { caption: { contains: keyword, mode: "insensitive" } },
+      { text: { contains: keyword, mode: "insensitive" } },
+      { authorName: { contains: keyword, mode: "insensitive" } },
+      { tags: { has: keyword } },
+      { stops: { some: { name: { contains: keyword, mode: "insensitive" } } } },
+      { stops: { some: { district: { contains: keyword, mode: "insensitive" } } } },
+    ],
+  };
+}
+
+/**
+ * GET /api/posts — 둘러보기 목록. 비로그인도 볼 수 있고, 로그인했으면 내 글에 isMine이 붙는다.
+ *
+ * 검색·유형 필터·정렬을 전부 여기서 처리한다. 예전에는 전체를 내려주고 화면이 걸렀는데,
+ * 글이 늘면 그대로 무너지는 구조라 서버로 옮겼다.
+ *
+ * 페이지네이션은 offset이 아니라 **커서**다 — 담긴순 목록은 순서가 계속 바뀌어서 offset을 쓰면
+ * 스크롤 도중 같은 글이 두 번 나오거나 건너뛰어진다. 커서는 마지막 항목의 id이고,
+ * 정렬 키에 항상 id를 섞어 순서를 확정한다(동점이어도 페이지 경계가 흔들리지 않게).
+ */
 router.get("/", optionalAuth, async (req, res) => {
+  const keyword = firstQueryValue(req.query.q)?.trim();
+  const sameTypeName = firstQueryValue(req.query.sameType)?.trim();
+  const sort = firstQueryValue(req.query.sort) === "recent" ? "recent" : "saves";
+  const mine = firstQueryValue(req.query.mine) === "true";
+  const cursor = firstQueryValue(req.query.cursor);
+  const limit = parseLimit(firstQueryValue(req.query.limit));
+
+  if (mine && !req.userId) {
+    return res.status(401).json({ error: "로그인이 필요해요" });
+  }
+
+  const filters: Prisma.PostWhereInput[] = [];
+  if (mine) filters.push({ userId: req.userId! });
+  if (keyword) filters.push(buildSearchWhere(keyword));
+  // 검색 중에는 유형 필터를 무시한다 — 검색은 항상 전체 코스를 훑는다(프로토타입 동작 유지).
+  if (!keyword && sameTypeName) filters.push({ petTypeName: sameTypeName });
+
+  // 커서 글이 지워졌으면 Prisma가 던지므로, 조용히 목록의 끝으로 처리한다.
+  if (cursor) {
+    const alive = await prisma.post.findUnique({ where: { id: cursor }, select: { id: true } });
+    if (!alive) return res.json({ items: [], nextCursor: null });
+  }
+
+  const where = filters.length > 0 ? { AND: filters } : undefined;
+
   const rows = await prisma.post.findMany({
-    orderBy: { createdAt: "desc" },
+    where,
+    orderBy:
+      sort === "recent"
+        ? [{ createdAt: "desc" }, { id: "desc" }]
+        : [{ saves: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    take: limit,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: postWithRelations,
   });
-  res.json(rows.map((row) => toFeedPost(row, req.userId)));
+
+  // 마지막 페이지인지는 "요청한 만큼 채워 왔는가"로 판단한다. 딱 떨어지면 다음 요청이 빈 배열로 끝난다.
+  const nextCursor = rows.length === limit ? rows[rows.length - 1]!.id : null;
+  // 전체 건수는 첫 페이지에서만 센다 — 검색 결과 개수를 보여주는 용도라 이어 받을 때는 필요 없다.
+  const total = cursor ? undefined : await prisma.post.count({ where });
+
+  res.json({ items: rows.map((row) => toFeedPost(row, req.userId)), nextCursor, total });
+});
+
+/**
+ * GET /api/posts/:id — 게시물 하나. 목록이 페이지 단위로 바뀌면서 상세 화면이 목록 캐시에서
+ * 글을 못 찾는 경우가 생기므로(딥링크·뒤쪽 페이지) 단건 조회가 필요해졌다.
+ */
+router.get("/:id", optionalAuth, async (req, res) => {
+  const row = await prisma.post.findUnique({
+    where: { id: req.params.id },
+    include: postWithRelations,
+  });
+  if (!row) return res.status(404).json({ error: "게시물을 찾을 수 없어요" });
+  res.json(toFeedPost(row, req.userId));
 });
 
 // POST /api/posts — 코스 자랑하기. 로그인 필요.

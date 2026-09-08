@@ -1,46 +1,179 @@
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { FeedPost } from "@/types";
 import {
   createPostApi,
   deletePostApi,
+  fetchPostApi,
   fetchPostsApi,
+  type ApiFeedPost,
   type PostCreateInput,
+  type PostListParams,
 } from "@/lib/api/posts";
 import { usePetStore } from "@/stores/usePetStore";
+
+/** 무한 스크롤 한 번에 받아오는 개수. 카드가 커서 한 화면에 3~4장이라 10장이면 두 화면 남짓. */
+const PAGE_SIZE = 10;
+
+/** 내 글 탭은 서버 페이지네이션 없이 한 번에 받는다 — 본인이 쓴 글이라 애초에 몇 개 안 된다. */
+const MY_POSTS_LIMIT = 50;
 
 const POSTS_KEY = ["posts"];
 
 /**
- * 둘러보기 게시물 목록(GET /api/posts).
- * `sameTypeMatch`는 "보는 사람"의 반려동물 유형에 따라 달라지는 값이라 서버가 아니라 여기서 붙인다 —
- * 같은 글이라도 누가 보느냐에 따라 '같은 유형' 뱃지가 달라져야 하기 때문이다.
+ * 목록을 "신선한 것"으로 볼 시간.
+ *
+ * 무한 쿼리는 다시 받을 때 **불러온 페이지를 전부** 다시 받는다 — 5페이지까지 스크롤한 뒤
+ * 탭을 옮겼다 돌아오면 요청 5건이 한꺼번에 나간다. 전역 QueryClient가 기본값(staleTime 0)이라
+ * 화면을 다시 볼 때마다 그게 반복됐다.
+ *
+ * 글이 초 단위로 바뀌는 화면이 아니고, 새 글·삭제는 mutation이 캐시를 무효화해 바로 반영되므로
+ * 시간 기반 재조회는 넉넉하게 잡는다.
  */
-export function usePosts() {
+const LIST_STALE_MS = 60_000;
+
+/** 인기 배너는 전체 최다 담김이라 더 천천히 바뀐다. */
+const HOTTEST_STALE_MS = 5 * 60_000;
+
+/** 목록·상세·인기 배너가 모두 이 접두사를 공유해서, 글이 하나 바뀌면 한 번에 무효화된다. */
+function listKey(params: PostListParams) {
+  return [...POSTS_KEY, "list", params];
+}
+
+/**
+ * 뷰어의 반려동물 유형을 붙인다.
+ * `sameTypeMatch`는 같은 글이라도 누가 보느냐에 따라 달라지는 값이라 서버가 아니라 여기서 계산한다 —
+ * 서버는 "같은 유형만 보기" 필터에만 유형 이름을 쓰고, 표시용 뱃지 판단은 화면 몫이다.
+ */
+function useSameTypeDecorator() {
   const activePet = usePetStore((state) => state.activePet());
   const myTypeName = activePet?.mbti?.name ?? null;
 
-  const query = useQuery({ queryKey: POSTS_KEY, queryFn: fetchPostsApi });
-
-  const data = useMemo<FeedPost[]>(
-    () =>
-      (query.data ?? []).map((post) => ({
+  return useMemo(
+    () => ({
+      myTypeName,
+      decorate: (post: ApiFeedPost): FeedPost => ({
         ...post,
         sameTypeMatch: myTypeName !== null && post.petTypeName === myTypeName,
-      })),
-    [query.data, myTypeName]
+      }),
+    }),
+    [myTypeName]
+  );
+}
+
+export interface FeedListOptions {
+  keyword?: string;
+  sort?: PostListParams["sort"];
+  /** 같은 유형만 보기 토글. 뷰어에게 유형이 없으면 무시된다. */
+  sameTypeOnly?: boolean;
+  enabled?: boolean;
+}
+
+/**
+ * 둘러보기 코스 탭 목록. 검색·유형 필터·정렬을 **서버가** 처리하고 커서로 이어 받는다.
+ *
+ * 예전에는 전체를 한 번에 받아 화면에서 걸렀는데, 글이 늘면 그대로 무너지는 구조였다.
+ * 검색어·정렬·필터가 쿼리키에 들어가므로 조건이 바뀌면 첫 페이지부터 다시 받는다.
+ */
+export function useFeedPosts({
+  keyword,
+  sort = "saves",
+  sameTypeOnly = false,
+  enabled = true,
+}: FeedListOptions = {}) {
+  const { myTypeName, decorate } = useSameTypeDecorator();
+  // 검색 중에는 서버도 유형 필터를 무시하지만, 쿼리키가 갈라지지 않도록 여기서도 비워 보낸다.
+  const sameTypeName = !keyword && sameTypeOnly ? myTypeName : null;
+  const params: PostListParams = { keyword, sort, sameTypeName, limit: PAGE_SIZE };
+
+  const query = useInfiniteQuery({
+    queryKey: listKey(params),
+    queryFn: ({ pageParam }) => fetchPostsApi({ ...params, cursor: pageParam }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled,
+    staleTime: LIST_STALE_MS,
+    // 포커스가 돌아올 때마다 스크롤해둔 페이지를 전부 다시 받는 걸 막는다.
+    refetchOnWindowFocus: false,
+  });
+
+  const data = useMemo<FeedPost[]>(
+    () => (query.data?.pages ?? []).flatMap((page) => page.items).map(decorate),
+    [query.data, decorate]
+  );
+
+  // 전체 건수는 첫 페이지에만 실려 온다. 아직 안 왔으면 지금까지 받은 개수로 대신한다.
+  const total = query.data?.pages[0]?.total ?? data.length;
+
+  return { ...query, data, total };
+}
+
+/** 내 글. 개수가 적어 한 번에 받고, 페이지 나누기는 기존대로 화면에서 한다. */
+export function useMyPosts(sort: PostListParams["sort"] = "recent", enabled = true) {
+  const { decorate } = useSameTypeDecorator();
+  const params: PostListParams = { mine: true, sort, limit: MY_POSTS_LIMIT };
+
+  const query = useQuery({
+    queryKey: listKey(params),
+    queryFn: () => fetchPostsApi(params),
+    enabled,
+    staleTime: LIST_STALE_MS,
+  });
+
+  const data = useMemo<FeedPost[]>(
+    () => (query.data?.items ?? []).map(decorate),
+    [query.data, decorate]
   );
 
   return { ...query, data };
 }
 
-/** 게시물 상세 — 목록 캐시를 그대로 재사용하고 id로 골라낸다. */
+/**
+ * 인기 배너용 한 건. 검색·필터와 무관하게 **전체에서** 가장 많이 담긴 코스라
+ * 목록 페이지에서 뽑을 수 없다(첫 페이지 안에 그 글이 없을 수 있다).
+ */
+export function useHottestPost(enabled: boolean) {
+  const { decorate } = useSameTypeDecorator();
+  const params: PostListParams = { sort: "saves", limit: 1 };
+
+  const query = useQuery({
+    queryKey: listKey(params),
+    queryFn: () => fetchPostsApi(params),
+    enabled,
+    staleTime: HOTTEST_STALE_MS,
+  });
+
+  const first = query.data?.items[0];
+  const data = useMemo<FeedPost | null>(
+    () => (first ? decorate(first) : null),
+    [first, decorate]
+  );
+
+  return { ...query, data };
+}
+
+/** 게시물 상세 — 목록 페이지에 없을 수 있으므로(딥링크·뒤쪽 페이지) 단건으로 조회한다. */
 export function usePost(postId: string) {
-  const query = usePosts();
-  return {
-    ...query,
-    data: query.data.find((post) => post.id === postId) ?? null,
-  };
+  const { decorate } = useSameTypeDecorator();
+
+  const query = useQuery({
+    queryKey: [...POSTS_KEY, "detail", postId],
+    queryFn: () => fetchPostApi(postId),
+    enabled: postId.length > 0,
+    staleTime: LIST_STALE_MS,
+  });
+
+  const data = useMemo<FeedPost | null>(
+    () => (query.data ? decorate(query.data) : null),
+    [query.data, decorate]
+  );
+
+  return { ...query, data };
 }
 
 /** 코스 자랑하기 — 성공하면 목록 캐시를 무효화해 둘러보기에 바로 반영된다. */

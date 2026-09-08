@@ -20,4 +20,6 @@ export interface FeedPost {
   liked: boolean;
   saves: number;
   saved: boolean;
+  /** 서버가 내려주는 ISO 문자열. 정렬은 서버가 하므로 화면에서는 표시용으로만 쓴다. */
+  createdAt: string;
 }
