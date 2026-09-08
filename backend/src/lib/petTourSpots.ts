@@ -14,8 +14,8 @@ const DAEJEON_AREA_CODE = "3";
 const MAX_IMAGE_SUPPLEMENT_PER_REQUEST = 60;
 
 /** 카테고리 하나로 몰아서 정렬하면(예: 수정일순) 특정 관광타입에 결과가 쏠릴 수 있어, 타입별로 따로 조회해 최소 개수를 보장한다.
- * 32(숙박)은 syncPlaces.ts에서 어차피 걸러내므로(모텔/호텔이 문화 카테고리에 섞이는 문제) 조회 자체를 스킵한다. */
-const CATEGORY_CONTENT_TYPE_IDS: PetTourContentTypeId[] = ["12", "14", "28", "39"];
+ * 32(숙박)는 placesAggregator.ts에서 어차피 걸러내므로(모텔/호텔이 문화 카테고리에 섞이는 문제) 조회 자체를 스킵한다. */
+const CATEGORY_CONTENT_TYPE_IDS: PetTourContentTypeId[] = ["12", "14", "15", "28", "38", "39"];
 const DEFAULT_MIN_PER_CATEGORY = 12;
 
 /** 12:관광지 14:문화시설 15:축제공연행사 28:레포츠 32:숙박 38:쇼핑 39:음식점 */

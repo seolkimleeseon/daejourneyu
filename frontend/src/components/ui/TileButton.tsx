@@ -48,7 +48,7 @@ export function TileButton({ variant, tone, emoji, title, subtitle, onClick, ico
         type="button"
         onClick={onClick}
         className={cn(
-          "flex flex-col items-center gap-4 rounded-xl px-2.5 py-5 text-center transition-transform active:scale-[0.97]",
+          "flex min-h-[136px] flex-col items-center justify-center gap-4 rounded-xl px-2.5 py-6 text-center transition-transform active:scale-[0.97]",
           FILLED_TONE_CLASS[tone]
         )}
       >

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
@@ -36,9 +36,9 @@ export function GeneratedResultStep({
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="px-4 pb-6 pt-1">
+    <div className="px-5 pb-6 pt-1">
       <div className="rounded-2xl bg-surface p-2">
-        <div className="animate-pop-in mb-4 rounded-2xl bg-brand-100 p-4 text-center">
+        <div className="mb-4 rounded-2xl bg-brand-100 p-4 text-center">
           <div className="text-sm font-extrabold text-brand-700">오늘의 &lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
             <Tag tone="brand" className="cursor-default border border-line bg-card">
@@ -68,11 +68,7 @@ export function GeneratedResultStep({
         </div>
 
         {days.map((day, dayIndex) => (
-          <div
-            key={dayIndex}
-            style={{ animationDelay: `${0.15 + dayIndex * 0.08}s` }}
-            className="animate-fade-up mb-4 last:mb-0"
-          >
+          <div key={dayIndex} className="mb-4 last:mb-0">
             <div className="mb-2 px-1 text-xs font-bold text-ink-muted">
               {days.length > 1 ? `📍 ${dayIndex + 1}일차 동선` : `📍 ${theme}형 동선`} · {day.length}곳
             </div>
