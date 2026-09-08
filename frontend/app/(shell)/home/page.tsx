@@ -11,7 +11,6 @@ import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useCourseStore } from "@/stores/useCourseStore";
-import { useToastStore } from "@/stores/useToastStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { findActiveTrip } from "@/lib/schedule";
 import { toCrowdPlace, type CrowdPlace } from "@/lib/crowd";
@@ -31,7 +30,6 @@ export default function HomePage() {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const activePet = usePetStore((state) => state.activePet());
-  const showToast = useToastStore((state) => state.show);
   useSyncCoursesFromApi();
   const courses = useCourseStore((state) => state.courses);
   const schedules = useCourseStore((state) => state.schedules);
@@ -122,7 +120,9 @@ export default function HomePage() {
             title="내 반려동물 MBTI"
             subtitle={activePet?.mbti ? `${activePet.mbti.code} · 결과 보기` : "여행 성향 알아보기"}
             tone="purple"
-            onClick={() => showToast("여행 MBTI는 다음 스텝에서 제공돼요")}
+            onClick={() =>
+              router.push(activePet?.mbti ? "/schedule/course/new/mbti?quick=1" : "/schedule/course/new/mbti")
+            }
           />
           <TileButton
             variant="outlined"
@@ -130,7 +130,7 @@ export default function HomePage() {
             title="오늘 어디 갈까?"
             subtitle="장소와 코스 추천받기"
             tone="brand"
-            onClick={() => showToast("AI 챗봇은 다음 스텝에서 제공돼요")}
+            onClick={() => router.push("/home/chatbot")}
           />
         </div>
 
