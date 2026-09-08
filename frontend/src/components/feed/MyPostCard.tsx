@@ -12,7 +12,10 @@ interface MyPostCardProps {
 export function MyPostCard({ post, onDelete }: MyPostCardProps) {
   return (
     <div className="flex items-start gap-2.5 rounded-2xl border border-line bg-card p-4">
-      <Link href={`/feed/post/${post.id}`} className="min-w-0 flex-1">
+      {/* 목록 카드는 뷰포트 프리페치를 끈다 — 스크롤할 때마다 카드 수만큼 RSC 요청(`?_rsc=`)이
+          나가서, 무한 스크롤에서는 실제로 열어보는 한두 개를 위해 수십 건을 낭비한다.
+          실제로 탭했을 때 상세를 받아오므로, 낭비되는 건 안 열어본 카드들 몫뿐이다. */}
+      <Link href={`/feed/post/${post.id}`} prefetch={false} className="min-w-0 flex-1">
         {/* 제목은 자르지 않고 단어 단위로 접는다 — 프로토타입 .mypost-cap과 동일 */}
         <div className="break-keep text-sm font-bold leading-snug text-ink">{post.caption}</div>
         <div className="mt-1.5 text-[11px] text-ink-muted">

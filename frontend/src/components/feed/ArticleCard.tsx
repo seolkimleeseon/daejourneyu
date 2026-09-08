@@ -19,7 +19,14 @@ export function ArticleCard({ article }: ArticleCardProps) {
 
   return (
     <Card className="p-0">
-      <Link href={`/article/${article.id}`} className="block px-3.5 pb-2 pt-3.5">
+      {/* 목록 카드는 뷰포트 프리페치를 끈다 — 스크롤할 때마다 카드 수만큼 RSC 요청(`?_rsc=`)이
+          나가서, 무한 스크롤에서는 실제로 열어보는 한두 개를 위해 수십 건을 낭비한다.
+          실제로 탭했을 때 상세를 받아오므로, 낭비되는 건 안 열어본 카드들 몫뿐이다. */}
+      <Link
+        href={`/article/${article.id}`}
+        prefetch={false}
+        className="block px-3.5 pb-2 pt-3.5"
+      >
         <div className="text-sm font-bold text-ink">📰 {article.title}</div>
         <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">{article.summary}</p>
       </Link>

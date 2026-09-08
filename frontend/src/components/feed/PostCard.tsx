@@ -21,7 +21,10 @@ export function PostCard({ post }: PostCardProps) {
 
   return (
     <article className="overflow-hidden rounded-[21px] border border-line bg-card shadow-sm">
-      <Link href={`/feed/post/${post.id}`} className="block">
+      {/* 목록 카드는 뷰포트 프리페치를 끈다 — 스크롤할 때마다 카드 수만큼 RSC 요청(`?_rsc=`)이
+          나가서, 무한 스크롤에서는 실제로 열어보는 한두 개를 위해 수십 건을 낭비한다.
+          실제로 탭했을 때 상세를 받아오므로, 낭비되는 건 안 열어본 카드들 몫뿐이다. */}
+      <Link href={`/feed/post/${post.id}`} prefetch={false} className="block">
         <div className="flex items-center gap-2.5 px-4 pb-2.5 pt-3.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg">
             {post.authorEmoji}
