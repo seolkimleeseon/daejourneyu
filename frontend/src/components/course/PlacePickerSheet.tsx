@@ -213,7 +213,7 @@ export function PlacePickerSheet() {
         onChange={(event) => setQuery(event.target.value)}
       />
 
-      <div className="mb-1.5 flex gap-1 overflow-x-auto pb-0.5">
+      <div className="mb-1.5 flex gap-1 overflow-x-auto pb-0.5 no-scrollbar">
         <Tag tone="neutral-ghost" active={category === "전체"} className="shrink-0" onClick={() => setCategory("전체")}>
           전체
         </Tag>
@@ -223,7 +223,7 @@ export function PlacePickerSheet() {
           </Tag>
         ))}
       </div>
-      <div className="mb-3 flex gap-1 overflow-x-auto pb-0.5">
+      <div className="mb-3 flex gap-1 overflow-x-auto pb-0.5 no-scrollbar">
         <Tag tone="neutral-ghost" active={district === "전체"} className="shrink-0" onClick={() => setDistrict("전체")}>
           🧭 전체 구
         </Tag>
@@ -235,11 +235,17 @@ export function PlacePickerSheet() {
       </div>
 
       <div className="mb-2 text-[10px] text-ink-muted">
-        {isLoading
-          ? "실시간 반려동물 동반여행지를 불러오는 중이에요..."
-          : isError
-            ? "실시간 장소를 불러오지 못했어요"
-            : `🐾 동반 인증 · ${strict.length}곳`}
+        {isLoading ? (
+          "실시간 반려동물 동반여행지를 불러오는 중이에요..."
+        ) : isError ? (
+          "실시간 장소를 불러오지 못했어요"
+        ) : (
+          <>
+            🐾 동반 인증 · {strict.length}곳
+            <br />
+            지자체·정부기관이 반려동물 동반 가능 여부를 확인한 곳이에요
+          </>
+        )}
       </div>
 
       <div className="mb-3 grid grid-cols-2 gap-2">

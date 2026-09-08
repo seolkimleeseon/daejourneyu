@@ -1,42 +1,42 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { Emoji3D } from "@/components/ui/Emoji3D";
 
 interface IntroStepProps {
   onStart: () => void;
-  onSkipToTheme: () => void;
 }
 
 const STATS = ["질문 12개", "16가지 유형", "약 1분"];
 
-export function IntroStep({ onStart, onSkipToTheme }: IntroStepProps) {
+export function IntroStep({ onStart }: IntroStepProps) {
   return (
     <div className="px-5 pb-6 pt-4 text-center">
-      <div className="animate-pop-in mx-auto mb-5 flex h-32 w-32 items-center justify-center rounded-full bg-brand-100">
-        <Emoji3D emoji="🐾" size={84} />
+      <div className="relative mx-auto mb-5 flex h-32 w-32 items-center justify-center">
+        <Emoji3D emoji="🐕" size={104} glowClassName="bg-brand-300" />
+        <span className="absolute -right-1 top-2 rotate-12">
+          <Emoji3D emoji="✨" size={28} shadow={false} />
+        </span>
+        <span className="absolute -left-2 bottom-3 -rotate-12">
+          <Emoji3D emoji="🐾" size={24} shadow={false} />
+        </span>
       </div>
-      <div className="animate-fade-up mb-2 text-lg font-extrabold leading-relaxed text-ink">
+      <div className="mb-2 text-lg font-extrabold leading-relaxed text-ink">
         내 댕이의
         <br />
         여행 MBTI는?
       </div>
-      <div className="animate-fade-up mb-4 text-xs leading-relaxed text-ink-muted" style={{ animationDelay: "0.1s" }}>
-        대전 맞춤 코스 테마까지 알려드려요
-      </div>
-      <div className="animate-fade-up mb-8 flex justify-center gap-1.5" style={{ animationDelay: "0.18s" }}>
+      <div className="mb-4 text-xs leading-relaxed text-ink-muted">대전 맞춤 코스 테마까지 알려드려요</div>
+      <div className="mb-8 flex justify-center gap-1.5">
         {STATS.map((stat) => (
           <Tag key={stat} tone="neutral" className="cursor-default">
             {stat}
           </Tag>
         ))}
       </div>
-      <div className="animate-fade-up" style={{ animationDelay: "0.26s" }}>
+      <div>
         <Button onClick={onStart}>테스트 시작하기</Button>
-        <button type="button" onClick={onSkipToTheme} className="mt-3 min-h-10 w-full text-xs text-ink-muted">
-          테스트 건너뛰고 바로 코스 고르기 ›
-        </button>
       </div>
     </div>
   );

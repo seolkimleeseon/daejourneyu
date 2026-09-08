@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { CourseCard } from "@/components/course/CourseCard";
@@ -19,8 +19,20 @@ type ScheduleSegment = "내 코스" | "캘린더";
 const VAULT_PREVIEW_COUNT = 5;
 
 export default function SchedulePage() {
+  return (
+    <Suspense fallback={null}>
+      <ScheduleTabContent />
+    </Suspense>
+  );
+}
+
+function ScheduleTabContent() {
   const router = useRouter();
-  const [segment, setSegment] = useState<ScheduleSegment>("내 코스");
+  const searchParams = useSearchParams();
+  const initialDate = searchParams.get("date") ?? undefined;
+  const [segment, setSegment] = useState<ScheduleSegment>(
+    searchParams.get("tab") === "calendar" ? "캘린더" : "내 코스"
+  );
   const storeCourses = useCourseStore((state) => state.courses);
   const hasSynced = useCourseStore((state) => state.hasSynced);
   const storeSchedules = useCourseStore((state) => state.schedules);
@@ -40,7 +52,7 @@ export default function SchedulePage() {
   return (
     <>
       <TopBar title="내 여정" />
-      <div className="flex rounded-xl bg-line p-1 mx-4 mt-3">
+      <div className="flex rounded-xl bg-line p-1 mx-4 mt-4">
         {(["내 코스", "캘린더"] as const).map((tab) => (
           <button
             key={tab}
@@ -48,8 +60,8 @@ export default function SchedulePage() {
             onClick={() => setSegment(tab)}
             className={
               segment === tab
-                ? "flex-1 rounded-lg bg-card py-2 text-center text-xs font-semibold text-ink shadow-sm"
-                : "flex-1 rounded-lg py-2 text-center text-xs font-semibold text-ink-muted"
+                ? "flex-1 rounded-lg bg-card py-2.5 text-center text-xs font-semibold text-ink shadow-sm"
+                : "flex-1 rounded-lg py-2.5 text-center text-xs font-semibold text-ink-muted"
             }
           >
             {tab}
@@ -58,9 +70,9 @@ export default function SchedulePage() {
       </div>
 
       {segment === "내 코스" ? (
-        <div className="px-4 pb-6 pt-4">
-          <div className="mb-1 px-1 text-xs font-bold text-ink-muted">코스 만들기</div>
-          <div className="mb-5 grid grid-cols-3 gap-2">
+        <div className="px-4 pb-6 pt-5">
+          <div className="mb-2 px-1 text-xs font-bold text-ink-muted">코스 만들기</div>
+          <div className="mb-6 grid grid-cols-3 gap-2.5">
             <TileButton
               icon3D
               variant="filled"
@@ -98,7 +110,7 @@ export default function SchedulePage() {
             <div className="py-10 text-center text-xs text-ink-muted">코스 보관함을 불러오는 중…</div>
           ) : (
             <>
-              <div className="mb-1 flex items-center justify-between px-1">
+              <div className="mb-2.5 flex items-center justify-between px-1">
                 <div className="text-xs font-bold text-ink-muted">코스 보관함</div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-ink-muted">{courses.length}개</span>
@@ -141,7 +153,7 @@ export default function SchedulePage() {
           )}
         </div>
       ) : (
-        <ScheduleCalendar />
+        <ScheduleCalendar initialDate={initialDate} />
       )}
     </>
   );

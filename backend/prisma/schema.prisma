@@ -79,9 +79,9 @@ model Course {
   userId String
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  days     CourseDay[]
-  schedule CourseSchedule?
-  posts    Post[]
+  days      CourseDay[]
+  schedules CourseSchedule[]
+  posts     Post[]
 }
 
 model CourseDay {
@@ -112,13 +112,16 @@ model CourseStop {
   @@unique([courseDayId, order])
 }
 
+/// 코스 하나가 여러 날짜에 등록될 수 있다(1:N) — 반복 방문 등.
 model CourseSchedule {
   id   String @id @default(cuid())
   date String
 
-  courseId String @unique
+  courseId String
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   festivalTitles CourseScheduleFestival[]
+
+  @@index([courseId])
 }
 
 model CourseScheduleFestival {

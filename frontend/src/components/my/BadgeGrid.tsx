@@ -1,14 +1,35 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { Badge } from "@/lib/badges";
+import { remainingSteps } from "@/lib/badges";
 import { cn } from "@/lib/cn";
 
 /** 4열 그리드라 8개면 정확히 두 줄. 뱃지가 늘어도 마이탭이 세로로 길어지지 않게 여기서 자른다. */
 const SUMMARY_LIMIT = 8;
 
+/**
+ * 획득분이 차지할 수 있는 최대 칸. 남는 2칸은 '거의 다 온' 잠긴 뱃지 몫으로 비워둔다 —
+ * 뱃지가 44종이 되면 획득분만으로 8칸이 금방 차고, 잠긴 칸이 하나도 안 보이면
+ * 남은 거리가 사라져 목표 구배(goal gradient)로 얻는 동기부여가 죽는다.
+ */
+const GOT_SLOTS = 6;
+
 interface BadgeGridProps {
   badges: Badge[];
+  /** 헤더 주어. 뱃지는 사람이 아니라 반려동물이 모으는 것으로 읽혀야 한다. */
+  petName?: string | null;
+  /** 헤더와 타일 사이에 끼우는 슬롯. 지금은 '남은 거리' 한 줄이 들어온다. */
+  nearline?: ReactNode;
   onOpenAll: () => void;
+}
+
+/** 목표에 가까운 순. 아직 시작도 안 한 뱃지보다 코앞인 뱃지가 먼저 보여야 한다. */
+function byCloseness(a: Badge, b: Badge): number {
+  const byRemaining = remainingSteps(a) - remainingSteps(b);
+  if (byRemaining !== 0) return byRemaining;
+  if (a.current !== b.current) return b.current - a.current;
+  return a.id.localeCompare(b.id);
 }
 
 /**
@@ -18,23 +39,29 @@ interface BadgeGridProps {
  * 목록으로 읽혔다. 같은 그리드에 두고 상태는 뱃지 자체의 색으로만 구분한다.
  *
  * 자물쇠로 덮지 않는 것도 같은 이유다 — 무슨 뱃지인지 보여야 해볼 만한 것으로 읽히고,
- * 다음 보상까지 남은 거리가 보여야 목표 구배(goal gradient)로 얻는 동기부여가 살아난다.
+ * 남은 거리가 보여야 목표 구배(goal gradient)로 얻는 동기부여가 살아난다.
  *
  * "뭘 하면 받나"는 이 그리드가 답하지 않는다. 4열 타일에는 획득 조건이 들어갈 자리가 없어
  * 전체 목록 화면(/my/badges)이 계열별 섹션과 함께 담당한다.
  */
-export function BadgeGrid({ badges, onOpenAll }: BadgeGridProps) {
+export function BadgeGrid({ badges, petName, nearline, onOpenAll }: BadgeGridProps) {
   const gotCount = badges.filter((badge) => badge.got).length;
-  // 획득분을 앞으로 당긴다 — 뱃지가 늘어 앞 8칸만 남더라도 모은 것이 먼저 보여야 한다.
-  const visible = [...badges]
-    .sort((a, b) => Number(b.got) - Number(a.got))
-    .slice(0, SUMMARY_LIMIT);
+
+  const got = badges.filter((badge) => badge.got);
+  // 히든은 조건이 비밀이라 "곧 딸 수 있는 것"으로 내세우지 않는다. 따고 나면 그때 보인다.
+  const pending = badges.filter((badge) => !badge.got && !badge.hidden).sort(byCloseness);
+
+  const pendingSlots = Math.min(SUMMARY_LIMIT - Math.min(got.length, GOT_SLOTS), pending.length);
+  const visible = [
+    ...got.slice(0, SUMMARY_LIMIT - pendingSlots),
+    ...pending.slice(0, pendingSlots),
+  ];
 
   return (
     <div>
       <div className="mb-2 mt-1 flex items-center justify-between px-1">
         <div className="flex items-baseline gap-1.5 text-xs font-bold text-ink-muted">
-          <span>내 여행 뱃지</span>
+          <span>{petName ? `${petName}의 여행 뱃지` : "내 여행 뱃지"}</span>
           <span className="text-brand-700">
             {gotCount}/{badges.length}
           </span>
@@ -48,6 +75,8 @@ export function BadgeGrid({ badges, onOpenAll }: BadgeGridProps) {
         </button>
       </div>
 
+      {nearline}
+
       <div className="grid grid-cols-4 gap-2">
         {visible.map((badge) => (
           <div
@@ -58,13 +87,13 @@ export function BadgeGrid({ badges, onOpenAll }: BadgeGridProps) {
             )}
           >
             <div className={cn("mb-1 text-[22px] leading-none", !badge.got && "opacity-40 grayscale")}>
-              {badge.emoji}
+              {badge.hidden && !badge.got ? "❔" : badge.emoji}
             </div>
             <div className={cn("text-[9px] font-extrabold", !badge.got && "text-ink-muted")}>
-              {badge.name}
+              {badge.hidden && !badge.got ? "???" : badge.name}
             </div>
             <div className="mt-0.5 text-[8px] leading-tight text-ink-muted">
-              {badge.description}
+              {badge.hidden && !badge.got ? "비밀" : badge.tileLabel}
             </div>
           </div>
         ))}

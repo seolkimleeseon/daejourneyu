@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { Tag } from "@/components/ui/Tag";
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Modal } from "@/components/ui/Modal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
+import { CourseRouteMap } from "@/components/course/CourseRouteMap";
 import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
@@ -17,6 +18,7 @@ import { nightsLabel, resolveCourseEmoji, resolvePlaceImageUrl, SOURCE_LABEL, SO
 import { cn } from "@/lib/cn";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useToastStore } from "@/stores/useToastStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { useSheetStore } from "@/stores/useSheetStore";
 import type { CourseStop, Place } from "@/types";
@@ -55,7 +57,9 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const deleteCourse = useCourseStore((state) => state.deleteCourse);
   const schedules = useCourseStore((state) => state.schedules);
   const course = courses.find((item) => item.id === params.courseId);
-  const schedule = schedules.find((item) => item.courseId === params.courseId);
+  const courseSchedules = schedules
+    .filter((item) => item.courseId === params.courseId)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   const captureRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -68,6 +72,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const openPlaceSheet = useSheetStore((state) => state.open);
+  const showToast = useToastStore((state) => state.show);
 
   if (!isLoggedIn) {
     return (
@@ -103,7 +108,14 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const stopCount = displayDays.reduce((sum, day) => sum + day.length, 0);
   const isMultiDay = displayDays.length > 1;
 
-  const goToPlace = (stop: CourseStop) => router.push(`/place/${encodeURIComponent(stop.name)}`);
+  const goToPlace = (stop: CourseStop) => {
+    // 카카오맵 검색으로 담긴 장소는 /api/places·mockPlaces에 없어 상세 페이지 조회가 항상 실패한다.
+    if (stop.placeId.startsWith("kakao-")) {
+      showToast("카카오맵에서 가져온 장소는 아직 상세 페이지를 지원하지 않아요");
+      return;
+    }
+    router.push(`/place/${encodeURIComponent(stop.name)}`);
+  };
 
   const handleScroll = () => {
     const el = scrollRef.current;
@@ -223,10 +235,14 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               ) : null}
             </div>
 
-            {schedule ? (
-              <div className="mt-3 rounded-xl bg-card px-3 py-2 text-xs font-semibold text-brand-700">
-                📅 {schedule.date}에 가기로 했어요
-                {schedule.festivalTitles.length > 0 ? ` · ${schedule.festivalTitles.join(", ")}` : ""}
+            {courseSchedules.length > 0 ? (
+              <div className="mt-3 flex flex-col gap-1.5">
+                {courseSchedules.map((s) => (
+                  <div key={s.id} className="rounded-xl bg-card px-3 py-2 text-xs font-semibold text-brand-700">
+                    📅 {s.date}에 가기로 했어요
+                    {s.festivalTitles.length > 0 ? ` · ${s.festivalTitles.join(", ")}` : ""}
+                  </div>
+                ))}
               </div>
             ) : null}
           </div>
@@ -241,7 +257,10 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className={cn("flex overflow-x-auto scroll-smooth", !editMode && "snap-x snap-mandatory")}
+                className={cn(
+                  "flex overflow-x-auto scroll-smooth no-scrollbar",
+                  !editMode && "snap-x snap-mandatory"
+                )}
               >
                 {displayDays.map((day, dayIndex) => (
                   <div key={dayIndex} className="w-full shrink-0 snap-center px-4 py-3">
@@ -310,7 +329,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
         ) : (
           <>
             <Button className="mt-3" onClick={() => router.push(`/schedule/course/${course.id}/schedule`)}>
-              {schedule ? (
+              {courseSchedules.length > 0 ? (
                 <>
                   <span>✏️</span>여행 계획 편집하기
                 </>
@@ -328,6 +347,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               fileName={`대저니유-${course.label}`}
               kakaoTitle={course.label}
               kakaoDescription={`${nightsLabel(course.nights)} · ${stopCount}곳 · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
+              path={`/schedule/course/${course.id}`}
             />
             {course.source !== "saved" && !course.shared ? (
               <Button
@@ -440,6 +460,7 @@ function DayStops({
       <div className="mb-2 text-xs font-bold text-brand-700">
         {totalDays > 1 ? `📍 ${dayIndex + 1}일차 동선` : "📍 동선"} · {day.length}곳
       </div>
+      {!editMode ? <CourseRouteMap stops={day} /> : null}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         {day.map((stop, stopIndex) => (
           <div
@@ -474,12 +495,22 @@ function DayStops({
               </div>
               {!editMode ? (
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  <Tag tone={stop.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
-                    {stop.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
-                  </Tag>
-                  <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
-                    {stop.condition}
-                  </Tag>
+                  {/* 카카오맵 검색 장소는 condition이 항상 "확인해주세요" 식 안내문이라, 확정형
+                      동반가능 배지와 같이 두면 서로 모순돼 보인다 — 이 경우엔 안내문 하나만 보여준다. */}
+                  {stop.placeId.startsWith("kakao-") ? (
+                    <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
+                      {stop.condition}
+                    </Tag>
+                  ) : (
+                    <>
+                      <Tag tone={stop.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
+                        {stop.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
+                      </Tag>
+                      <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
+                        {stop.condition}
+                      </Tag>
+                    </>
+                  )}
                 </div>
               ) : null}
             </div>

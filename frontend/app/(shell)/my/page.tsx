@@ -6,6 +6,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { PetPassportCard } from "@/components/my/PetPassportCard";
 import { PetSwitcher } from "@/components/my/PetSwitcher";
 import { BadgeGrid } from "@/components/my/BadgeGrid";
+import { BadgeNearline } from "@/components/my/BadgeNearline";
 import { MenuItem } from "@/components/my/MenuItem";
 import { LoginModal } from "@/components/my/LoginModal";
 import { LogoutModal } from "@/components/my/LogoutModal";
@@ -30,7 +31,7 @@ export default function MyPage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
-  const { badges } = useMyBadges();
+  const { badges, nearest, nearestMessage } = useMyBadges();
 
   const handlePassportClick = () => {
     if (!hydrated) return;
@@ -79,7 +80,18 @@ export default function MyPage() {
 
         {isLoggedIn ? (
           <div className="mt-2">
-            <BadgeGrid badges={badges} onOpenAll={() => router.push("/my/badges")} />
+            <BadgeGrid
+              badges={badges}
+              petName={activePet?.name}
+              nearline={
+                <BadgeNearline
+                  badge={nearest}
+                  message={nearestMessage}
+                  onGo={(href) => router.push(href)}
+                />
+              }
+              onOpenAll={() => router.push("/my/badges")}
+            />
           </div>
         ) : null}
 

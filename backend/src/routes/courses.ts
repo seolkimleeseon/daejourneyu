@@ -244,9 +244,10 @@ router.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
-// PUT /api/courses/:id/schedule — 코스에 날짜를 붙여 "내 일정"에 등록(이미 있으면 날짜만 교체).
-// 코스당 일정은 하나뿐이라(schema.prisma의 courseId @unique) upsert로 충분하다.
-router.put("/:id/schedule", async (req, res) => {
+// POST /api/courses/:id/schedule — 코스에 날짜를 붙여 "내 일정"에 새로 등록한다.
+// 코스 1개가 여러 날짜에 등록될 수 있어(schema.prisma CourseSchedule은 1:N) 매번 새로 만든다 —
+// 날짜를 바꾸려면 기존 일정을 지우고 새로 등록한다(DELETE /schedule/:scheduleId).
+router.post("/:id/schedule", async (req, res) => {
   const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
   if (!existing || existing.userId !== req.userId) {
     return res.status(404).json({ error: "코스를 찾을 수 없어요" });
@@ -257,24 +258,25 @@ router.put("/:id/schedule", async (req, res) => {
     return res.status(400).json({ error: "날짜는 YYYY-MM-DD 형식이어야 해요" });
   }
 
-  const schedule = await prisma.courseSchedule.upsert({
-    where: { courseId: req.params.id },
-    create: { courseId: req.params.id, date },
-    update: { date },
+  const schedule = await prisma.courseSchedule.create({
+    data: { courseId: req.params.id, date },
     include: scheduleWithRelations,
   });
 
   res.json(toCourseSchedule(schedule));
 });
 
-// DELETE /api/courses/:id/schedule — 일정 취소. 일정이 원래 없었어도 성공으로 다룬다(멱등).
-router.delete("/:id/schedule", async (req, res) => {
-  const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-  if (!existing || existing.userId !== req.userId) {
-    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+// DELETE /api/courses/schedule/:scheduleId — 등록된 일정 하나를 취소한다(일정 id 기준).
+router.delete("/schedule/:scheduleId", async (req, res) => {
+  const existing = await prisma.courseSchedule.findUnique({
+    where: { id: req.params.scheduleId },
+    include: { course: true },
+  });
+  if (!existing || existing.course.userId !== req.userId) {
+    return res.status(404).json({ error: "일정을 찾을 수 없어요" });
   }
 
-  await prisma.courseSchedule.deleteMany({ where: { courseId: req.params.id } });
+  await prisma.courseSchedule.delete({ where: { id: req.params.scheduleId } });
   res.status(204).send();
 });
 

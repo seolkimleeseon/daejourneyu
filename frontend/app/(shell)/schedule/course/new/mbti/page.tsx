@@ -7,27 +7,24 @@ import { CourseStepBar } from "@/components/course/CourseStepBar";
 import { IntroStep } from "./steps/IntroStep";
 import { QuestionStep } from "./steps/QuestionStep";
 import { ResultStep } from "./steps/ResultStep";
-import { ThemePickerStep } from "./steps/ThemePickerStep";
 import { NightsStep } from "./steps/NightsStep";
-import { ConditionsStep } from "./steps/ConditionsStep";
 import { TransportStep } from "./steps/TransportStep";
 import { GeneratedResultStep } from "./steps/GeneratedResultStep";
 import { LoginModal } from "@/components/my/LoginModal";
 import { MBTI_QUESTIONS, resolveMbtiType, scoreAnswers, topTheme, type CourseTheme, type MbtiAnswer } from "@/lib/mbti";
-import { chunkIntoDays } from "@/lib/chunkDays";
 import { resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
-import { ensureCategoryMinimum } from "@/lib/petTourMapper";
+import { ensureCategoryMinimum, type PickablePlace } from "@/lib/petTourMapper";
 import { mockPlaces } from "@/mocks";
-import type { Place, Transport } from "@/types";
+import type { DaejeonDistrict, Place, PlaceCategory, Transport } from "@/types";
 
-type Phase = "intro" | "quiz" | "result" | "theme" | "nights" | "conditions" | "transport" | "generated";
+type Phase = "intro" | "quiz" | "result" | "nights" | "transport" | "generated";
 
-const GENERATE_STEP_LABELS = ["기간", "조건", "이동", "코스"] as const;
+const GENERATE_STEP_LABELS = ["기간", "이동", "코스"] as const;
 const MIN_PER_CATEGORY = 3;
 const COURSE_TITLES: Record<CourseTheme, string> = {
   산책: "청량 힐링 산책 데이",
@@ -35,14 +32,117 @@ const COURSE_TITLES: Record<CourseTheme, string> = {
   문화: "호기심 가득 문화 나들이",
 };
 
-function generateCourseDays(theme: CourseTheme, nights: number, source: Place[]): Place[][] {
-  const count = Math.max(3, (nights + 1) * 2);
-  const matched = source.filter((place) => place.category === theme);
-  const rest = source.filter((place) => place.category !== theme);
-  const byPetFriendlyThenName = (a: Place, b: Place) =>
-    Number(b.petFriendly) - Number(a.petFriendly) || a.name.localeCompare(b.name);
-  const list = [...matched.sort(byPetFriendlyThenName), ...rest.sort(byPetFriendlyThenName)].slice(0, count);
-  return chunkIntoDays(list, nights + 1);
+const ALL_CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문화"];
+const ALL_DISTRICTS: DaejeonDistrict[] = ["유성구", "중구", "동구", "대덕구", "서구"];
+
+type SourcePlace = Place | PickablePlace;
+
+/** backend가 매긴 소스 신뢰도(1=식약처·관광공사 등 인증 소스, 2=공공데이터 미인증). mockPlaces처럼
+ * 신뢰도 정보가 없는 폴백 데이터는 미인증과 동급(2)으로 취급한다. */
+function getSourceTier(place: SourcePlace): number {
+  return "sourceTier" in place && typeof place.sourceTier === "number" ? place.sourceTier : 2;
+}
+
+const byQuality = (a: SourcePlace, b: SourcePlace) =>
+  getSourceTier(a) - getSourceTier(b) || Number(b.petFriendly) - Number(a.petFriendly) || a.name.localeCompare(b.name);
+
+/**
+ * 후보군(pool)에서 테마 카테고리를 2번 뽑을 때 다른 카테고리를 1번씩 라운드로빈으로 섞어
+ * count개를 채운다 — 테마 색은 유지하되 한 카테고리로 도배되지 않게 한다. 카테고리 안에서는
+ * 신뢰도 높은(정제된) 소스를 우선한다.
+ */
+function pickBalancedByCategory(theme: CourseTheme, pool: SourcePlace[], count: number): SourcePlace[] {
+  const buckets = new Map<PlaceCategory, SourcePlace[]>(
+    ALL_CATEGORIES.map((category) => [category, pool.filter((place) => place.category === category).sort(byQuality)])
+  );
+  const otherCategories = ALL_CATEGORIES.filter((category) => category !== theme);
+
+  const result: SourcePlace[] = [];
+  let otherIndex = 0;
+  while (result.length < count) {
+    const before = result.length;
+
+    const themeBucket = buckets.get(theme)!;
+    for (let i = 0; i < 2 && result.length < count; i++) {
+      const place = themeBucket.shift();
+      if (place) result.push(place);
+    }
+
+    if (result.length < count) {
+      for (let tries = 0; tries < otherCategories.length; tries++) {
+        const bucket = buckets.get(otherCategories[otherIndex % otherCategories.length])!;
+        otherIndex++;
+        const place = bucket.shift();
+        if (place) {
+          result.push(place);
+          break;
+        }
+      }
+    }
+
+    if (result.length === before) break; // 후보군 소진 — 더 뽑을 게 없음
+  }
+  return result;
+}
+
+/**
+ * 여행인데 밥 먹을 곳이 하루에 하나도 없으면 안 되니, 테마가 맛집이 아닌 날은 신뢰도 높은
+ * 맛집(식약처 인증 등 sourceTier 1 우선)을 한 곳 무조건 먼저 담고 시작한다.
+ */
+function pickGuaranteedRestaurant(pool: SourcePlace[]): SourcePlace | null {
+  const restaurants = pool.filter((place) => place.category === "맛집").sort(byQuality);
+  return restaurants[0] ?? null;
+}
+
+/**
+ * 대전 여행이니만큼 하루는 한 자치구 위주로 묶어서(그래야 실제로 다닐 수 있는 동선이 된다),
+ * 여러 날이면 서로 다른 구를 하루씩 배정해 대전 여러 지역을 골고루 둘러보게 한다. 구를 정할
+ * 땐 그 구 안에 테마 카테고리 장소가 많은 순으로 우선순위를 매긴다. 각 날은 맛집을 하나
+ * 보장하고, 나머지는 `pickBalancedByCategory`로 테마 카테고리를 중심으로 다른 카테고리도
+ * 섞는다. 배정된 구에 장소(특히 맛집)가 모자라면 이미 쓰지 않은 다른 구의 장소로 채운다.
+ */
+function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePlace[]): SourcePlace[][] {
+  const daysCount = nights + 1;
+  const perDay = daysCount === 1 ? 3 : 2;
+
+  const districtRichness = ALL_DISTRICTS.map((district) => ({
+    district,
+    themeCount: source.filter((place) => place.district === district && place.category === theme).length,
+    totalCount: source.filter((place) => place.district === district).length,
+  })).sort((a, b) => b.themeCount - a.themeCount || b.totalCount - a.totalCount);
+
+  const assignedDistricts = Array.from(
+    { length: daysCount },
+    (_, i) => districtRichness[i % districtRichness.length].district
+  );
+
+  const usedIds = new Set<string>();
+  return assignedDistricts.map((district) => {
+    const districtPool = () => source.filter((place) => place.district === district && !usedIds.has(place.id));
+    const remainingPool = () => source.filter((place) => !usedIds.has(place.id));
+
+    const picked: SourcePlace[] = [];
+
+    if (theme !== "맛집") {
+      const restaurant = pickGuaranteedRestaurant(districtPool()) ?? pickGuaranteedRestaurant(remainingPool());
+      if (restaurant) {
+        picked.push(restaurant);
+        usedIds.add(restaurant.id);
+      }
+    }
+
+    const rest = pickBalancedByCategory(theme, districtPool(), perDay - picked.length);
+    picked.push(...rest);
+    rest.forEach((place) => usedIds.add(place.id));
+
+    if (picked.length < perDay) {
+      const fallback = pickBalancedByCategory(theme, remainingPool(), perDay - picked.length);
+      picked.push(...fallback);
+      fallback.forEach((place) => usedIds.add(place.id));
+    }
+
+    return picked;
+  });
 }
 
 export default function MbtiCourseWizardPage() {
@@ -66,21 +166,17 @@ function MbtiCourseWizard() {
   const savedMbtiCode = activePet?.mbti?.code ?? null;
 
   // 로그인 상태에서 저장된 MBTI 결과가 있고, "MBTI 맞춤 코스" 타일에서 바로가기로 들어온 경우엔
-  // 인트로/퀴즈/결과 단계를 건너뛰고 바로 코스 생성(기간→조건→이동→코스)으로 진입한다.
+  // 인트로/퀴즈 단계를 건너뛰고 바로 저장된 결과 화면부터 보여준다. 거기서 "이 성향으로 코스
+  // 만들기"를 눌러야 코스 생성(기간→이동→코스)으로 넘어간다.
   // 로그인 안 했거나 저장된 결과가 없으면(=quick이어도) 평소와 똑같이 인트로부터 시작한다.
   const quickStart = searchParams.get("quick") === "1" && isLoggedIn && !!savedMbtiCode;
-  const quickTheme = quickStart ? topTheme(resolveMbtiType(savedMbtiCode!)) : null;
 
-  const [phase, setPhase] = useState<Phase>(quickStart ? "nights" : "intro");
-  const [entryPath, setEntryPath] = useState<"quiz" | "theme">(quickStart ? "theme" : "quiz");
+  const [phase, setPhase] = useState<Phase>(quickStart ? "result" : "intro");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<MbtiAnswer[]>(() => Array(MBTI_QUESTIONS.length).fill(null));
   const [mbtiCode, setMbtiCode] = useState(quickStart ? savedMbtiCode! : "");
-  const [theme, setTheme] = useState<CourseTheme>(quickTheme ?? "산책");
+  const [theme, setTheme] = useState<CourseTheme>("산책");
   const [nights, setNights] = useState(0);
-  const [companion, setCompanion] = useState("나와 강아지");
-  const [budget, setBudget] = useState("3~7만원");
-  const [season, setSeason] = useState("여름");
   const [transport, setTransport] = useState<Transport>("자차");
   const [generatedDays, setGeneratedDays] = useState<Place[][]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -123,9 +219,8 @@ function MbtiCourseWizard() {
     if (!result.ok) showToast(result.message ?? "여행 유형을 저장하지 못했어요");
   };
 
-  const goNightsFrom = (chosenTheme: CourseTheme, from: "quiz" | "theme") => {
+  const goNightsFrom = (chosenTheme: CourseTheme) => {
     setTheme(chosenTheme);
-    setEntryPath(from);
     setNights(0);
     setPhase("nights");
   };
@@ -180,39 +275,30 @@ function MbtiCourseWizard() {
     router.push("/schedule");
   };
 
-  const stepBarActive = ["nights", "conditions", "transport", "generated"].indexOf(phase);
+  const stepBarActive = ["nights", "transport", "generated"].indexOf(phase);
 
   const titleByPhase: Record<Phase, string> = {
     intro: "반려동물 여행 MBTI",
     quiz: "반려동물 여행 MBTI",
     result: "테스트 결과",
-    theme: "테마 고르기",
     nights: `${theme}형 코스`,
-    conditions: `${theme}형 코스`,
     transport: `${theme}형 코스`,
     generated: `${theme}형 코스`,
   };
 
   const handleBack = () => {
     switch (phase) {
-      case "quiz":
-        if (currentQuestion > 0) setCurrentQuestion((prev) => prev - 1);
-        else setPhase("intro");
-        return;
+      // 퀴즈 문항 하나씩 되돌아가는 건 QuestionStep 안의 "‹ 이전 질문" 버튼이 따로 맡고 있다 —
+      // 상단 뒤로가기는 검사 도중에도 언제든 내 여정 탭으로 바로 나갈 수 있어야 해서 기본
+      // 동작(default: router.back())으로 흘려보낸다.
       case "result":
         setPhase("intro");
         return;
-      case "theme":
-        setPhase("intro");
-        return;
       case "nights":
-        setPhase(entryPath === "quiz" ? "result" : "theme");
-        return;
-      case "conditions":
-        setPhase("nights");
+        setPhase("result");
         return;
       case "transport":
-        setPhase("conditions");
+        setPhase("nights");
         return;
       case "generated":
         setPhase("transport");
@@ -224,12 +310,10 @@ function MbtiCourseWizard() {
 
   return (
     <>
-      <TopBar title={titleByPhase[phase]} showBack={phase !== "quiz"} onBack={handleBack} />
+      <TopBar title={titleByPhase[phase]} showBack onBack={handleBack} />
       {stepBarActive >= 0 ? <CourseStepBar active={stepBarActive} labels={GENERATE_STEP_LABELS} /> : null}
 
-      {phase === "intro" ? (
-        <IntroStep onStart={startQuiz} onSkipToTheme={() => setPhase("theme")} />
-      ) : null}
+      {phase === "intro" ? <IntroStep onStart={startQuiz} /> : null}
 
       {phase === "quiz" ? (
         <QuestionStep
@@ -246,31 +330,11 @@ function MbtiCourseWizard() {
       ) : null}
 
       {phase === "result" ? (
-        <ResultStep
-          code={mbtiCode}
-          onContinue={(chosenTheme) => goNightsFrom(chosenTheme, "quiz")}
-          onRetake={startQuiz}
-        />
-      ) : null}
-
-      {phase === "theme" ? (
-        <ThemePickerStep onPick={(chosenTheme) => goNightsFrom(chosenTheme, "theme")} />
+        <ResultStep code={mbtiCode} onContinue={(chosenTheme) => goNightsFrom(chosenTheme)} onRetake={startQuiz} />
       ) : null}
 
       {phase === "nights" ? (
-        <NightsStep theme={theme} nights={nights} onChangeNights={setNights} onNext={() => setPhase("conditions")} />
-      ) : null}
-
-      {phase === "conditions" ? (
-        <ConditionsStep
-          companion={companion}
-          budget={budget}
-          season={season}
-          onChangeCompanion={setCompanion}
-          onChangeBudget={setBudget}
-          onChangeSeason={setSeason}
-          onNext={() => setPhase("transport")}
-        />
+        <NightsStep theme={theme} nights={nights} onChangeNights={setNights} onNext={() => setPhase("transport")} />
       ) : null}
 
       {phase === "transport" ? (
@@ -286,8 +350,6 @@ function MbtiCourseWizard() {
         <GeneratedResultStep
           theme={theme}
           nights={nights}
-          companion={companion}
-          budget={budget}
           transport={transport}
           days={generatedDays}
           courseTitle={COURSE_TITLES[theme]}

@@ -9,21 +9,26 @@
  */
 
 /** 우리가 실제로 쓰는 kakao.maps 표면만 최소로 선언한다(strict 통과용, any 금지). */
-interface KakaoLatLng {
+export interface KakaoLatLng {
   getLat(): number;
   getLng(): number;
 }
 
-interface KakaoMap {
+export interface KakaoLatLngBounds {
+  extend(latlng: KakaoLatLng): void;
+}
+
+export interface KakaoMap {
   setCenter(latlng: KakaoLatLng): void;
+  setBounds(bounds: KakaoLatLngBounds): void;
   relayout(): void;
 }
 
-interface KakaoMarker {
+export interface KakaoMarker {
   setMap(map: KakaoMap | null): void;
 }
 
-interface KakaoPolyline {
+export interface KakaoPolyline {
   setMap(map: KakaoMap | null): void;
 }
 
@@ -31,9 +36,24 @@ interface KakaoEvent {
   addListener(target: KakaoMarker, type: "click", handler: () => void): void;
 }
 
+export interface KakaoPlaceSearchResult {
+  /** 경도(x) */
+  x: string;
+  /** 위도(y) */
+  y: string;
+}
+
+export interface KakaoPlacesService {
+  keywordSearch(
+    keyword: string,
+    callback: (data: KakaoPlaceSearchResult[], status: string) => void,
+  ): void;
+}
+
 export interface KakaoMaps {
   load(callback: () => void): void;
   LatLng: new (lat: number, lng: number) => KakaoLatLng;
+  LatLngBounds: new () => KakaoLatLngBounds;
   Map: new (
     container: HTMLElement,
     options: { center: KakaoLatLng; level?: number; draggable?: boolean },
@@ -45,9 +65,13 @@ export interface KakaoMaps {
     strokeWeight?: number;
     strokeColor?: string;
     strokeOpacity?: number;
-    strokeStyle?: "solid" | "shortdash" | "shortdot" | "shortdashdot";
+    strokeStyle?: string;
   }) => KakaoPolyline;
   event: KakaoEvent;
+  services: {
+    Places: new () => KakaoPlacesService;
+    Status: { OK: string };
+  };
 }
 
 declare global {
@@ -57,7 +81,9 @@ declare global {
 }
 
 const JS_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
-const SDK_SRC = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${JS_KEY ?? ""}&autoload=false`;
+// libraries=services — 좌표가 없는 장소(카카오 검색으로 담긴 코스 스탑 등)를 이름으로
+// 키워드 검색해 좌표를 구하는 kakao.maps.services.Places에 필요하다.
+const SDK_SRC = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${JS_KEY ?? ""}&autoload=false&libraries=services`;
 
 let loader: Promise<KakaoMaps> | null = null;
 

@@ -147,6 +147,44 @@ export async function fetchDaejeonLodgings(): Promise<DaejeonPlace[]> {
   });
 }
 
+interface RawShoppingItem {
+  shppgNm: string;
+  shppgAddr: string;
+  mapLat: string;
+  mapLot: string;
+}
+
+/** 대전시 쇼핑 명소(백화점·전통시장 등) — mapLat/mapLot을 이미 갖고 있어 지오코딩이 필요 없다.
+ * 프론트 PlaceCategory에 쇼핑이 따로 없어 체험·나들이 성격으로 보고 문화로 묶는다. */
+export async function fetchDaejeonShopping(): Promise<DaejeonPlace[]> {
+  return cached("daejeon-places:shopping", 24 * 60 * 60 * 1000, async () => {
+    const data = await fetchDaejeonOpenApi("shopping", { numOfRows: 100 });
+    const items = extractItems<RawShoppingItem>(data);
+
+    const places = items
+      .map((item, index) => {
+        const district = DISTRICTS.find((candidate) => item.shppgAddr.includes(candidate));
+        if (!district) return null;
+        const lat = Number(item.mapLat);
+        const lng = Number(item.mapLot);
+        if (!lat || !lng) return null;
+        return {
+          id: `shopping-${index}`,
+          name: item.shppgNm,
+          category: "문화" as PlaceCategory,
+          district,
+          address: item.shppgAddr,
+          lat,
+          lng,
+          imageUrl: null as string | null,
+        } satisfies DaejeonPlace;
+      })
+      .filter((place): place is DaejeonPlace => place !== null);
+
+    return supplementImagesByName(places, (place) => `대전 ${place.district} ${place.name} ${IMAGE_SEARCH_HINT[place.category]}`, MAX_IMAGE_SUPPLEMENT);
+  });
+}
+
 interface RawTourspotItem {
   tourspotNm: string;
   tourspotAddr: string;

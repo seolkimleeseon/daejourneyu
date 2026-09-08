@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { Course, CourseSchedule } from "@/types";
 import { mockCourses } from "@/mocks";
 import { createCourseApi, deleteCourseApi, updateCourseApi, type CourseUpdateInput } from "@/lib/api/courses";
-import { deleteScheduleApi, upsertScheduleApi } from "@/lib/api/schedule";
+import { createScheduleApi, deleteScheduleApi } from "@/lib/api/schedule";
 
 /** addCourse가 서버 응답을 받기 전 임시로 붙이는 id 접두사. setCourses가 이 접두사의 미확정
  * 항목을 서버 목록으로 덮어쓰지 않도록 구분하는 데 쓰인다.
@@ -24,10 +24,10 @@ interface CourseState {
   /** 코스별 일정(CourseSchedule). 코스와 별개 개념이라 배열도 따로 둔다(루트 CLAUDE.md 도메인 용어). */
   schedules: CourseSchedule[];
   setSchedules: (schedules: CourseSchedule[]) => void;
-  /** 코스에 날짜를 붙여 일정에 등록/수정한다. */
-  setSchedule: (courseId: string, date: string) => Promise<void>;
-  /** 일정 취소. */
-  removeSchedule: (courseId: string) => Promise<void>;
+  /** 코스에 날짜를 붙여 새 일정으로 등록한다(같은 코스도 여러 날짜에 등록 가능). */
+  addSchedule: (courseId: string, date: string) => Promise<void>;
+  /** 일정 하나를 취소한다(일정 id 기준). */
+  removeSchedule: (scheduleId: string) => Promise<void>;
 }
 
 // 코스는 위저드에서 생성되는 사용자 데이터. 목데이터를 초기값 삼아 즉시 렌더링하고,
@@ -87,14 +87,12 @@ export const useCourseStore = create<CourseState>((set, get) => ({
 
   schedules: [],
   setSchedules: (schedules) => set({ schedules }),
-  setSchedule: async (courseId, date) => {
-    const schedule = await upsertScheduleApi(courseId, date);
-    set({
-      schedules: [...get().schedules.filter((s) => s.courseId !== courseId), schedule],
-    });
+  addSchedule: async (courseId, date) => {
+    const schedule = await createScheduleApi(courseId, date);
+    set({ schedules: [...get().schedules, schedule] });
   },
-  removeSchedule: async (courseId) => {
-    await deleteScheduleApi(courseId);
-    set({ schedules: get().schedules.filter((s) => s.courseId !== courseId) });
+  removeSchedule: async (scheduleId) => {
+    await deleteScheduleApi(scheduleId);
+    set({ schedules: get().schedules.filter((s) => s.id !== scheduleId) });
   },
 }));

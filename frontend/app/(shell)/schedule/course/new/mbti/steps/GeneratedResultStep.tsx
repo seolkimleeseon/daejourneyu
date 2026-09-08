@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
@@ -14,8 +14,6 @@ import type { Place, Transport } from "@/types";
 interface GeneratedResultStepProps {
   theme: CourseTheme;
   nights: number;
-  companion: string;
-  budget: string;
   transport: Transport;
   days: Place[][];
   courseTitle: string;
@@ -27,8 +25,6 @@ interface GeneratedResultStepProps {
 export function GeneratedResultStep({
   theme,
   nights,
-  companion,
-  budget,
   transport,
   days,
   courseTitle,
@@ -40,9 +36,9 @@ export function GeneratedResultStep({
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="px-4 pb-6 pt-1">
+    <div className="px-5 pb-6 pt-1">
       <div className="rounded-2xl bg-surface p-2">
-        <div className="animate-pop-in mb-4 rounded-2xl bg-brand-100 p-4 text-center">
+        <div className="mb-4 rounded-2xl bg-brand-100 p-4 text-center">
           <div className="text-sm font-extrabold text-brand-700">오늘의 &lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
             <Tag tone="brand" className="cursor-default border border-line bg-card">
@@ -50,12 +46,6 @@ export function GeneratedResultStep({
             </Tag>
             <Tag tone="purple" className="cursor-default border border-line bg-card">
               {transport === "자차" ? "🚗" : "🚌"} {transport}
-            </Tag>
-            <Tag tone="purple" className="cursor-default border border-line bg-card">
-              👥 {companion}
-            </Tag>
-            <Tag tone="amber" className="cursor-default border border-line bg-card">
-              💰 {budget}
             </Tag>
             <Tag tone="brand" className="cursor-default border border-line bg-card">
               🐾 동반 가능
@@ -78,11 +68,7 @@ export function GeneratedResultStep({
         </div>
 
         {days.map((day, dayIndex) => (
-          <div
-            key={dayIndex}
-            style={{ animationDelay: `${0.15 + dayIndex * 0.08}s` }}
-            className="animate-fade-up mb-4 last:mb-0"
-          >
+          <div key={dayIndex} className="mb-4 last:mb-0">
             <div className="mb-2 px-1 text-xs font-bold text-ink-muted">
               {days.length > 1 ? `📍 ${dayIndex + 1}일차 동선` : `📍 ${theme}형 동선`} · {day.length}곳
             </div>
