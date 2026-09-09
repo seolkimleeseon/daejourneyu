@@ -43,7 +43,14 @@ function MapPageContent() {
   const [traveling, setTraveling] = useState(false);
   const { data: list = [], isLoading } = usePlaces({ district, category });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const visibleList = list.slice(0, visibleCount);
+
+  // 검색은 서버 쿼리가 아니라 이미 받아온 목록을 이름·동반조건으로 한 번 더 좁히는 클라이언트 필터다.
+  const [query, setQuery] = useState("");
+  const q = query.trim();
+  const filteredList = q
+    ? list.filter((place) => place.name.includes(q) || place.condition.includes(q))
+    : list;
+  const visibleList = filteredList.slice(0, visibleCount);
 
   useEffect(() => {
     if (!traveling) return;
@@ -51,10 +58,15 @@ function MapPageContent() {
     return () => clearTimeout(timer);
   }, [traveling]);
 
-  // 구·카테고리가 바뀌면 이전 필터의 "더 보기" 진행분은 의미가 없으니 되돌린다.
+  // 구가 바뀌면 이전 구에서 치던 검색어는 의미가 없으니 비운다.
+  useEffect(() => {
+    setQuery("");
+  }, [district]);
+
+  // 필터(구·카테고리·검색어)가 바뀌면 이전 필터의 "더 보기" 진행분은 의미가 없으니 되돌린다.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [district, category]);
+  }, [district, category, query]);
 
   const step: "districts" | "traveling" | "list" = !district
     ? "districts"
@@ -98,6 +110,18 @@ function MapPageContent() {
         <TravelingDog destination={district ?? ""} />
       ) : (
         <div className="px-4 pb-6 pt-3">
+          {!isLoading && list.length > 0 ? (
+            <div className="sticky top-14 z-10 -mx-4 mb-3 border-b border-line bg-surface px-4 pb-3">
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={`${district}에서 장소 이름·조건 검색`}
+                className="w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none focus:border-brand focus:bg-card"
+              />
+            </div>
+          ) : null}
+
           <div className="mb-3 flex flex-wrap gap-1.5">
             <Tag active={category === null} onClick={() => handleSelectCategory(null)}>
               전체
@@ -115,6 +139,10 @@ function MapPageContent() {
             <div className="py-10 text-center text-xs text-ink-muted">
               {district}에 조건에 맞는 장소가 아직 없어요.
             </div>
+          ) : filteredList.length === 0 ? (
+            <div className="py-10 text-center text-xs text-ink-muted">
+              ‘{q}’ 검색 결과가 없어요.
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2.5">
@@ -122,13 +150,13 @@ function MapPageContent() {
                   <PlaceCard key={place.id} place={place} />
                 ))}
               </div>
-              {list.length > visibleList.length ? (
+              {filteredList.length > visibleList.length ? (
                 <button
                   type="button"
                   onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
                   className="mt-3 w-full rounded-lg border border-line bg-surface py-2.5 text-xs font-semibold text-ink-muted"
                 >
-                  더 보기 · {list.length - visibleList.length}곳 남음
+                  더 보기 · {filteredList.length - visibleList.length}곳 남음
                 </button>
               ) : null}
             </>
