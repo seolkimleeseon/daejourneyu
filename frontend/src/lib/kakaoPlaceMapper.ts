@@ -56,5 +56,6 @@ export function mapKakaoPlaceToPlace(spot: ApiKakaoPlace, fallbackCategory: Plac
     lat: spot.lat,
     lng: spot.lng,
     imageUrl: spot.imageUrl,
+    placeUrl: spot.placeUrl,
   };
 }
