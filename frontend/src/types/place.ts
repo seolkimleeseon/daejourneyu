@@ -13,4 +13,5 @@ export interface Place {
   smallDogOnly?: boolean;
   lat: number;
   lng: number;
+  imageUrl?: string | null;
 }
