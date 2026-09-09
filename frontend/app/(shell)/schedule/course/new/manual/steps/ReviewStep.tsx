@@ -3,11 +3,12 @@
 import { useRef, useState } from "react";
 import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
+import { CourseRouteMap } from "@/components/course/CourseRouteMap";
 import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { CourseShareCard } from "@/components/course/CourseShareCard";
-import { nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
+import { conditionSourceLabel, isUnverifiedCondition, NEEDS_CHECK_LABEL, nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { routeDistanceKm } from "@/lib/nearestNeighborRoute";
 import type { Place } from "@/types";
 
@@ -81,6 +82,8 @@ export function ReviewStep({
         </button>
       </div>
 
+      {currentDay.length > 0 ? <CourseRouteMap places={currentDay} /> : null}
+
       <div className="mb-3 overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
         <DragReorderList
           items={currentDay}
@@ -103,17 +106,34 @@ export function ReviewStep({
               ) : null}
               <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1 text-sm font-bold text-ink">
-                  {place.name}
-                  {!place.petFriendly ? (
-                    <Tag tone="coral" className="cursor-default px-2 py-0.5 text-[10px]">
-                      🚫
-                    </Tag>
-                  ) : null}
-                </div>
+                <div className="text-sm font-bold text-ink">{place.name}</div>
                 <div className="mt-0.5 text-[10px] text-ink-muted">
                   {place.district} · {place.category}
                 </div>
+                {!editMode ? (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {/* "확인해주세요" 류 비확정 안내(카카오·공공데이터 tier2)는 출처 태그 +
+                        표준 안내 태그 두 개로 짧게 보여준다. */}
+                    {isUnverifiedCondition(place.condition) ? (
+                      <>
+                        <Tag tone="neutral" className="cursor-default px-2 py-0.5 text-[10px]">
+                          {conditionSourceLabel(place.condition)}
+                        </Tag>
+                        <Tag tone="neutral" className="cursor-default px-2 py-0.5 text-[10px]">
+                          {NEEDS_CHECK_LABEL}
+                        </Tag>
+                      </>
+                    ) : !place.petFriendly ? (
+                      <Tag tone="coral" className="cursor-default px-2 py-0.5 text-[10px]">
+                        🚫 동반 불가
+                      </Tag>
+                    ) : (
+                      <Tag tone="brand" className="cursor-default px-2 py-0.5 text-[10px]">
+                        🐾 동반 가능
+                      </Tag>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
           )}

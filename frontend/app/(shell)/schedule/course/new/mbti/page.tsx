@@ -11,7 +11,7 @@ import { NightsStep } from "./steps/NightsStep";
 import { GeneratedResultStep } from "./steps/GeneratedResultStep";
 import { LoginModal } from "@/components/my/LoginModal";
 import { MBTI_QUESTIONS, resolveMbtiType, scoreAnswers, topTheme, type CourseTheme, type MbtiAnswer } from "@/lib/mbti";
-import { resolvePlaceImageUrl } from "@/lib/courseFormat";
+import { placeToStop } from "@/lib/courseFormat";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -259,17 +259,7 @@ function MbtiCourseWizard() {
       transport: DEFAULT_TRANSPORT,
       source: "ai",
       shared: false,
-      days: generatedDays.map((day) =>
-        day.map((place) => ({
-          placeId: place.id,
-          name: place.name,
-          category: place.category,
-          district: place.district,
-          condition: place.condition,
-          petFriendly: place.petFriendly,
-          imageUrl: resolvePlaceImageUrl(place),
-        }))
-      ),
+      days: generatedDays.map((day) => day.map(placeToStop)),
     });
     showToast("보관함에 저장했어요 🐾 날짜는 나중에!");
     router.push("/schedule");

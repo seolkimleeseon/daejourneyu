@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { CourseButton as Button } from "@/components/course/CourseButton";
@@ -22,8 +22,13 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
   const showToast = useToastStore((state) => state.show);
 
   const course = useCourseStore((state) => state.courses.find((c) => c.id === params.courseId));
-  const courseSchedules = useCourseStore((state) =>
-    state.schedules.filter((s) => s.courseId === params.courseId).sort((a, b) => a.date.localeCompare(b.date))
+  const schedules = useCourseStore((state) => state.schedules);
+  // .filter().sort()를 셀렉터 안에서 바로 하면 store가 갱신될 때마다(구독 중인 다른 필드가
+  // 바뀌어도) 매번 새 배열을 만들어 불필요한 리렌더를 유발한다 — schedules 값 자체가 바뀔 때만
+  // 다시 계산한다.
+  const courseSchedules = useMemo(
+    () => schedules.filter((s) => s.courseId === params.courseId).sort((a, b) => a.date.localeCompare(b.date)),
+    [schedules, params.courseId]
   );
   const addSchedule = useCourseStore((state) => state.addSchedule);
   const removeSchedule = useCourseStore((state) => state.removeSchedule);

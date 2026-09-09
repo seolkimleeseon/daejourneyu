@@ -3,7 +3,7 @@
 import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
-import { resolvePlaceImageUrl } from "@/lib/courseFormat";
+import { conditionSourceLabel, isUnverifiedCondition, NEEDS_CHECK_LABEL, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import type { Place } from "@/types";
@@ -136,12 +136,25 @@ export function PlacesStep({
                         시작점
                       </Tag>
                     ) : null}
-                    <Tag
-                      tone={place.petFriendly ? "brand" : "coral"}
-                      className="cursor-default px-2 py-0.5 text-[10px]"
-                    >
-                      {place.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
-                    </Tag>
+                    {/* "확인해주세요" 류 비확정 안내(카카오·공공데이터 tier2)는 출처 태그 +
+                        표준 안내 태그 두 개로 짧게 보여준다. */}
+                    {isUnverifiedCondition(place.condition) ? (
+                      <>
+                        <Tag tone="neutral" className="cursor-default px-2 py-0.5 text-[10px]">
+                          {conditionSourceLabel(place.condition)}
+                        </Tag>
+                        <Tag tone="neutral" className="cursor-default px-2 py-0.5 text-[10px]">
+                          {NEEDS_CHECK_LABEL}
+                        </Tag>
+                      </>
+                    ) : (
+                      <Tag
+                        tone={place.petFriendly ? "brand" : "coral"}
+                        className="cursor-default px-2 py-0.5 text-[10px]"
+                      >
+                        {place.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
+                      </Tag>
+                    )}
                   </div>
                   <div className="mt-0.5 text-[10px] text-ink-muted">
                     {place.district} · {place.category}

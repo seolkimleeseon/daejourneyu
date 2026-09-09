@@ -86,7 +86,17 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   },
 
   schedules: [],
-  setSchedules: (schedules) => set({ schedules }),
+  // setCourses와 같은 이유(위 주석 참고) — useSchedules()의 react-query 캐시(staleTime 30초)가
+  // 저장 이전 스냅샷을 들고 있으면, 저장 직후 다른 화면으로 이동했을 때 이 stale 응답이 방금
+  // addSchedule로 추가한 항목을 통째로 덮어써 지워버린다. 서버 목록에 없는 로컬 항목(막 추가되어
+  // 아직 이 캐시엔 안 잡힌 것)은 지우지 않고 같이 들고 있는다.
+  setSchedules: (schedules) =>
+    set((state) => ({
+      schedules: [
+        ...schedules,
+        ...state.schedules.filter((s) => !schedules.some((server) => server.id === s.id)),
+      ],
+    })),
   addSchedule: async (courseId, date) => {
     const schedule = await createScheduleApi(courseId, date);
     set({ schedules: [...get().schedules, schedule] });
