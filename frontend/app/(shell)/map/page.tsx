@@ -11,6 +11,9 @@ import { usePlaces } from "@/hooks/usePlaces";
 import { CATEGORIES, DISTRICTS } from "@/lib/placeFilters";
 import type { DaejeonDistrict, PlaceCategory } from "@/types";
 
+/** 한 번에 다 그리면 카드가 많을 때 느려진다 — PlacePickerSheet와 동일하게 "더 보기"로 나눠 보여준다. */
+const PAGE_SIZE = 20;
+
 export default function MapPage() {
   return (
     <Suspense fallback={null}>
@@ -39,12 +42,19 @@ function MapPageContent() {
   // 강아지 이동 연출은 "이번에 구를 새로 골랐을 때"만 보여준다. 뒤로가기로 목록에 복귀할 땐 건너뛴다.
   const [traveling, setTraveling] = useState(false);
   const { data: list = [], isLoading } = usePlaces({ district, category });
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const visibleList = list.slice(0, visibleCount);
 
   useEffect(() => {
     if (!traveling) return;
     const timer = setTimeout(() => setTraveling(false), 1500);
     return () => clearTimeout(timer);
   }, [traveling]);
+
+  // 구·카테고리가 바뀌면 이전 필터의 "더 보기" 진행분은 의미가 없으니 되돌린다.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [district, category]);
 
   const step: "districts" | "traveling" | "list" = !district
     ? "districts"
@@ -99,17 +109,30 @@ function MapPageContent() {
             ))}
           </div>
 
-          <div className="flex flex-col gap-2.5">
-            {isLoading ? (
-              <div className="py-10 text-center text-xs text-ink-muted">불러오는 중…</div>
-            ) : list.length === 0 ? (
-              <div className="py-10 text-center text-xs text-ink-muted">
-                {district}에 조건에 맞는 장소가 아직 없어요.
+          {isLoading ? (
+            <div className="py-10 text-center text-xs text-ink-muted">불러오는 중…</div>
+          ) : list.length === 0 ? (
+            <div className="py-10 text-center text-xs text-ink-muted">
+              {district}에 조건에 맞는 장소가 아직 없어요.
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2.5">
+                {visibleList.map((place) => (
+                  <PlaceCard key={place.id} place={place} />
+                ))}
               </div>
-            ) : (
-              list.map((place) => <PlaceCard key={place.id} place={place} />)
-            )}
-          </div>
+              {list.length > visibleList.length ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                  className="mt-3 w-full rounded-lg border border-line bg-surface py-2.5 text-xs font-semibold text-ink-muted"
+                >
+                  더 보기 · {list.length - visibleList.length}곳 남음
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
       )}
     </>
