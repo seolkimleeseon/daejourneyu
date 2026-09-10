@@ -237,7 +237,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             </div>
 
             {courseSchedules.length > 0 ? (
-              <div className="mt-3 flex flex-col gap-1.5">
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5">
                 {courseSchedules.map((s) => (
                   <div key={s.id} className="rounded-xl bg-card px-3 py-2 text-xs font-semibold text-brand-700">
                     📅 {s.date}에 가기로 했어요
@@ -514,8 +514,10 @@ function DayStops({
                       <Tag tone={stop.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
                         {stop.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
                       </Tag>
+                      {/* 식약처·문체부처럼 실제로 확정된 소스도 원문 조건이 길면(대표메뉴·견종 제한 등
+                          세부사항까지 다 붙어서) 카드 한 줄에 넘친다 — 출처만 짧게 보여준다. */}
                       <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
-                        {stop.condition}
+                        {conditionSourceLabel(stop.condition)}
                       </Tag>
                     </>
                   )}
@@ -539,7 +541,7 @@ function DayStops({
         <button
           type="button"
           onClick={onAddPlace}
-          className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line-strong text-xs font-semibold text-brand-700"
+          className="mt-2.5 flex h-12 w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-card text-sm font-bold text-brand-700 active:bg-brand-100"
         >
           <span>➕</span>장소 추가하기
         </button>
