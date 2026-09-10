@@ -17,7 +17,10 @@ export default function CourseVaultPage() {
   const hasSynced = useCourseStore((state) => state.hasSynced);
   const storeSchedules = useCourseStore((state) => state.schedules);
   const courses = [...storeCourses].reverse();
-  const scheduledCourseIds = new Set(storeSchedules.map((schedule) => schedule.courseId));
+  const scheduleCountByCourse = new Map<string, number>();
+  for (const schedule of storeSchedules) {
+    scheduleCountByCourse.set(schedule.courseId, (scheduleCountByCourse.get(schedule.courseId) ?? 0) + 1);
+  }
 
   if (!isLoggedIn) {
     return (
@@ -47,8 +50,9 @@ export default function CourseVaultPage() {
             <CourseCard
               key={course.id}
               course={course}
-              hasUpcomingSchedule={scheduledCourseIds.has(course.id)}
+              scheduleCount={scheduleCountByCourse.get(course.id) ?? 0}
               onClick={() => router.push(`/schedule/course/${course.id}`)}
+              onAddSchedule={() => router.push(`/schedule/course/${course.id}/schedule`)}
             />
           ))
         ) : (
