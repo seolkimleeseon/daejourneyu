@@ -8,9 +8,12 @@ import type { CourseSource } from "@/types";
 
 interface CourseCardProps {
   course: Course;
-  /** 이 코스에 예정된 일정이 있으면 캘린더 안내 문구를 보여준다. */
-  hasUpcomingSchedule?: boolean;
+  /** 이 코스에 등록된 일정 개수 — 0이면 "일정 추가하기", 1개 이상이면 몇 개인지 보여준다.
+   * 같은 코스를 여러 날짜에 등록할 수 있어(불리언이 아니라 개수) 이미 일정이 있어도 계속 추가할 수 있다. */
+  scheduleCount?: number;
   onClick: () => void;
+  /** "일정 추가하기" 줄만 따로 눌렀을 때 — 카드 클릭(상세 이동)과 분리해 바로 일정 등록 화면으로 보낸다. */
+  onAddSchedule: () => void;
 }
 
 const GLOW_CLASS: Record<CourseSource, string> = {
@@ -20,7 +23,7 @@ const GLOW_CLASS: Record<CourseSource, string> = {
 };
 
 /** 코스 보관함의 티켓 카드. 흰 바탕 위주로 절제하고, 출처(ai/manual/saved)는 오른쪽 컬러 배지로 표시한다. */
-export function CourseCard({ course, hasUpcomingSchedule, onClick }: CourseCardProps) {
+export function CourseCard({ course, scheduleCount = 0, onClick, onAddSchedule }: CourseCardProps) {
   const stopCount = course.days.reduce((sum, day) => sum + day.length, 0);
   const emoji = resolveCourseEmoji(course.emoji, course.source);
 
@@ -43,9 +46,16 @@ export function CourseCard({ course, hasUpcomingSchedule, onClick }: CourseCardP
         <div className="mt-1.5 text-xs text-ink-muted">
           {nightsLabel(course.nights)} · {stopCount}곳{course.shared ? " · 공유됨" : ""}
         </div>
-        <div className="mt-2 text-xs font-semibold text-brand">
-          {hasUpcomingSchedule ? "📅 예정된 일정 있어요" : "📅 일정을 추가하기 ›"}
-        </div>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAddSchedule();
+          }}
+          className="mt-2 text-xs font-semibold text-brand"
+        >
+          {scheduleCount > 0 ? `📅 등록된 일정 ${scheduleCount}개 · 추가하기 ›` : "📅 일정 추가하기 ›"}
+        </button>
       </div>
     </div>
   );
