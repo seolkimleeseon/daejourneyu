@@ -27,23 +27,23 @@ export function CourseCard({ course, hasUpcomingSchedule, onClick }: CourseCardP
   return (
     <div
       onClick={onClick}
-      className="mb-2.5 flex w-full cursor-pointer items-stretch overflow-hidden rounded-2xl border border-line bg-card shadow-sm active:bg-surface"
+      className="mb-3.5 flex w-full cursor-pointer items-stretch overflow-hidden rounded-2xl border border-line bg-card shadow-sm active:bg-surface"
     >
       <div className="flex w-[72px] shrink-0 items-center justify-center border-r border-dashed border-line bg-surface">
         <Emoji3D emoji={emoji} size={44} glowClassName={GLOW_CLASS[course.source]} />
       </div>
 
-      <div className="min-w-0 flex-1 px-4 py-3">
+      <div className="min-w-0 flex-1 px-4 py-3.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 truncate text-[15px] font-bold text-ink">{course.label}</div>
           <Tag tone={SOURCE_TONE[course.source]} className="shrink-0 cursor-default">
             {SOURCE_LABEL[course.source]}
           </Tag>
         </div>
-        <div className="mt-1 text-xs text-ink-muted">
+        <div className="mt-1.5 text-xs text-ink-muted">
           {nightsLabel(course.nights)} · {stopCount}곳{course.shared ? " · 공유됨" : ""}
         </div>
-        <div className="mt-1.5 text-xs font-semibold text-brand">
+        <div className="mt-2 text-xs font-semibold text-brand">
           {hasUpcomingSchedule ? "📅 예정된 일정 있어요" : "📅 일정을 추가하기 ›"}
         </div>
       </div>

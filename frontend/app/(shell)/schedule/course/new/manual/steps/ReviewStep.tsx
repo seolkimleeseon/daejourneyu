@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
@@ -40,7 +40,7 @@ export function ReviewStep({
   const displayName = name.trim() || defaultName;
 
   return (
-    <div className="animate-fade-up px-4 pb-6 pt-1">
+    <div className="px-5 pb-6 pt-1">
       <div className="mb-4 rounded-2xl bg-brand-100 px-4 py-3 text-xs font-semibold text-brand-700">
         ✓ 시작 지점 기준으로 가까운 곳끼리 이어 최적 동선을 짰어요
       </div>

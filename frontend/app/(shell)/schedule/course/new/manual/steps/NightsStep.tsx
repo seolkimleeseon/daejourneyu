@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { nightsLabel } from "@/lib/courseFormat";
 
@@ -17,7 +17,7 @@ export function NightsStep({ nights, onChangeNights, onNext }: NightsStepProps) 
   const clamp = (value: number) => Math.max(0, Math.min(MAX_NIGHTS, value));
 
   return (
-    <div className="animate-fade-up px-4 pb-6 pt-1">
+    <div className="px-5 pb-6 pt-1">
       <div className="mb-4 text-center text-sm font-bold text-ink">며칠 코스인가요?</div>
       <div className="rounded-2xl border border-line bg-card p-4">
         <div className="flex items-center justify-center gap-5">

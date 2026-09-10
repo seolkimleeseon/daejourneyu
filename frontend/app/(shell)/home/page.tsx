@@ -11,34 +11,55 @@ import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useCourseStore } from "@/stores/useCourseStore";
-import { useToastStore } from "@/stores/useToastStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
-import { findUpcomingTrip } from "@/lib/schedule";
+import { findActiveTrip } from "@/lib/schedule";
+import { toCrowdPlace, type CrowdPlace } from "@/lib/crowd";
 import { mockArticles } from "@/mocks";
+
+/** Fisher-Yates — 예정된 여행이 없을 때 보여줄 반려동반 여행지를 매번 다른 순서로 섞는다. */
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 export default function HomePage() {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const activePet = usePetStore((state) => state.activePet());
-  const showToast = useToastStore((state) => state.show);
-  const { data: places = [] } = usePlaces();
   useSyncCoursesFromApi();
   const courses = useCourseStore((state) => state.courses);
   const schedules = useCourseStore((state) => state.schedules);
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const upcomingTrip = useMemo(
-    () => (isLoggedIn ? findUpcomingTrip(schedules, courses, new Date().toISOString().slice(0, 10)) : null),
+  const activeTrip = useMemo(
+    () => (isLoggedIn ? findActiveTrip(schedules, courses, new Date().toISOString().slice(0, 10)) : null),
     [isLoggedIn, schedules, courses]
   );
+
+  // 7일 이내 예정되었거나 진행 중인 여행이 있으면 그 코스의 장소로, 없으면 문체부 반려동물
+  // 동반가능 시설 현황(source=petacp) 중에서 랜덤하게 골라 혼잡도 티커를 채운다.
+  const { data: travelPlaces = [], isPending: travelPlacesLoading } = usePlaces({ source: "petacp" });
 
   const latestArticle = useMemo(
     () => [...mockArticles].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null,
     []
   );
 
-  const crowdPlaces = useMemo(() => places.filter((place) => place.petFriendly).slice(0, 6), [places]);
+  const crowdPlaces = useMemo<CrowdPlace[]>(() => {
+    if (activeTrip) {
+      return activeTrip.stops.map((stop) => ({ id: stop.placeId, name: stop.name, category: stop.category }));
+    }
+    return shuffle(travelPlaces.filter((place) => place.petFriendly))
+      .slice(0, 6)
+      .map(toCrowdPlace);
+  }, [activeTrip, travelPlaces]);
+
+  const crowdLoading = !activeTrip && travelPlacesLoading;
 
   return (
     <>
@@ -68,8 +89,9 @@ export default function HomePage() {
         <HomeStatusCard
           pet={activePet}
           isLoggedIn={isLoggedIn}
-          upcomingTrip={upcomingTrip}
+          upcomingTrip={activeTrip}
           crowdPlaces={crowdPlaces}
+          crowdLoading={crowdLoading}
         />
 
         {latestArticle ? (
@@ -98,7 +120,9 @@ export default function HomePage() {
             title="내 반려동물 MBTI"
             subtitle={activePet?.mbti ? `${activePet.mbti.code} · 결과 보기` : "여행 성향 알아보기"}
             tone="purple"
-            onClick={() => showToast("여행 MBTI는 다음 스텝에서 제공돼요")}
+            onClick={() =>
+              router.push(activePet?.mbti ? "/schedule/course/new/mbti?quick=1" : "/schedule/course/new/mbti")
+            }
           />
           <TileButton
             variant="outlined"
@@ -106,25 +130,16 @@ export default function HomePage() {
             title="오늘 어디 갈까?"
             subtitle="장소와 코스 추천받기"
             tone="brand"
-            onClick={() => showToast("AI 챗봇은 다음 스텝에서 제공돼요")}
+            onClick={() => router.push("/home/chatbot")}
           />
         </div>
 
-        <div className="mb-2 px-1 text-xs font-bold text-ink-muted">이번 달 대전 소식</div>
+        <div className="mb-2 px-1 text-xs font-bold text-ink-muted">축제 캘린더</div>
         <div className="flex flex-col gap-2.5">
-          <HomeFeatureCard
-            emoji="📰"
-            eyebrow="MONTHLY BRIEFING"
-            titleLines={["이번 달", "대전 소식"]}
-            subtitle="신규 · 핫플 · 인기 장소를 모아봤어요"
-            ctaLabel="월간 브리핑 보기"
-            gradientClass="bg-gradient-to-br from-accent-amber to-accent-coral"
-            onClick={() => router.push("/home/weekly-briefing")}
-          />
           <HomeFeatureCard
             emoji="🎆"
             eyebrow="DAEJEON FESTIVAL"
-            titleLines={["이번 달", "대전 축제"]}
+            titleLines={["축제", "캘린더"]}
             subtitle="반려동물과 함께 갈 수 있는 축제를 확인해보세요"
             ctaLabel="축제 일정 보기"
             gradientClass="bg-gradient-to-br from-accent-purple to-accent-navy"

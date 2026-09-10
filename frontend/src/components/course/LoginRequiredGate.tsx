@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { LoginModal } from "@/components/my/LoginModal";
 
 interface LoginRequiredGateProps {

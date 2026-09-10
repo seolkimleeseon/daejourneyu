@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { resolvePlaceImageUrl } from "@/lib/courseFormat";
@@ -57,7 +57,7 @@ export function PlacesStep({
   };
 
   return (
-    <div className="animate-fade-up px-4 pb-6 pt-1">
+    <div className="px-5 pb-6 pt-1">
       {days.length > 1 ? (
         <div className="mb-3 flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
           {days.map((day, index) => (
@@ -92,13 +92,7 @@ export function PlacesStep({
       </div>
 
       {currentDayPlaces.length > 0 ? (
-        <div
-          className={
-            startValid
-              ? "mb-3 rounded-lg bg-brand-100 px-3 py-2.5 text-xs leading-relaxed text-brand-700"
-              : "mb-3 rounded-lg bg-brand-100 px-3 py-2.5 text-xs leading-relaxed text-brand-700"
-          }
-        >
+        <div className="mb-3 rounded-lg bg-accent-amber-light px-3 py-2.5 text-xs leading-relaxed text-accent-amber">
           📍 {startValid ? (
             <>
               <b>{currentDayPlaces.find((p) => p.id === start)?.name}</b>에서 {dayLabel ? `${dayLabel} ` : ""}여행을
@@ -119,7 +113,7 @@ export function PlacesStep({
                 key={place.id}
                 className={
                   isStart
-                    ? "flex items-center gap-3 border-b border-line bg-brand-100 px-3.5 py-3 last:border-b-0"
+                    ? "flex items-center gap-3 border-b border-line border-l-[3px] border-l-brand bg-card px-3 py-3 last:border-b-0"
                     : "flex items-center gap-3 border-b border-line px-3.5 py-3 last:border-b-0"
                 }
                 onClick={() => onSetStart(activeDay, place.id)}
@@ -138,7 +132,7 @@ export function PlacesStep({
                   <div className="flex flex-wrap items-center gap-1 text-sm font-bold text-ink">
                     {place.name}
                     {isStart ? (
-                      <Tag tone="brand" className="cursor-default px-2 py-0.5 text-[10px]">
+                      <Tag tone="amber" className="cursor-default px-2 py-0.5 text-[10px]">
                         시작점
                       </Tag>
                     ) : null}
@@ -178,7 +172,7 @@ export function PlacesStep({
       <button
         type="button"
         onClick={handleOpenPicker}
-        className="mb-5 w-full rounded-xl border-[1.5px] border-dashed border-brand-300 bg-brand-100 py-3.5 text-center text-sm font-bold text-brand-700"
+        className="mb-5 w-full rounded-xl border-[1.5px] border-dashed border-brand bg-card py-3.5 text-center text-sm font-bold text-brand-700"
       >
         ＋ {dayLabel ? `${dayLabel}에 ` : ""}장소 추가하기
       </button>

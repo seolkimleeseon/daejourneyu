@@ -136,7 +136,6 @@ export default function ManualCourseWizardPage() {
         title={step === 0 ? "직접 짓기" : step === 1 ? "장소 담기" : "동선 확인"}
         showBack
         onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
-        rightSlot={step === 1 ? `${days.reduce((sum, d) => sum + d.length, 0)}곳` : undefined}
       />
       <CourseStepBar active={step} labels={MANUAL_STEP_LABELS} />
 

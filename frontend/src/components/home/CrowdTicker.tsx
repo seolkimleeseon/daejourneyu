@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Place } from "@/types";
-import { computeCrowdLevel, type CrowdLevel } from "@/lib/crowd";
+import { computeCrowdLevel, type CrowdLevel, type CrowdPlace } from "@/lib/crowd";
 import { CATEGORY_ICON } from "@/lib/placeFilters";
 import { cn } from "@/lib/cn";
 
 interface CrowdTickerProps {
-  places: Place[];
+  places: CrowdPlace[];
+  /** 장소 목록을 아직 불러오는 중인지 — true면 빈칸 대신 "불러오는 중" 안내를 보인다. */
+  loading?: boolean;
 }
 
 const LEVEL_CLASS: Record<CrowdLevel, string> = {
@@ -26,7 +27,7 @@ const TRANSITION_MS = 500;
  * 마지막 다음에 첫 항목을 한 번 더 복제해두고, 그 지점에 도달하면 트랜지션을 끈 채
  * 순간적으로 0번으로 되돌린 뒤 다시 트랜지션을 켜는 방식으로 무한 루프처럼 보이게 한다.
  */
-export function CrowdTicker({ places }: CrowdTickerProps) {
+export function CrowdTicker({ places, loading = false }: CrowdTickerProps) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
   const [instant, setInstant] = useState(false);
@@ -52,7 +53,18 @@ export function CrowdTicker({ places }: CrowdTickerProps) {
     return () => clearTimeout(resetTimer);
   }, [index, places.length]);
 
-  if (places.length === 0) return null;
+  if (places.length === 0) {
+    return (
+      <div className="flex h-9 items-center gap-1.5 text-[11px] font-semibold text-brand-700/70">
+        <span>🐾</span>
+        <span className="truncate">
+          {loading
+            ? "대전 곳곳의 반려동물 동반 장소를 모으고 있어요"
+            : "지금은 표시할 장소가 없어요"}
+        </span>
+      </div>
+    );
+  }
 
   const loopPlaces = places.length > 1 ? [...places, places[0]] : places;
 

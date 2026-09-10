@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { Tag } from "@/components/ui/Tag";
-import { Button } from "@/components/ui/Button";
+import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Modal } from "@/components/ui/Modal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
+import { CourseRouteMap } from "@/components/course/CourseRouteMap";
 import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
@@ -459,6 +460,7 @@ function DayStops({
       <div className="mb-2 text-xs font-bold text-brand-700">
         {totalDays > 1 ? `📍 ${dayIndex + 1}일차 동선` : "📍 동선"} · {day.length}곳
       </div>
+      {!editMode ? <CourseRouteMap stops={day} /> : null}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         {day.map((stop, stopIndex) => (
           <div
