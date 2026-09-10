@@ -12,6 +12,8 @@ export interface CourseStop {
   petFriendly: boolean;
   /** 장소 사진 URL(있는 소스에서 담아온 경우만). 없으면 카테고리 이모지로 대체 표시. */
   imageUrl?: string | null;
+  /** 카카오맵 원본 페이지 URL(카카오 검색으로 담은 장소만). 있으면 상세 페이지 대신 이 링크로 보낸다. */
+  placeUrl?: string | null;
 }
 
 export interface Course {

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Card } from "@/components/ui/Card";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
+import { MonthCalendarGrid } from "@/components/course/MonthCalendarGrid";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
@@ -22,8 +23,13 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
   const showToast = useToastStore((state) => state.show);
 
   const course = useCourseStore((state) => state.courses.find((c) => c.id === params.courseId));
-  const courseSchedules = useCourseStore((state) =>
-    state.schedules.filter((s) => s.courseId === params.courseId).sort((a, b) => a.date.localeCompare(b.date))
+  const schedules = useCourseStore((state) => state.schedules);
+  // .filter().sort()를 셀렉터 안에서 바로 하면 store가 갱신될 때마다(구독 중인 다른 필드가
+  // 바뀌어도) 매번 새 배열을 만들어 불필요한 리렌더를 유발한다 — schedules 값 자체가 바뀔 때만
+  // 다시 계산한다.
+  const courseSchedules = useMemo(
+    () => schedules.filter((s) => s.courseId === params.courseId).sort((a, b) => a.date.localeCompare(b.date)),
+    [schedules, params.courseId]
   );
   const addSchedule = useCourseStore((state) => state.addSchedule);
   const removeSchedule = useCourseStore((state) => state.removeSchedule);
@@ -107,13 +113,13 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
           </div>
         ) : null}
 
-        <label className="mt-4 block text-xs font-semibold text-ink-muted">새 날짜에 추가할까요?</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="mt-1.5 w-full rounded-lg border border-line bg-card px-3 py-3 text-sm text-ink outline-none focus:border-brand-400"
+        <label className="mt-4 mb-1.5 block text-xs font-semibold text-ink-muted">새 날짜에 추가할까요?</label>
+        <MonthCalendarGrid
+          selectedDate={date}
+          onSelectDate={setDate}
+          markedDates={new Set(courseSchedules.map((s) => s.date))}
         />
+        <div className="mt-1.5 px-1 text-[11px] text-ink-muted">📅 선택한 날짜: {date}</div>
 
         <Button className="mt-5" onClick={handleSave} disabled={saving}>
           <span>📅</span>일정 등록하기

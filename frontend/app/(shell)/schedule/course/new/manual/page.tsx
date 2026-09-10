@@ -13,7 +13,7 @@ import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { nearestNeighborRoute } from "@/lib/nearestNeighborRoute";
-import { resolvePlaceImageUrl } from "@/lib/courseFormat";
+import { placeToStop } from "@/lib/courseFormat";
 import type { Place } from "@/types";
 
 const MANUAL_STEP_LABELS = ["설정", "장소", "동선"] as const;
@@ -114,17 +114,7 @@ export default function ManualCourseWizardPage() {
       transport: "자차",
       source: "manual",
       shared: false,
-      days: reviewDays.map((day) =>
-        day.map((place) => ({
-          placeId: place.id,
-          name: place.name,
-          category: place.category,
-          district: place.district,
-          condition: place.condition,
-          petFriendly: place.petFriendly,
-          imageUrl: resolvePlaceImageUrl(place),
-        }))
-      ),
+      days: reviewDays.map((day) => day.map(placeToStop)),
     });
     showToast("보관함에 저장했어요 🐾 날짜는 나중에!");
     router.push("/schedule");

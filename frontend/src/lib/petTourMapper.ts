@@ -7,6 +7,8 @@ import type { Place, PlaceCategory } from "@/types";
 export interface PickablePlace extends Place {
   imageUrl: string | null;
   sourceTier?: number;
+  /** 카카오 검색 결과에만 있는 원본 페이지 링크. */
+  placeUrl?: string | null;
 }
 
 const ALL_CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문화"];

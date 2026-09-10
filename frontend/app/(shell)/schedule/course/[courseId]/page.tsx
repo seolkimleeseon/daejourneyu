@@ -12,32 +12,29 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { CourseRouteMap } from "@/components/course/CourseRouteMap";
 import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
+import { KakaoPlacePreviewSheet } from "@/components/course/KakaoPlacePreviewSheet";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
-import { nightsLabel, resolveCourseEmoji, resolvePlaceImageUrl, SOURCE_LABEL, SOURCE_TONE } from "@/lib/courseFormat";
+import {
+  conditionSourceLabel,
+  isUnverifiedCondition,
+  NEEDS_CHECK_LABEL,
+  nightsLabel,
+  placeToStop,
+  resolveCourseEmoji,
+  SOURCE_LABEL,
+  SOURCE_TONE,
+} from "@/lib/courseFormat";
 import { cn } from "@/lib/cn";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useToastStore } from "@/stores/useToastStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { useSheetStore } from "@/stores/useSheetStore";
-import type { CourseStop, Place } from "@/types";
+import type { CourseStop } from "@/types";
 
 /** 티켓 배경(브랜드 민트) 위에서도 태그 경계가 보이도록 배경을 흰색으로 고정한다 —
  * tone별 배경이 티켓 배경색과 같은 계열이면 경계가 안 보이는 문제 방지. 글자색은 tone 그대로 유지. */
 const TICKET_TAG_CLASS = "cursor-default border border-line bg-card";
-
-function placeToStop(place: Place): CourseStop {
-  return {
-    placeId: place.id,
-    name: place.name,
-    category: place.category,
-    district: place.district,
-    condition: place.condition,
-    petFriendly: place.petFriendly,
-    imageUrl: resolvePlaceImageUrl(place),
-  };
-}
 
 const EMOJI_CHOICES = [
   "🐾", "🐶", "🐕", "🐩", "🦮", "🐈",
@@ -71,8 +68,8 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const [draftDays, setDraftDays] = useState<CourseStop[][]>([]);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [kakaoPreview, setKakaoPreview] = useState<CourseStop | null>(null);
   const openPlaceSheet = useSheetStore((state) => state.open);
-  const showToast = useToastStore((state) => state.show);
 
   if (!isLoggedIn) {
     return (
@@ -109,9 +106,13 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const isMultiDay = displayDays.length > 1;
 
   const goToPlace = (stop: CourseStop) => {
-    // 카카오맵 검색으로 담긴 장소는 /api/places·mockPlaces에 없어 상세 페이지 조회가 항상 실패한다.
+    // 카카오맵 검색으로 담긴 장소는 /api/places·mockPlaces에 없어 우리 상세 페이지 조회가 항상
+    // 실패한다 — 대신 같은 앱 안에서 우리 상세 페이지와 비슷한 생김새의 미리보기 시트를 띄운다.
+    // 지도는 KakaoPlacePreviewSheet 안에서 CourseRouteMap이 그때그때 좌표를 다시 구해서 그리므로
+    // placeUrl 유무와 무관하게(예전에 저장된 코스도) 항상 뜬다 — "카카오맵에서 보기" 버튼만
+    // placeUrl이 있을 때 추가로 보인다.
     if (stop.placeId.startsWith("kakao-")) {
-      showToast("카카오맵에서 가져온 장소는 아직 상세 페이지를 지원하지 않아요");
+      setKakaoPreview(stop);
       return;
     }
     router.push(`/place/${encodeURIComponent(stop.name)}`);
@@ -236,7 +237,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             </div>
 
             {courseSchedules.length > 0 ? (
-              <div className="mt-3 flex flex-col gap-1.5">
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5">
                 {courseSchedules.map((s) => (
                   <div key={s.id} className="rounded-xl bg-card px-3 py-2 text-xs font-semibold text-brand-700">
                     📅 {s.date}에 가기로 했어요
@@ -363,6 +364,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
       </div>
 
       <PlacePickerSheet />
+      <KakaoPlacePreviewSheet stop={kakaoPreview} onClose={() => setKakaoPreview(null)} />
 
       <BottomSheet open={emojiPickerOpen} onClose={() => setEmojiPickerOpen(false)} title="대표 이모지 고르기">
         <div className="grid grid-cols-6 gap-2">
@@ -495,19 +497,27 @@ function DayStops({
               </div>
               {!editMode ? (
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  {/* 카카오맵 검색 장소는 condition이 항상 "확인해주세요" 식 안내문이라, 확정형
-                      동반가능 배지와 같이 두면 서로 모순돼 보인다 — 이 경우엔 안내문 하나만 보여준다. */}
-                  {stop.placeId.startsWith("kakao-") ? (
-                    <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
-                      {stop.condition}
-                    </Tag>
+                  {/* "확인해주세요" 류 비확정 안내(카카오·공공데이터 tier2)는 확정형 동반가능
+                      배지와 같이 두면 서로 모순돼 보인다 — 이 경우엔 출처 태그 + 표준 안내 태그
+                      두 개로 짧게 보여준다(원문은 소스마다 길이가 다 달라 그대로 쓰면 너무 길다). */}
+                  {isUnverifiedCondition(stop.condition) ? (
+                    <>
+                      <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
+                        {conditionSourceLabel(stop.condition)}
+                      </Tag>
+                      <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
+                        {NEEDS_CHECK_LABEL}
+                      </Tag>
+                    </>
                   ) : (
                     <>
                       <Tag tone={stop.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
                         {stop.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
                       </Tag>
+                      {/* 식약처·문체부처럼 실제로 확정된 소스도 원문 조건이 길면(대표메뉴·견종 제한 등
+                          세부사항까지 다 붙어서) 카드 한 줄에 넘친다 — 출처만 짧게 보여준다. */}
                       <Tag tone="neutral" className="cursor-default px-2 py-1 text-[10px]">
-                        {stop.condition}
+                        {conditionSourceLabel(stop.condition)}
                       </Tag>
                     </>
                   )}
@@ -531,7 +541,7 @@ function DayStops({
         <button
           type="button"
           onClick={onAddPlace}
-          className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line-strong text-xs font-semibold text-brand-700"
+          className="mt-2.5 flex h-12 w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-card text-sm font-bold text-brand-700 active:bg-brand-100"
         >
           <span>➕</span>장소 추가하기
         </button>
