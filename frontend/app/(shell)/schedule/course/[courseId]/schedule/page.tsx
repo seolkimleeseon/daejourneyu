@@ -6,6 +6,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Card } from "@/components/ui/Card";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
+import { MonthCalendarGrid } from "@/components/course/MonthCalendarGrid";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
@@ -112,13 +113,13 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
           </div>
         ) : null}
 
-        <label className="mt-4 block text-xs font-semibold text-ink-muted">새 날짜에 추가할까요?</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="mt-1.5 w-full rounded-lg border border-line bg-card px-3 py-3 text-sm text-ink outline-none focus:border-brand-400"
+        <label className="mt-4 mb-1.5 block text-xs font-semibold text-ink-muted">새 날짜에 추가할까요?</label>
+        <MonthCalendarGrid
+          selectedDate={date}
+          onSelectDate={setDate}
+          markedDates={new Set(courseSchedules.map((s) => s.date))}
         />
+        <div className="mt-1.5 px-1 text-[11px] text-ink-muted">📅 선택한 날짜: {date}</div>
 
         <Button className="mt-5" onClick={handleSave} disabled={saving}>
           <span>📅</span>일정 등록하기
