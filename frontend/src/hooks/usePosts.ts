@@ -11,6 +11,8 @@ import {
   deletePostApi,
   fetchPostApi,
   fetchPostsApi,
+  savePostApi,
+  unsavePostApi,
   type ApiFeedPost,
   type PostCreateInput,
   type PostListParams,
@@ -174,6 +176,91 @@ export function usePost(postId: string) {
   );
 
   return { ...query, data };
+}
+
+/** 담기 상태가 바뀐 게시물 하나를, 캐시에 들어 있는 모양이 뭐든 찾아서 갈아끼운다. */
+function patchPost<T>(data: T, postId: string, saved: boolean, saves: number): T {
+  const apply = (post: ApiFeedPost): ApiFeedPost =>
+    post.id === postId ? { ...post, saved, saves } : post;
+
+  if (!data || typeof data !== "object") return data;
+
+  // 무한 쿼리(둘러보기 목록)
+  if ("pages" in data) {
+    const infinite = data as { pages: { items: ApiFeedPost[] }[] };
+    return {
+      ...data,
+      pages: infinite.pages.map((page) => ({ ...page, items: page.items.map(apply) })),
+    };
+  }
+  // 단일 페이지 쿼리(내 글·인기 배너)
+  if ("items" in data) {
+    const page = data as { items: ApiFeedPost[] };
+    return { ...data, items: page.items.map(apply) };
+  }
+  // 상세 단건
+  if ("id" in data) return apply(data as unknown as ApiFeedPost) as T;
+
+  return data;
+}
+
+/**
+ * 담기 토글. 남의 코스를 내 보관함에 담고, 취소하면 사본까지 걷어낸다.
+ *
+ * 버튼을 누른 즉시 화면을 바꾸고(낙관적 업데이트) 실패하면 되돌린다 — 담긴 수가 카드마다
+ * 보이는 값이라 왕복을 기다리면 눌렀는지 안 눌렸는지 알기 어렵다.
+ * 성공하면 서버가 알려준 값으로 다시 맞추고, 보관함 캐시도 무효화해 내 여정 탭에 바로 나타나게 한다.
+ */
+export function useToggleSave() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ postId, next }: { postId: string; next: boolean }) =>
+      next ? savePostApi(postId) : unsavePostApi(postId),
+
+    onMutate: async ({ postId, next }) => {
+      // 진행 중인 조회가 낙관적 값을 덮어쓰지 않게 먼저 멈춘다.
+      await queryClient.cancelQueries({ queryKey: POSTS_KEY });
+      const snapshot = queryClient.getQueriesData({ queryKey: POSTS_KEY });
+
+      for (const [key, data] of snapshot) {
+        const current = findPostInCache(data, postId);
+        if (!current) continue;
+        queryClient.setQueryData(key, patchPost(data, postId, next, current.saves + (next ? 1 : -1)));
+      }
+
+      return { snapshot };
+    },
+
+    onError: (_error, _variables, context) => {
+      for (const [key, data] of context?.snapshot ?? []) queryClient.setQueryData(key, data);
+    },
+
+    onSuccess: (result, { postId }) => {
+      for (const [key, data] of queryClient.getQueriesData({ queryKey: POSTS_KEY })) {
+        queryClient.setQueryData(key, patchPost(data, postId, result.saved, result.saves));
+      }
+      // 보관함에 사본이 생기거나 사라졌으므로 코스 목록을 다시 받는다.
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+    },
+  });
+}
+
+/** 낙관적 업데이트에 필요한 "지금 담긴 수"를 캐시에서 찾는다. */
+function findPostInCache(data: unknown, postId: string): ApiFeedPost | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  if ("pages" in data) {
+    const infinite = data as { pages: { items: ApiFeedPost[] }[] };
+    return infinite.pages.flatMap((page) => page.items).find((post) => post.id === postId);
+  }
+  if ("items" in data) {
+    return (data as { items: ApiFeedPost[] }).items.find((post) => post.id === postId);
+  }
+  if ("id" in data) {
+    const post = data as unknown as ApiFeedPost;
+    return post.id === postId ? post : undefined;
+  }
+  return undefined;
 }
 
 /** 코스 자랑하기 — 성공하면 목록 캐시를 무효화해 둘러보기에 바로 반영된다. */

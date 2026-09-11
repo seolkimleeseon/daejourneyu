@@ -64,6 +64,28 @@ export async function fetchPostApi(id: string): Promise<ApiFeedPost | null> {
   return res.json();
 }
 
+/** 담기/취소 후 서버가 알려주는 최종 상태. 담긴 수는 서버 값이 정본이다. */
+export interface PostSaveResult {
+  saves: number;
+  saved: boolean;
+  /** 담기로 보관함에 만들어진 코스 id. 취소 응답에는 없다. */
+  courseId?: string | null;
+}
+
+/** 담기 — 남의 코스를 내 보관함에 사본으로 만든다. 두 번 눌러도 사본은 하나다(서버가 멱등 처리). */
+export async function savePostApi(id: string): Promise<PostSaveResult> {
+  const res = await authFetch(`/api/posts/${id}/save`, { method: "POST" });
+  if (!res.ok) throw new Error("코스를 담지 못했어요");
+  return res.json();
+}
+
+/** 담기 취소 — 보관함 사본도 같이 사라진다. */
+export async function unsavePostApi(id: string): Promise<PostSaveResult> {
+  const res = await authFetch(`/api/posts/${id}/save`, { method: "DELETE" });
+  if (!res.ok) throw new Error("담기를 취소하지 못했어요");
+  return res.json();
+}
+
 /** 자랑하기에서 서버로 보내는 값 — id·좋아요·담기 수는 서버가 정한다. */
 export type PostCreateInput = Pick<
   FeedPost,

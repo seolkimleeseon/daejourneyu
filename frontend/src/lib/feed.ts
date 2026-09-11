@@ -2,6 +2,7 @@ import type { Article, Course, FeedPost } from "@/types";
 import type { PostCreateInput } from "@/lib/api/posts";
 import type { FeedInteraction } from "@/stores/useFeedStore";
 import { nightsLabel } from "@/lib/courseFormat";
+import { DISTRICTS } from "@/lib/placeFilters";
 
 export interface ResolvedPostInteraction {
   liked: boolean;
@@ -11,21 +12,22 @@ export interface ResolvedPostInteraction {
 }
 
 /**
- * 원본 게시물 + 사용자가 토글한 오버라이드를 합쳐 화면에 보일 값을 계산한다.
- * 카운트는 원본 값에서 토글 여부만큼만 가감한다(서버 재조회 없이 낙관적 표시).
+ * 화면에 보일 값을 계산한다.
+ *
+ * 담기(saved/saves)는 서버가 정본이라 게시물 값을 그대로 쓴다 — 낙관적 표시는 useToggleSave가
+ * 쿼리 캐시를 직접 갈아끼우는 쪽에서 처리한다. 아직 서버가 없는 좋아요만 로컬 오버라이드로 덮는다.
  */
 export function resolvePostInteraction(
   post: FeedPost,
   override: FeedInteraction | undefined
 ): ResolvedPostInteraction {
   const liked = override?.liked ?? post.liked;
-  const saved = override?.saved ?? post.saved;
 
   return {
     liked,
     likes: post.likes + (liked === post.liked ? 0 : liked ? 1 : -1),
-    saved,
-    saves: post.saves + (saved === post.saved ? 0 : saved ? 1 : -1),
+    saved: post.saved,
+    saves: post.saves,
   };
 }
 
@@ -79,11 +81,27 @@ export function formatFeedDate(date: string): string {
   return `${Number(month)}월 ${Number(day)}일`;
 }
 
-/** 자랑하기 글에 자동으로 붙는 태그 — 코스에서 뽑아낼 수 있는 것만 넣는다(일정·이동수단·자치구). */
+/** 자랑하기 글에 자동으로 붙는 태그 — 코스를 훑어볼 때 필요한 일정 길이와 자치구만 넣는다. */
 function buildCourseTags(course: Course): string[] {
   const stops = course.days.flat();
   const districts = [...new Set(stops.map((stop) => stop.district))];
-  return [nightsLabel(course.nights), course.transport, ...districts];
+  return [nightsLabel(course.nights), ...districts];
+}
+
+/** "당일치기" 또는 "2박 3일" — nightsLabel이 만들어내는 두 가지 형태. */
+const NIGHTS_TAG_PATTERN = /^(당일치기|\d+박 \d+일)$/;
+const DISTRICT_TAGS = new Set<string>(DISTRICTS);
+
+/**
+ * 화면에 실제로 보여줄 태그만 남긴다 — 일정 길이와 자치구 둘뿐이다.
+ *
+ * 예전에 올라간 글에는 이동수단("자차"/"대중교통")이나 견종 태그가 섞여 있는데, 목록에서
+ * 코스를 고를 때 훑는 정보는 "며칠짜리인지"와 "어느 동네인지"라 나머지는 태그 줄만 길게 만든다.
+ * 저장된 값을 지우지 않고 표시할 때 거르는 이유는 이동수단 태그를 담기(보관함 사본)가
+ * 아직 참고하기 때문이다 — backend/src/routes/posts.ts의 buildSavedCourseData 참고.
+ */
+export function visiblePostTags(tags: string[]): string[] {
+  return tags.filter((tag) => NIGHTS_TAG_PATTERN.test(tag) || DISTRICT_TAGS.has(tag));
 }
 
 export interface CoursePostAuthor {

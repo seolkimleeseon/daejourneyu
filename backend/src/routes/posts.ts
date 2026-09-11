@@ -40,7 +40,27 @@ const postWithRelations = {
 
 type PostRow = Prisma.PostGetPayload<{ include: typeof postWithRelations }>;
 
-function toFeedPost(row: PostRow, viewerId: string | undefined): FeedPost {
+/**
+ * 뷰어가 담아둔 글 id 집합. 목록 한 페이지마다 한 번만 조회해서 N+1을 피한다.
+ * 비로그인은 담기 상태가 없으므로 빈 집합이다.
+ */
+async function loadSavedPostIds(
+  viewerId: string | undefined,
+  postIds: string[]
+): Promise<Set<string>> {
+  if (!viewerId || postIds.length === 0) return new Set();
+  const rows = await prisma.postSave.findMany({
+    where: { userId: viewerId, postId: { in: postIds } },
+    select: { postId: true },
+  });
+  return new Set(rows.map((row) => row.postId));
+}
+
+function toFeedPost(
+  row: PostRow,
+  viewerId: string | undefined,
+  savedPostIds: Set<string>
+): FeedPost {
   return {
     id: row.id,
     authorName: row.authorName,
@@ -61,10 +81,10 @@ function toFeedPost(row: PostRow, viewerId: string | undefined): FeedPost {
     ...(row.courseId ? { courseId: row.courseId } : {}),
     tags: row.tags,
     likes: row.likes,
-    // TODO(api): 좋아요/담기 토글이 서버로 넘어오기 전까지는 항상 false로 내려간다(프론트가 로컬 상태로 덮어씀).
+    // TODO(api): 좋아요는 아직 서버에 없어 항상 false로 내려간다(프론트가 로컬 상태로 덮어씀).
     liked: false,
     saves: row.saves,
-    saved: false,
+    saved: savedPostIds.has(row.id),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -194,7 +214,13 @@ router.get("/", optionalAuth, async (req, res) => {
   // 전체 건수는 첫 페이지에서만 센다 — 검색 결과 개수를 보여주는 용도라 이어 받을 때는 필요 없다.
   const total = cursor ? undefined : await prisma.post.count({ where });
 
-  res.json({ items: rows.map((row) => toFeedPost(row, req.userId)), nextCursor, total });
+  const savedPostIds = await loadSavedPostIds(req.userId, rows.map((row) => row.id));
+
+  res.json({
+    items: rows.map((row) => toFeedPost(row, req.userId, savedPostIds)),
+    nextCursor,
+    total,
+  });
 });
 
 /**
@@ -207,7 +233,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
     include: postWithRelations,
   });
   if (!row) return res.status(404).json({ error: "게시물을 찾을 수 없어요" });
-  res.json(toFeedPost(row, req.userId));
+  res.json(toFeedPost(row, req.userId, await loadSavedPostIds(req.userId, [row.id])));
 });
 
 // POST /api/posts — 코스 자랑하기. 로그인 필요.
@@ -241,7 +267,160 @@ router.post("/", requireAuth, async (req, res) => {
     include: postWithRelations,
   });
 
-  res.status(201).json(toFeedPost(created, req.userId));
+  res.status(201).json(toFeedPost(created, req.userId, new Set()));
+});
+
+/**
+ * 담긴 글을 내 보관함 코스로 옮겨 적는다.
+ *
+ * 동선은 **글에 박제된 stops를 정본으로** 쓴다 — 사용자가 화면에서 본 그대로여야 하기 때문이다.
+ * 원본 코스는 일차 구분·이동수단처럼 글에 남지 않는 정보를 채우는 데만 참고하고,
+ * 원본이 지워졌거나 그 사이 장소 수가 달라졌으면 참고를 포기하고 당일치기 한 일차로 접는다.
+ */
+function buildSavedCourseData(
+  post: PostRow,
+  origin: { emoji: string | null; transport: string; days: { stops: { order: number }[] }[] } | null
+) {
+  const dayLengths = origin?.days.map((day) => day.stops.length) ?? [];
+  const originStopCount = dayLengths.reduce((sum, n) => sum + n, 0);
+  const usable = origin !== null && originStopCount === post.stops.length;
+
+  const days: PostRow["stops"][] = [];
+  if (usable) {
+    let cursor = 0;
+    for (const length of dayLengths) {
+      days.push(post.stops.slice(cursor, cursor + length));
+      cursor += length;
+    }
+  } else {
+    days.push(post.stops);
+  }
+
+  /*
+   * 이동수단은 일차 구분과 달리 장소 수가 맞는지와 무관하므로, 원본 코스가 남아 있으면
+   * 그대로 가져온다(usable이 false여도 마찬가지다 — 작성 후 원본을 손대면 흔히 그렇게 된다).
+   * 태그 fallback은 이동수단 태그를 같이 달던 시절의 옛 글에만 걸린다 —
+   * 지금 자랑하기가 붙이는 태그는 일정 길이와 자치구뿐이다(frontend src/lib/feed.ts).
+   */
+  const taggedTransport = post.tags.find((tag) => tag === "자차" || tag === "대중교통");
+
+  return {
+    label: post.caption,
+    emoji: usable ? origin!.emoji : null,
+    nights: days.length - 1,
+    transport: origin?.transport ?? taggedTransport ?? "자차",
+    source: "saved",
+    shared: false,
+    days: {
+      create: days.map((stops, dayIndex) => ({
+        dayIndex,
+        stops: {
+          create: stops.map((stop, order) => ({
+            order,
+            placeId: stop.placeId,
+            name: stop.name,
+            category: stop.category,
+            district: stop.district,
+            condition: stop.condition,
+            petFriendly: stop.petFriendly,
+            imageUrl: stop.imageUrl,
+          })),
+        },
+      })),
+    },
+  };
+}
+
+/**
+ * POST /api/posts/:id/save — 담기. 남의 코스를 내 보관함에 사본으로 만들고 담긴 수를 올린다.
+ *
+ * `Post.saves`는 PostSave 행 수를 비정규화한 값이라 둘을 한 트랜잭션에서 같이 움직인다.
+ * 이미 담은 글이면 아무것도 하지 않고 현재 상태만 돌려준다 — 버튼을 두 번 눌러도(느린 네트워크에서
+ * 흔하다) 사본이 두 개 생기거나 담긴 수가 부풀지 않아야 한다.
+ */
+router.post("/:id/save", requireAuth, async (req, res) => {
+  const post = await prisma.post.findUnique({
+    where: { id: req.params.id },
+    include: postWithRelations,
+  });
+  if (!post) return res.status(404).json({ error: "게시물을 찾을 수 없어요" });
+  if (post.userId === req.userId) {
+    return res.status(400).json({ error: "내 코스는 담을 수 없어요" });
+  }
+
+  // 원본 코스는 참고용이라 없어도 담기는 그대로 진행된다.
+  const origin = post.courseId
+    ? await prisma.course.findUnique({
+        where: { id: post.courseId },
+        select: {
+          emoji: true,
+          transport: true,
+          days: { orderBy: { dayIndex: "asc" }, select: { stops: { select: { order: true } } } },
+        },
+      })
+    : null;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const already = await tx.postSave.findUnique({
+      where: { userId_postId: { userId: req.userId!, postId: post.id } },
+    });
+    if (already) {
+      return { saves: post.saves, saved: true, courseId: already.courseId };
+    }
+
+    const course = await tx.course.create({
+      data: { ...buildSavedCourseData(post, origin), userId: req.userId! },
+      select: { id: true },
+    });
+    await tx.postSave.create({
+      data: { userId: req.userId!, postId: post.id, courseId: course.id },
+    });
+    const updated = await tx.post.update({
+      where: { id: post.id },
+      data: { saves: { increment: 1 } },
+      select: { saves: true },
+    });
+
+    return { saves: updated.saves, saved: true, courseId: course.id };
+  });
+
+  res.json(result);
+});
+
+/**
+ * DELETE /api/posts/:id/save — 담기 취소. 보관함 사본도 함께 지운다.
+ *
+ * 사본을 남겨두면 "담기를 껐는데 보관함에는 그대로"인 상태가 되어 되돌릴 방법이 없어진다.
+ * 사용자가 보관함에서 먼저 지웠다면 courseId가 null이라(SetNull) 기록만 걷어낸다.
+ */
+router.delete("/:id/save", requireAuth, async (req, res) => {
+  const post = await prisma.post.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, saves: true },
+  });
+  if (!post) return res.status(404).json({ error: "게시물을 찾을 수 없어요" });
+
+  const result = await prisma.$transaction(async (tx) => {
+    const existing = await tx.postSave.findUnique({
+      where: { userId_postId: { userId: req.userId!, postId: post.id } },
+    });
+    // 담은 적이 없으면 담긴 수를 건드리지 않는다 — 안 그러면 취소를 반복해 수를 깎을 수 있다.
+    if (!existing) return { saves: post.saves, saved: false };
+
+    await tx.postSave.delete({ where: { id: existing.id } });
+    if (existing.courseId) {
+      await tx.course.delete({ where: { id: existing.courseId } });
+    }
+    const updated = await tx.post.update({
+      where: { id: post.id },
+      data: { saves: { decrement: 1 } },
+      select: { saves: true },
+    });
+
+    return { saves: updated.saves, saved: false };
+  });
+
+  res.json(result);
 });
 
 // DELETE /api/posts/:id — 내 글 삭제. 남의 글이면 존재 여부도 알리지 않고 404로 통일한다.
