@@ -102,6 +102,19 @@ export async function createPostApi(input: PostCreateInput): Promise<ApiFeedPost
   return res.json();
 }
 
+/** 글에서 고칠 수 있는 값 — 동선·태그는 보관함 코스에서 박제된 값이라 글에서 수정하지 않는다. */
+export type PostUpdateInput = Partial<Pick<FeedPost, "caption" | "text">>;
+
+export async function updatePostApi(id: string, input: PostUpdateInput): Promise<ApiFeedPost> {
+  const res = await authFetch(`/api/posts/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error("게시물을 수정하지 못했어요");
+  return res.json();
+}
+
 export async function deletePostApi(id: string): Promise<void> {
   const res = await authFetch(`/api/posts/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("게시물을 삭제하지 못했어요");

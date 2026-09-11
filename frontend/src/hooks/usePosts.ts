@@ -13,9 +13,11 @@ import {
   fetchPostsApi,
   savePostApi,
   unsavePostApi,
+  updatePostApi,
   type ApiFeedPost,
   type PostCreateInput,
   type PostListParams,
+  type PostUpdateInput,
 } from "@/lib/api/posts";
 import { usePetStore } from "@/stores/usePetStore";
 
@@ -268,6 +270,16 @@ export function useCreatePost() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: PostCreateInput) => createPostApi(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: POSTS_KEY }),
+  });
+}
+
+/** 내 글 수정 — 코스 이름·소개만 고친다. 목록 카드에도 같은 값이 나가므로 전체를 무효화한다. */
+export function useUpdatePost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postId, input }: { postId: string; input: PostUpdateInput }) =>
+      updatePostApi(postId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: POSTS_KEY }),
   });
 }

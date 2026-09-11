@@ -423,6 +423,41 @@ router.delete("/:id/save", requireAuth, async (req, res) => {
   res.json(result);
 });
 
+/** 글에서 고칠 수 있는 건 소개 글귀뿐이다 — 동선(stops)은 보관함 코스에서 박제된 값이라 건드리지 않는다. */
+type PostUpdateInput = { caption?: string; text?: string };
+
+function validatePostUpdateInput(body: unknown): body is PostUpdateInput {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  if (b.caption !== undefined && (typeof b.caption !== "string" || b.caption.trim().length === 0)) {
+    return false;
+  }
+  if (b.text !== undefined && typeof b.text !== "string") return false;
+  // 둘 다 안 온 요청은 고칠 게 없다 — 조용히 200을 주면 저장된 줄 알고 넘어간다.
+  return b.caption !== undefined || b.text !== undefined;
+}
+
+// PATCH /api/posts/:id — 내 글 수정. 남의 글이면 삭제와 마찬가지로 존재 여부도 알리지 않고 404.
+router.patch("/:id", requireAuth, async (req, res) => {
+  if (!validatePostUpdateInput(req.body)) {
+    return res.status(400).json({ error: "수정할 내용이 올바르지 않아요" });
+  }
+  const input = req.body;
+
+  const existing = await prisma.post.findUnique({ where: { id: req.params.id } });
+  if (!existing || existing.userId !== req.userId) {
+    return res.status(404).json({ error: "게시물을 찾을 수 없어요" });
+  }
+
+  const updated = await prisma.post.update({
+    where: { id: existing.id },
+    data: { caption: input.caption?.trim(), text: input.text },
+    include: postWithRelations,
+  });
+
+  res.json(toFeedPost(updated, req.userId, await loadSavedPostIds(req.userId, [updated.id])));
+});
+
 // DELETE /api/posts/:id — 내 글 삭제. 남의 글이면 존재 여부도 알리지 않고 404로 통일한다.
 router.delete("/:id", requireAuth, async (req, res) => {
   const existing = await prisma.post.findUnique({ where: { id: req.params.id } });
