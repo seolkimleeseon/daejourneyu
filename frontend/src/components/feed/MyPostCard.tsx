@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { FeedPost } from "@/types";
+import { formatPostDate } from "@/lib/feed";
 
 interface MyPostCardProps {
   post: FeedPost;
@@ -18,8 +19,12 @@ export function MyPostCard({ post, onDelete }: MyPostCardProps) {
       <Link href={`/feed/post/${post.id}`} prefetch={false} className="min-w-0 flex-1">
         {/* 제목은 자르지 않고 단어 단위로 접는다 — 프로토타입 .mypost-cap과 동일 */}
         <div className="break-keep text-sm font-bold leading-snug text-ink">{post.caption}</div>
-        <div className="mt-1.5 text-[11px] text-ink-muted">
-          {post.stops.length}곳 · 📥 {post.saves}명이 담아감
+        <div className="mt-1.5 flex items-center gap-2 text-[11px] text-ink-muted">
+          <span className="truncate">
+            {post.stops.length}곳 · 📥 {post.saves}명이 담아감
+          </span>
+          {/* 등록일은 줄 오른쪽 끝 */}
+          <span className="ml-auto shrink-0">{formatPostDate(post.createdAt)}</span>
         </div>
       </Link>
       <button

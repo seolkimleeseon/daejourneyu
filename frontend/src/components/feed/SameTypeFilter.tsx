@@ -29,11 +29,13 @@ export function SameTypeFilter({ active, petTypeName, onToggle }: SameTypeFilter
       aria-pressed={active}
       className={cn(
         "flex w-full items-center gap-2 rounded-2xl px-3.5 py-2.5 text-left text-[11px] transition-colors",
+        // 꺼져 있을 때도 옅은 민트를 깔아 "누를 수 있는 줄"로 보이게 한다 — 회색 바탕은
+        // 주변 카드 배경과 구분이 안 돼 안내 문구처럼 읽혔다.
         !usable
           ? "bg-surface text-ink-muted opacity-60"
           : active
             ? "bg-accent-purple-light font-semibold text-accent-purple"
-            : "bg-surface text-ink-muted"
+            : "bg-brand-50 text-brand-700"
       )}
     >
       <span aria-hidden>{usable ? (active ? "✓" : "○") : "🐾"}</span>

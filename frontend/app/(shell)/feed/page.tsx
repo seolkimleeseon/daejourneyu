@@ -24,7 +24,6 @@ import {
   useDeletePost,
 } from "@/hooks/usePosts";
 import { useArticles } from "@/hooks/useArticles";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -61,13 +60,13 @@ export default function FeedPage() {
   const [postSort, setPostSort] = useState<PostSortMode>("saves");
   const [articleSort, setArticleSort] = useState<ArticleSortMode>("popular");
   const [query, setQuery] = useState("");
+  /** 실제로 서버에 보낸 검색어. 입력창(query)과 따로 두어야 엔터를 치기 전까지 목록이 그대로 있다. */
+  const [keyword, setKeyword] = useState("");
   const [sameTypeOnly, setSameTypeOnly] = useState(false);
   const [myPostPage, setMyPostPage] = useState(0);
   const [loginOpen, setLoginOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  // 한 글자마다 요청이 나가지 않게 검색어만 늦춰 보낸다. 화면 입력값은 그대로 즉시 반영된다.
-  const keyword = useDebouncedValue(query.trim(), 300);
   const searching = keyword.length > 0;
 
   /**
@@ -83,8 +82,11 @@ export default function FeedPage() {
     fetchNextPage,
   } = useFeedPosts({ keyword, sort: postSort, sameTypeOnly, enabled: segment === "course" });
 
-  /** 배너는 필터·검색과 무관하게 전체에서 가장 많이 담긴 코스라, 목록 페이지가 아니라 따로 받아온다. */
-  const showHotBanner = !searching && postSort === "saves";
+  /**
+   * 배너는 정렬·필터·검색과 무관하게 전체에서 가장 많이 담긴 코스라, 목록 페이지가 아니라 따로 받아온다.
+   * 최신순에서도 그대로 띄운다 — 어떤 정렬로 보든 "가장 많이 담긴 코스"라는 정보는 같기 때문이다.
+   */
+  const showHotBanner = !searching;
   const { data: hottestPost } = useHottestPost(segment === "course" && showHotBanner);
 
   const sortedArticles = useMemo(
@@ -98,6 +100,15 @@ export default function FeedPage() {
     segment === "mine" && isLoggedIn
   );
   const myPage = paginate(myPosts, myPostPage, MY_POSTS_PER_PAGE);
+
+  /**
+   * 정렬은 코스 탭과 내 글 탭이 함께 쓰는 값이다. 내 글은 화면에서 페이지를 나누므로
+   * 정렬만 바뀌고 페이지가 그대로면 2페이지에 있던 사람이 엉뚱한 구간을 보게 된다.
+   */
+  const handlePostSortChange = (next: PostSortMode) => {
+    setPostSort(next);
+    setMyPostPage(0);
+  };
 
   /** '내 글'은 로그인 사용자의 게시물이므로 비로그인 상태에서는 로그인 모달로 유도한다. */
   const handleSegmentChange = (next: FeedSegment) => {
@@ -127,33 +138,21 @@ export default function FeedPage() {
     <>
       <TopBar title="둘러보기" />
       <div className="px-4 pb-6 pt-3">
-        <div className="flex items-center gap-1.5">
-          <FeedSegments value={segment} onChange={handleSegmentChange} />
-          {segment === "article" ? (
-            <FeedSortSelect
-              value={articleSort}
-              options={ARTICLE_SORT_OPTIONS}
-              onChange={setArticleSort}
-            />
-          ) : (
-            <FeedSortSelect value={postSort} options={POST_SORT_OPTIONS} onChange={setPostSort} />
-          )}
-        </div>
+        <FeedSegments value={segment} onChange={handleSegmentChange} />
 
         {segment === "course" ? (
           <div className="mt-3 flex flex-col gap-2.5">
-            <FeedSearchBar value={query} onChange={setQuery} />
+            <FeedSearchBar
+              value={query}
+              onChange={setQuery}
+              onSubmit={(next) => setKeyword(next.trim())}
+            />
 
             {postsLoading ? (
               <LoadingState />
             ) : (
               <>
-                {searching ? (
-                  <p className="px-0.5 text-[11px] text-ink-muted">
-                    🔍 전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
-                    {courseTotal}개
-                  </p>
-                ) : (
+                {!searching ? (
                   <>
                     {showHotBanner && hottestPost ? <HotPostCard post={hottestPost} /> : null}
                     <SameTypeFilter
@@ -162,7 +161,29 @@ export default function FeedPage() {
                       onToggle={() => setSameTypeOnly((previous) => !previous)}
                     />
                   </>
-                )}
+                ) : null}
+
+                {/* 건수와 정렬은 목록 바로 위에 붙여 둔다 — 정렬은 아래 카드 순서를 바꾸는 값이라
+                    탭 줄보다 목록에 붙어 있어야 무엇이 바뀌는지 바로 읽힌다.
+                    전체 건수는 서버가 필터·검색을 적용해 세어 준 값이라 그대로 보여주고,
+                    0건일 때는 아래 빈 상태 안내가 같은 말을 하므로 숫자는 접는다. */}
+                <div className="flex items-center gap-2 px-0.5">
+                  {courseTotal > 0 ? (
+                    <p className="text-[11px] text-ink-muted">
+                      {searching ? (
+                        <>
+                          🔍 전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
+                        </>
+                      ) : null}
+                      총 <b className="text-ink">{courseTotal}</b>개
+                    </p>
+                  ) : null}
+                  <FeedSortSelect
+                    value={postSort}
+                    options={POST_SORT_OPTIONS}
+                    onChange={handlePostSortChange}
+                  />
+                </div>
 
                 {coursePosts.length > 0 ? (
                   <>
@@ -196,7 +217,21 @@ export default function FeedPage() {
             {articlesLoading ? (
               <LoadingState />
             ) : sortedArticles.length > 0 ? (
-              sortedArticles.map((article) => <ArticleCard key={article.id} article={article} />)
+              <>
+                <div className="flex items-center gap-2 px-0.5">
+                  <p className="text-[11px] text-ink-muted">
+                    총 <b className="text-ink">{sortedArticles.length}</b>개
+                  </p>
+                  <FeedSortSelect
+                    value={articleSort}
+                    options={ARTICLE_SORT_OPTIONS}
+                    onChange={setArticleSort}
+                  />
+                </div>
+                {sortedArticles.map((article) => (
+                  <ArticleCard key={article.id} article={article} />
+                ))}
+              </>
             ) : (
               <FeedEmptyState
                 emoji="📰"
@@ -221,9 +256,16 @@ export default function FeedPage() {
               <LoadingState />
             ) : myPosts.length > 0 ? (
               <>
-                <div className="px-0.5 text-[10px] text-ink-muted">
-                  총 <b className="text-ink">{myPosts.length}</b>개 · {myPage.page + 1}/
-                  {myPage.totalPages} 페이지
+                <div className="flex items-center gap-2 px-0.5">
+                  <p className="text-[11px] text-ink-muted">
+                    총 <b className="text-ink">{myPosts.length}</b>개 · {myPage.page + 1}/
+                    {myPage.totalPages} 페이지
+                  </p>
+                  <FeedSortSelect
+                    value={postSort}
+                    options={POST_SORT_OPTIONS}
+                    onChange={handlePostSortChange}
+                  />
                 </div>
                 {myPage.items.map((post) => (
                   <MyPostCard

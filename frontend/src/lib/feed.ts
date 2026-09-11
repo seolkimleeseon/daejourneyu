@@ -81,6 +81,17 @@ export function formatFeedDate(date: string): string {
   return `${Number(month)}월 ${Number(day)}일`;
 }
 
+/**
+ * 게시물 카드의 등록일 표기 — createdAt은 ISO 문자열이라 날짜 부분만 잘라 쓴다.
+ * 같은 해면 아티클과 똑같이 "8월 12일", 해가 넘어간 글만 연도를 붙여 구분한다.
+ */
+export function formatPostDate(createdAt: string): string {
+  const [year, month, day] = createdAt.slice(0, 10).split("-");
+  if (!year || !month || !day) return "";
+  const label = `${Number(month)}월 ${Number(day)}일`;
+  return Number(year) === new Date().getFullYear() ? label : `${year}년 ${label}`;
+}
+
 /** 자랑하기 글에 자동으로 붙는 태그 — 코스를 훑어볼 때 필요한 일정 길이와 자치구만 넣는다. */
 function buildCourseTags(course: Course): string[] {
   const stops = course.days.flat();
