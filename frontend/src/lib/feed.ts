@@ -51,28 +51,11 @@ export type PostSortMode = "saves" | "recent";
 export type ArticleSortMode = "popular" | "recent";
 
 export function sortArticles(articles: Article[], mode: ArticleSortMode): Article[] {
-  return [...articles].sort((a, b) =>
-    mode === "popular" ? b.likes - a.likes : b.date.localeCompare(a.date)
-  );
-}
-
-export interface PageSlice<T> {
-  items: T[];
-  /** 범위를 벗어난 요청을 보정한 뒤의 실제 페이지 번호(0부터) */
-  page: number;
-  totalPages: number;
-}
-
-/** 내 글 목록 페이지네이션. 항목이 없어도 totalPages는 1로 둬서 "1/1 페이지"로 표시된다. */
-export function paginate<T>(items: T[], page: number, perPage: number): PageSlice<T> {
-  const totalPages = Math.max(Math.ceil(items.length / perPage), 1);
-  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
-
-  return {
-    items: items.slice(safePage * perPage, safePage * perPage + perPage),
-    page: safePage,
-    totalPages,
-  };
+  return [...articles].sort((a, b) => {
+    // 좋아요 수가 같으면 최신 글을 위로 — 동률일 때 순서가 렌더마다 흔들리지 않게 한다.
+    if (mode === "popular" && b.likes !== a.likes) return b.likes - a.likes;
+    return b.date.localeCompare(a.date);
+  });
 }
 
 /** 아티클 카드의 날짜 표기 — 프로토타입 jyFmt와 동일하게 "8월 12일" 형태로 줄인다. */

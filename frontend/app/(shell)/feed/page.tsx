@@ -1,41 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { FeedSegments, type FeedSegment } from "@/components/feed/FeedSegments";
 import { FeedSortSelect } from "@/components/feed/FeedSortSelect";
 import { FeedSearchBar } from "@/components/feed/FeedSearchBar";
 import { SameTypeFilter } from "@/components/feed/SameTypeFilter";
 import { HotPostCard } from "@/components/feed/HotPostCard";
 import { PostCard } from "@/components/feed/PostCard";
-import { MyPostCard } from "@/components/feed/MyPostCard";
 import { ArticleCard } from "@/components/feed/ArticleCard";
-import { FeedPager } from "@/components/feed/FeedPager";
 import { FeedEmptyState } from "@/components/feed/FeedEmptyState";
 import { InfiniteScrollSentinel } from "@/components/feed/InfiniteScrollSentinel";
 import { LoginModal } from "@/components/my/LoginModal";
-import {
-  useFeedPosts,
-  useHottestPost,
-  useMyPosts,
-  useDeletePost,
-} from "@/hooks/usePosts";
+import { useFeedPosts, useHottestPost } from "@/hooks/usePosts";
 import { useArticles } from "@/hooks/useArticles";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
-import { useToastStore } from "@/stores/useToastStore";
-import {
-  sortArticles,
-  paginate,
-  type PostSortMode,
-  type ArticleSortMode,
-} from "@/lib/feed";
-
-/** '내 글' 한 페이지에 보여줄 개수 — 프로토타입 jyMyListHtml의 PER과 동일 */
-const MY_POSTS_PER_PAGE = 4;
+import { sortArticles, type PostSortMode, type ArticleSortMode } from "@/lib/feed";
 
 const POST_SORT_OPTIONS: { value: PostSortMode; label: string }[] = [
   { value: "saves", label: "담긴순" },
@@ -48,24 +31,50 @@ const ARTICLE_SORT_OPTIONS: { value: ArticleSortMode; label: string }[] = [
 ];
 
 export default function FeedPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <FeedTabContent />
+    </Suspense>
+  );
+}
+
+function FeedTabContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const hydrated = useAuthStore((state) => state.hydrated);
   const activePet = usePetStore((state) => state.activePet());
-  const showToast = useToastStore((state) => state.show);
 
-  const deletePost = useDeletePost();
   const { data: articles = [], isLoading: articlesLoading } = useArticles();
 
-  const [segment, setSegment] = useState<FeedSegment>("course");
+  /**
+   * 탭과 아티클 정렬은 주소(?tab=article&sort=recent)에 둔다. 상세 화면은 (shell) 밖 라우트라
+   * 들어가는 순간 이 페이지가 언마운트되는데, 로컬 state로 들고 있으면 뒤로가기로 돌아왔을 때
+   * '코스' 탭·인기순으로 초기화돼 "들어오기 전 화면"이 아니게 된다.
+   * '내 글'은 로그인 사용자 전용이라 주소로 바로 들어와도 비로그인이면 코스 탭을 보여준다.
+   */
+  const requestedSegment = parseSegment(searchParams.get("tab"));
+  const segment: FeedSegment =
+    requestedSegment === "mine" && !isLoggedIn ? "course" : requestedSegment;
+  const articleSort = parseArticleSort(searchParams.get("sort"));
+
+  /** 탭 전환은 히스토리에 쌓지 않는다 — 쌓으면 뒤로가기가 이전 화면이 아니라 이전 탭으로 간다. */
+  const replaceQuery = (next: { tab: FeedSegment; sort: ArticleSortMode }) => {
+    const params = new URLSearchParams();
+    // 기본값(코스 탭·인기순)은 주소에서 생략해 BottomNav의 /feed와 같은 상태로 둔다.
+    if (next.tab !== "course") params.set("tab", next.tab);
+    if (next.tab === "article" && next.sort !== "popular") params.set("sort", next.sort);
+    const search = params.toString();
+    router.replace(search ? `/feed?${search}` : "/feed", { scroll: false });
+  };
+
+  /** 정렬은 코스 탭과 내 글 탭이 함께 쓰는 값이다 — 둘 다 같은 코스 게시물 목록이라 기준도 같다. */
   const [postSort, setPostSort] = useState<PostSortMode>("saves");
-  const [articleSort, setArticleSort] = useState<ArticleSortMode>("popular");
   const [query, setQuery] = useState("");
   /** 실제로 서버에 보낸 검색어. 입력창(query)과 따로 두어야 엔터를 치기 전까지 목록이 그대로 있다. */
   const [keyword, setKeyword] = useState("");
   const [sameTypeOnly, setSameTypeOnly] = useState(false);
-  const [myPostPage, setMyPostPage] = useState(0);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const searching = keyword.length > 0;
 
@@ -94,21 +103,19 @@ export default function FeedPage() {
     [articles, articleSort]
   );
 
-  /** 내 글은 개수가 적어 한 번에 받고, 페이지 나누기는 지금처럼 화면에서 한다. */
-  const { data: myPosts, isLoading: myPostsLoading } = useMyPosts(
-    postSort,
-    segment === "mine" && isLoggedIn
-  );
-  const myPage = paginate(myPosts, myPostPage, MY_POSTS_PER_PAGE);
-
   /**
-   * 정렬은 코스 탭과 내 글 탭이 함께 쓰는 값이다. 내 글은 화면에서 페이지를 나누므로
-   * 정렬만 바뀌고 페이지가 그대로면 2페이지에 있던 사람이 엉뚱한 구간을 보게 된다.
+   * 내 글도 코스 탭과 똑같은 카드·무한 스크롤로 보여준다. 예전엔 축약 카드 + 화면 페이지 나누기
+   * ("1/1 페이지")였는데, 같은 게시물이 탭마다 다른 모양이라 오히려 헷갈렸다.
+   * 삭제·수정은 게시물 상세 상단 바에 있으므로 목록 카드에는 두지 않는다.
    */
-  const handlePostSortChange = (next: PostSortMode) => {
-    setPostSort(next);
-    setMyPostPage(0);
-  };
+  const {
+    data: myPosts,
+    total: myTotal,
+    isLoading: myPostsLoading,
+    isFetchingNextPage: isFetchingNextMyPage,
+    hasNextPage: hasNextMyPage,
+    fetchNextPage: fetchNextMyPage,
+  } = useFeedPosts({ sort: postSort, mine: true, enabled: segment === "mine" && isLoggedIn });
 
   /** '내 글'은 로그인 사용자의 게시물이므로 비로그인 상태에서는 로그인 모달로 유도한다. */
   const handleSegmentChange = (next: FeedSegment) => {
@@ -118,20 +125,7 @@ export default function FeedPage() {
       setLoginOpen(true);
       return;
     }
-    setMyPostPage(0);
-    setSegment(next);
-  };
-
-  const confirmDelete = async () => {
-    if (!pendingDeleteId) return;
-    const targetId = pendingDeleteId;
-    setPendingDeleteId(null);
-    try {
-      await deletePost.mutateAsync(targetId);
-      showToast("내 글을 삭제했어요");
-    } catch {
-      showToast("삭제하지 못했어요. 잠시 후 다시 시도해주세요");
-    }
+    replaceQuery({ tab: next, sort: articleSort });
   };
 
   return (
@@ -181,7 +175,7 @@ export default function FeedPage() {
                   <FeedSortSelect
                     value={postSort}
                     options={POST_SORT_OPTIONS}
-                    onChange={handlePostSortChange}
+                    onChange={setPostSort}
                   />
                 </div>
 
@@ -225,7 +219,7 @@ export default function FeedPage() {
                   <FeedSortSelect
                     value={articleSort}
                     options={ARTICLE_SORT_OPTIONS}
-                    onChange={setArticleSort}
+                    onChange={(next) => replaceQuery({ tab: "article", sort: next })}
                   />
                 </div>
                 {sortedArticles.map((article) => (
@@ -258,29 +252,22 @@ export default function FeedPage() {
               <>
                 <div className="flex items-center gap-2 px-0.5">
                   <p className="text-[11px] text-ink-muted">
-                    총 <b className="text-ink">{myPosts.length}</b>개 · {myPage.page + 1}/
-                    {myPage.totalPages} 페이지
+                    총 <b className="text-ink">{myTotal}</b>개
                   </p>
                   <FeedSortSelect
                     value={postSort}
                     options={POST_SORT_OPTIONS}
-                    onChange={handlePostSortChange}
+                    onChange={setPostSort}
                   />
                 </div>
-                {myPage.items.map((post) => (
-                  <MyPostCard
-                    key={post.id}
-                    post={post}
-                    onDelete={() => setPendingDeleteId(post.id)}
-                  />
+                {myPosts.map((post) => (
+                  <PostCard key={post.id} post={post} />
                 ))}
-                {myPage.totalPages > 1 ? (
-                  <FeedPager
-                    page={myPage.page}
-                    totalPages={myPage.totalPages}
-                    onChange={setMyPostPage}
-                  />
-                ) : null}
+                <InfiniteScrollSentinel
+                  hasMore={hasNextMyPage}
+                  loading={isFetchingNextMyPage}
+                  onLoadMore={fetchNextMyPage}
+                />
               </>
             ) : (
               <FeedEmptyState
@@ -293,21 +280,6 @@ export default function FeedPage() {
         ) : null}
       </div>
 
-      <Modal
-        open={pendingDeleteId !== null}
-        onClose={() => setPendingDeleteId(null)}
-        emoji="🗑"
-        title="이 글을 삭제할까요?"
-        description="삭제하면 되돌릴 수 없어요"
-      >
-        <Button variant="primary" disabled={deletePost.isPending} onClick={confirmDelete}>
-          {deletePost.isPending ? "삭제 중…" : "삭제하기"}
-        </Button>
-        <Button variant="secondary" onClick={() => setPendingDeleteId(null)}>
-          취소
-        </Button>
-      </Modal>
-
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
@@ -315,4 +287,13 @@ export default function FeedPage() {
 
 function LoadingState() {
   return <div className="py-10 text-center text-xs text-ink-muted">불러오는 중…</div>;
+}
+
+/** 주소의 tab 값 — 모르는 값이 들어오면 기본 탭(코스)으로 둔다. */
+function parseSegment(value: string | null): FeedSegment {
+  return value === "article" || value === "mine" ? value : "course";
+}
+
+function parseArticleSort(value: string | null): ArticleSortMode {
+  return value === "recent" ? "recent" : "popular";
 }

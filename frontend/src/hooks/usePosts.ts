@@ -75,6 +75,8 @@ export interface FeedListOptions {
   sort?: PostListParams["sort"];
   /** 같은 유형만 보기 토글. 뷰어에게 유형이 없으면 무시된다. */
   sameTypeOnly?: boolean;
+  /** 둘러보기 '내 글' 탭. 코스 탭과 같은 카드·무한 스크롤을 쓰되 내 글만 받는다(검색·유형 필터 없음). */
+  mine?: boolean;
   enabled?: boolean;
 }
 
@@ -88,12 +90,15 @@ export function useFeedPosts({
   keyword,
   sort = "saves",
   sameTypeOnly = false,
+  mine = false,
   enabled = true,
 }: FeedListOptions = {}) {
   const { myTypeName, decorate } = useSameTypeDecorator();
   // 검색 중에는 서버도 유형 필터를 무시하지만, 쿼리키가 갈라지지 않도록 여기서도 비워 보낸다.
   const sameTypeName = !keyword && sameTypeOnly ? myTypeName : null;
-  const params: PostListParams = { keyword, sort, sameTypeName, limit: PAGE_SIZE };
+  const params: PostListParams = mine
+    ? { mine: true, sort, limit: PAGE_SIZE }
+    : { keyword, sort, sameTypeName, limit: PAGE_SIZE };
 
   const query = useInfiniteQuery({
     queryKey: listKey(params),
