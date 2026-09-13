@@ -17,11 +17,11 @@ export default function PlaceDetailPage({ params }: { params: { name: string } }
   const placeName = decodeURIComponent(params.name);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const { data: places = [], isLoading: placesLoading } = usePlaces();
-  const { data: reviews = [], isLoading: reviewsLoading } = useReviews();
   const [loginOpen, setLoginOpen] = useState(false);
 
   const place = places.find((p) => p.name === placeName);
-  const placeReviews = place ? reviews.filter((r) => r.placeId === place.id) : [];
+  const { data: reviews = [], isLoading: reviewsLoading } = useReviews(place?.id);
+  const placeReviews = place ? reviews : [];
 
   const handleWriteReview = () => {
     if (!isLoggedIn) {
@@ -106,11 +106,23 @@ export default function PlaceDetailPage({ params }: { params: { name: string } }
                   <span className="text-xs font-bold text-ink">{review.authorName}</span>
                   <span className="text-[10px] text-ink-muted">{review.createdAtLabel}</span>
                 </div>
-                <div className="mt-1.5 text-xs text-ink">{review.text}</div>
+                {review.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data URL이라 next/image 최적화 대상이 아님
+                  <img
+                    src={review.photoUrl}
+                    alt={`${review.authorName}님이 첨부한 사진`}
+                    className="mt-2 h-32 w-full rounded-lg object-cover"
+                  />
+                ) : null}
+                {review.text ? <div className="mt-1.5 text-xs text-ink">{review.text}</div> : null}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {review.tags.map((tag) => (
-                    <Tag key={tag} tone="brand" className="cursor-default px-2 py-1 text-[10px]">
-                      {tag}
+                    <Tag
+                      key={tag.code}
+                      tone={tag.category === "CAUTION" ? "amber" : "brand"}
+                      className="cursor-default px-2 py-1 text-[10px]"
+                    >
+                      {tag.label}
                     </Tag>
                   ))}
                 </div>

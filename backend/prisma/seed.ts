@@ -211,6 +211,83 @@ const posts: SeedPost[] = [
   },
 ];
 
+/** 후기 태그 사전 — 자유 입력을 막는 대신 여기 등록된 것만 고를 수 있다(root CLAUDE.md 도메인 용어 §후기). */
+type SeedReviewTag = { code: string; label: string; category: string; sortOrder: number };
+
+const reviewTagOptions: SeedReviewTag[] = [
+  // 반려동물 동반 조건
+  { code: "LEASH_REQUIRED", label: "목줄 필수", category: "PET_CONDITION", sortOrder: 0 },
+  { code: "SMALL_DOG_ONLY", label: "소형견만", category: "PET_CONDITION", sortOrder: 1 },
+  { code: "LARGE_DOG_OK", label: "대형견 동반 가능", category: "PET_CONDITION", sortOrder: 2 },
+  { code: "LARGE_DOG_ZONE", label: "대형견 구역 분리", category: "PET_CONDITION", sortOrder: 3 },
+  { code: "INDOOR_ALLOWED", label: "실내 동반 가능", category: "PET_CONDITION", sortOrder: 4 },
+  { code: "WASTE_BAG_PROVIDED", label: "배변봉투 비치", category: "PET_CONDITION", sortOrder: 5 },
+  { code: "PET_MENU", label: "반려동물 전용 메뉴/간식", category: "PET_CONDITION", sortOrder: 6 },
+  // 공간 · 환경
+  { code: "GOOD_WALK", label: "산책로 좋아요", category: "ENVIRONMENT", sortOrder: 0 },
+  { code: "GRASS_FIELD", label: "잔디밭 있어요", category: "ENVIRONMENT", sortOrder: 1 },
+  { code: "SHADY", label: "그늘 많아요", category: "ENVIRONMENT", sortOrder: 2 },
+  { code: "GOOD_VIEW", label: "경치 좋아요", category: "ENVIRONMENT", sortOrder: 3 },
+  { code: "QUIET", label: "조용해요", category: "ENVIRONMENT", sortOrder: 4 },
+  // 편의시설
+  { code: "WATER_BOWL", label: "물그릇 제공", category: "AMENITY", sortOrder: 0 },
+  { code: "PARKING_EASY", label: "주차 편해요", category: "AMENITY", sortOrder: 1 },
+  { code: "CLEAN_RESTROOM", label: "화장실 깨끗해요", category: "AMENITY", sortOrder: 2 },
+  { code: "COMFY_SEATING", label: "좌석 편안해요", category: "AMENITY", sortOrder: 3 },
+  // 서비스 · 분위기
+  { code: "KIND_STAFF", label: "직원이 친절해요", category: "SERVICE", sortOrder: 0 },
+  { code: "PET_FRIENDLY_STAFF", label: "반려동물에 친절해요", category: "SERVICE", sortOrder: 1 },
+  { code: "PHOTO_SPOT", label: "사진찍기 좋아요", category: "SERVICE", sortOrder: 2 },
+  { code: "REASONABLE_PRICE", label: "가격이 합리적이에요", category: "SERVICE", sortOrder: 3 },
+  // 주의할 점
+  { code: "LACK_SHADE", label: "그늘 부족", category: "CAUTION", sortOrder: 0 },
+  { code: "MANY_STAIRS", label: "계단 많아요", category: "CAUTION", sortOrder: 1 },
+  { code: "NOISY", label: "소음 있어요", category: "CAUTION", sortOrder: 2 },
+  { code: "SLIPPERY_FLOOR", label: "바닥이 미끄러워요", category: "CAUTION", sortOrder: 3 },
+  { code: "PARKING_HARD", label: "주차 불편해요", category: "CAUTION", sortOrder: 4 },
+];
+
+/** frontend/src/mocks/reviews.ts를 옮긴 초기 후기 — 태그는 위 사전의 code로 연결한다. */
+type SeedReview = {
+  id: string;
+  placeId: string;
+  placeName: string;
+  authorId: string;
+  text: string;
+  tagCodes: string[];
+  likesCount: number;
+};
+
+const reviews: SeedReview[] = [
+  {
+    id: "review-1",
+    placeId: "place-1",
+    placeName: "한밭수목원",
+    authorId: "user-1",
+    text: "물가 산책로가 넓어서 콩이가 신나게 뛰어다녔어요. 목줄은 필수지만 사람도 적당히 붐벼서 좋았습니다.",
+    tagCodes: ["GOOD_WALK", "WATER_BOWL"],
+    likesCount: 6,
+  },
+  {
+    id: "review-2",
+    placeId: "place-4",
+    placeName: "유성 반려동물 놀이터",
+    authorId: "user-1",
+    text: "대형견 구역이 따로 있어서 안심하고 풀어놓을 수 있었어요. 그늘이 부족한 게 아쉬워요.",
+    tagCodes: ["LARGE_DOG_ZONE", "LACK_SHADE"],
+    likesCount: 3,
+  },
+  {
+    id: "review-3",
+    placeId: "place-6",
+    placeName: "대흥동 감성 카페",
+    authorId: "user-2",
+    text: "소형견만 가능하다는 걸 미리 안내해줘서 헷갈리지 않았어요. 자리도 편안했습니다.",
+    tagCodes: ["SMALL_DOG_ONLY", "COMFY_SEATING"],
+    likesCount: 4,
+  },
+];
+
 async function main() {
   await prisma.user.upsert({
     where: { id: "user-1" },
@@ -247,7 +324,7 @@ async function main() {
         },
         ...(course.schedule
           ? {
-              schedule: {
+              schedules: {
                 create: {
                   date: course.schedule.date,
                   festivalTitles: {
@@ -282,8 +359,33 @@ async function main() {
     });
   }
 
+  for (const tag of reviewTagOptions) {
+    await prisma.reviewTagOption.upsert({
+      where: { code: tag.code },
+      update: { label: tag.label, category: tag.category, sortOrder: tag.sortOrder },
+      create: tag,
+    });
+  }
+
+  for (const review of reviews) {
+    await prisma.review.upsert({
+      where: { id: review.id },
+      update: {},
+      create: {
+        id: review.id,
+        placeId: review.placeId,
+        placeName: review.placeName,
+        text: review.text,
+        likesCount: review.likesCount,
+        authorId: review.authorId,
+        tags: { create: review.tagCodes.map((code) => ({ tag: { connect: { code } } })) },
+      },
+    });
+  }
+
   console.log(
-    `✅ 시드 완료: 사용자 2명, 코스 ${courses.length}개, 둘러보기 게시물 ${posts.length}개`
+    `✅ 시드 완료: 사용자 2명, 코스 ${courses.length}개, 둘러보기 게시물 ${posts.length}개, ` +
+      `후기 태그 ${reviewTagOptions.length}개, 후기 ${reviews.length}개`
   );
 }
 
