@@ -30,6 +30,7 @@ model User {
   pets Pet[]
   courses Course[]
   posts Post[]
+  reviews Review[]
   postSaves PostSave[]
 
   createdAt DateTime @default(now())
@@ -149,6 +150,57 @@ model Place {
   source       String
   sourceTier   Int
   updatedAt    DateTime @updatedAt
+}
+
+/// 장소 후기. 사진·본문은 선택이고, 태그는 최소 1개~최대 5개(ReviewTag로 검증)가 유일한 필수값이다.
+/// placeId는 CourseStop/PostStop과 마찬가지로 Place 테이블에 FK로 걸지 않는다 — 홈/맵이 아직
+/// mockPlaces("place-1" 등)를 쓰고 있어 실제 Place 행과 id 체계가 다르기 때문(root CLAUDE.md
+/// "현재 연동 상태" 참고). placeName은 그 시점 이름을 스냅샷으로 남긴다.
+model Review {
+  id        String @id @default(cuid())
+  placeId   String
+  placeName String
+
+  text       String   @default("")
+  /// data URL 또는(향후) 업로드된 이미지 경로. 아직 별도 스토리지가 없어 프론트에서 data URL로 보낸다.
+  photoUrl   String?
+  likesCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  tags ReviewTag[]
+
+  @@index([placeId, createdAt])
+  @@index([authorId])
+}
+
+/// 후기 태그 사전. 사용자는 여기 등록된 것만 고를 수 있다(자유 입력 금지) — 운영진이 행을
+/// 추가/비활성화하는 방식으로 앱 재배포 없이 태그 구성을 바꾼다.
+model ReviewTagOption {
+  id        String   @id @default(cuid())
+  /// 안정적인 식별자(라벨이 바뀌어도 유지). 예: "LEASH_REQUIRED"
+  code      String   @unique
+  label     String
+  /// "PET_CONDITION" | "ENVIRONMENT" | "AMENITY" | "SERVICE" | "CAUTION"
+  category  String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+
+  reviewTags ReviewTag[]
+}
+
+model ReviewTag {
+  reviewId String
+  tagId    String
+
+  review Review          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  tag    ReviewTagOption @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([reviewId, tagId])
+  @@index([tagId])
 }
 
 /// 둘러보기(FEED)에 공유된 "코스 게시물". 코스 보관함에서 '코스 자랑하기'로 올라온다.
