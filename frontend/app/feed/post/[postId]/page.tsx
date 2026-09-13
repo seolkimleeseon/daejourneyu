@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Tag } from "@/components/ui/Tag";
 import { PostSaveBar } from "@/components/feed/PostSaveBar";
+import { CourseRouteMap } from "@/components/course/CourseRouteMap";
 import { useDeletePost, usePost, useUpdatePost } from "@/hooks/usePosts";
 import { useToastStore } from "@/stores/useToastStore";
 import { formatPostDate, visiblePostTags } from "@/lib/feed";
@@ -187,6 +188,9 @@ export default function FeedPostDetailPage() {
         <div className="mb-1 mt-5 px-1 text-xs font-bold text-ink-muted">
           방문 장소 {post.stops.length}곳
         </div>
+        {/* 내 여정 코스 상세와 같은 동선 지도. 게시물의 방문 장소는 일차 구분 없이 코스 전체를
+            순서대로 이어 붙인 목록이라(buildPostInputFromCourse) 지도도 한 장으로 그린다. */}
+        {post.stops.length > 0 ? <CourseRouteMap stops={post.stops} /> : null}
         <div className="flex flex-col gap-2">
           {post.stops.map((stop, index) => (
             <Link key={`${stop.placeId}-${index}`} href={`/place/${encodeURIComponent(stop.name)}`}>
