@@ -34,3 +34,9 @@ export async function createReviewApi(input: ReviewCreateInput): Promise<Review>
   if (!res.ok) throw new Error("후기를 등록하지 못했어요");
   return res.json();
 }
+
+/** 내 후기 삭제 — 남의 후기면 서버가 404로 통일해 응답한다. */
+export async function deleteReviewApi(id: string): Promise<void> {
+  const res = await authFetch(`/api/reviews/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("후기를 삭제하지 못했어요");
+}
