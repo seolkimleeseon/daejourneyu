@@ -97,7 +97,7 @@ React Router는 사용하지 않는다(Next.js App Router가 모든 내비게이
 
 | | 담당 탭/화면 | 소유 디렉터리 | 비고 |
 |---|---|---|---|
-| **Player 1** | 홈(HOME) + 다녀지도(MAP) | `app/(shell)/home/`, `app/(shell)/map/`, `app/place/[name]/`(placeDetail·reviewWrite), `app/settings/ai/`(aiSettings), `src/components/place/` | 장소 데이터가 핵심이라 여러 탭에서 열리는 `placeDetail`을 1순위로 소유. `festival`의 `preview` 변형도 포함 |
+| **Player 1** | 홈(HOME) + 댕댕지도(MAP) | `app/(shell)/home/`, `app/(shell)/map/`, `app/place/[name]/`(placeDetail·reviewWrite), `app/settings/ai/`(aiSettings), `src/components/place/` | 장소 데이터가 핵심이라 여러 탭에서 열리는 `placeDetail`을 1순위로 소유. `festival`의 `preview` 변형도 포함 |
 | **Player 2** | 내 여정(SCHEDULE) | `app/(shell)/schedule/` 전체(코스 위저드 mbti/manual, vault, `[courseId]` 상세·일정추가·공유, `festival`의 `full` 변형), `app/onboarding/mbti-*`(MBTI 플로우는 스케줄과 공유), `src/components/course/`, `src/components/mbti/`, `PlacePickerSheet` + `useSheetStore` | 프로토타입에서 가장 복잡했던 탭이라 단독 배정. 코스 생성 위저드는 PLAN.md §4-1대로 스텝을 `steps/` 폴더에 파일 분할해서 작업 |
 | **Player 3** | 둘러보기(FEED) + 온보딩/인증 + MY 탭 확장 | `app/(shell)/feed/`, `app/feed/post/[postId]/`, `app/article/[id]/`(articleDetail), `app/onboarding/`(`page.tsx`, `signup/`, `pet-register/`), `src/components/feed/`, `src/components/onboarding/PetRegisterForm` | STEP 2에서 스텁만 있는 `PetRegisterForm`을 완성해 온보딩·My탭 수정 양쪽에서 재사용(PLAN.md §4-2). My탭 자체는 이미 완성돼 있으니 그 안의 `TODO(step3)` 연결(패스포트 카드 클릭 → 등록/수정 폼)만 이어받는다 |
 

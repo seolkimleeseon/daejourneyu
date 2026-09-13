@@ -24,11 +24,15 @@ export default function MyReviewsPage() {
             <Card key={review.id}>
               <div className="text-sm font-bold text-ink">{review.placeName}</div>
               <div className="mt-0.5 text-[10px] text-ink-muted">{review.createdAtLabel}</div>
-              <div className="mt-1.5 text-xs text-ink">{review.text}</div>
+              {review.text ? <div className="mt-1.5 text-xs text-ink">{review.text}</div> : null}
               <div className="mt-2 flex flex-wrap gap-1">
                 {review.tags.map((tag) => (
-                  <Tag key={tag} tone="brand" className="cursor-default px-2 py-1 text-[10px]">
-                    {tag}
+                  <Tag
+                    key={tag.code}
+                    tone={tag.category === "CAUTION" ? "amber" : "brand"}
+                    className="cursor-default px-2 py-1 text-[10px]"
+                  >
+                    {tag.label}
                   </Tag>
                 ))}
               </div>

@@ -95,7 +95,7 @@ export const mockPlaces: Place[] = [
   {
     id: "place-10",
     name: "유성온천 족욕체험장",
-    category: "숙박",
+    category: "문화",
     district: "유성구",
     condition: "실외 구역만 동반 가능",
     petFriendly: true,

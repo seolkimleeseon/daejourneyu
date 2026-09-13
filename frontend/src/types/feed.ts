@@ -13,9 +13,13 @@ export interface FeedPost {
   caption: string;
   text: string;
   stops: CourseStop[];
+  /** 자랑하기로 올라온 게시물이 어떤 코스에서 나왔는지. 목데이터 게시물에는 없다. */
+  courseId?: string;
   tags: string[];
   likes: number;
   liked: boolean;
   saves: number;
   saved: boolean;
+  /** 서버가 내려주는 ISO 문자열. 정렬은 서버가 하므로 화면에서는 표시용으로만 쓴다. */
+  createdAt: string;
 }

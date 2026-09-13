@@ -34,8 +34,6 @@ home
 │  ├─ reviewWrite          (로그인 필요)
 │  └─ aiSettings           ★공용: chatbot에서도 진입
 ├─ articleDetail          ★공용: FEED 탭 "아티클" 서브탭과 공유
-├─ weeklyBriefing
-│  └─ placeDetail
 ├─ chatbot                 ⚠ setNav('chatbotTab', …) — 하단 네비 data-tab에 'chatbotTab'이
 │                            없어 실제로는 어떤 탭도 하이라이트되지 않음(사실상 전체화면 모달급 페이지)
 │  ├─ aiSettings
@@ -44,7 +42,7 @@ home
 └─ [MBTI 코스 만들기 진입] → mbtiIntro/jvMbtiResult → … → 코스 생성 플로우(SCHEDULE 참고, 탭 넘나듦)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TAB: MAP (다녀지도)
+TAB: MAP (댕댕지도)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 map   (내부 상태머신: districts → traveling(연출) → list — 별도 라우트 아님, 컴포넌트 내부 state)
 └─ placeDetail
@@ -120,7 +118,7 @@ frontend/
 │  │  ├─ layout.tsx                  # <AppShell>(TopBar+BottomNav) 로 children 감쌈
 │  │  ├─ home/
 │  │  │  ├─ page.tsx
-│  │  │  ├─ weekly-briefing/page.tsx
+│  │  │  ├─ festival/page.tsx        # 홈 하단 "축제 캘린더" 진입
 │  │  │  └─ chatbot/page.tsx         # 탭 하이라이트 없는 화면이지만 홈 하위 라우트로 배치
 │  │  ├─ map/
 │  │  │  └─ page.tsx                 # districts/traveling/list는 내부 state로 처리(별도 라우트 X)

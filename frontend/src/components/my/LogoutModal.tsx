@@ -12,8 +12,9 @@ interface LogoutModalProps {
 export function LogoutModal({ open, onClose }: LogoutModalProps) {
   const logout = useAuthStore((state) => state.logout);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    // 서버 쿠키까지 지워야 새로고침 후 다시 로그인 상태로 돌아오지 않는다.
+    await logout();
     onClose();
   };
 

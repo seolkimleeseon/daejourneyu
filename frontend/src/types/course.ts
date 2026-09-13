@@ -10,11 +10,17 @@ export interface CourseStop {
   district: DaejeonDistrict;
   condition: string;
   petFriendly: boolean;
+  /** 장소 사진 URL(있는 소스에서 담아온 경우만). 없으면 카테고리 이모지로 대체 표시. */
+  imageUrl?: string | null;
+  /** 카카오맵 원본 페이지 URL(카카오 검색으로 담은 장소만). 있으면 상세 페이지 대신 이 링크로 보낸다. */
+  placeUrl?: string | null;
 }
 
 export interface Course {
   id: string;
   label: string;
+  /** 티켓 카드 대표 이모지. 사용자가 직접 고르지 않았으면 비어있고, 화면에서는 기본값(🐾)을 쓴다. */
+  emoji?: string | null;
   /** 0 = 당일치기 */
   nights: number;
   transport: Transport;

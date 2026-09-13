@@ -24,7 +24,7 @@ const iconProps = {
 const TABS: NavTab[] = [
   {
     href: "/map",
-    label: "다녀지도",
+    label: "댕댕지도",
     icon: (
       <svg {...iconProps}>
         <path d="M12 21s-6.5-5.8-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.2 12 21 12 21z" />
@@ -78,7 +78,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex justify-around border-t border-line bg-card pb-[max(8px,env(safe-area-inset-bottom))] pt-2">
+    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex w-full max-w-[480px] justify-around border-t border-line bg-card pb-[max(8px,env(safe-area-inset-bottom))] pt-2">
       {TABS.map((tab) => {
         const active = pathname === tab.href || pathname?.startsWith(`${tab.href}/`);
         return (

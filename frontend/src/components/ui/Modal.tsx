@@ -10,9 +10,19 @@ interface ModalProps {
   title: string;
   description?: string;
   children?: ReactNode;
+  /** 다이얼로그 폭. 기본값(w-[260px])보다 넓게 쓰고 싶을 때만 지정한다. */
+  widthClass?: string;
 }
 
-export function Modal({ open, onClose, emoji, title, description, children }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  emoji,
+  title,
+  description,
+  children,
+  widthClass = "w-[260px]",
+}: ModalProps) {
   return (
     <div
       className={cn(
@@ -22,7 +32,7 @@ export function Modal({ open, onClose, emoji, title, description, children }: Mo
       onClick={onClose}
     >
       <div
-        className="w-[260px] rounded-xl bg-card p-6 text-center shadow-xl"
+        className={cn("rounded-xl bg-card p-6 text-center shadow-xl", widthClass)}
         onClick={(event) => event.stopPropagation()}
       >
         {emoji ? <div className="mb-2.5 text-3xl">{emoji}</div> : null}

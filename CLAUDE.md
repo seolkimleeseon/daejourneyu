@@ -25,13 +25,29 @@ daejourneyu/
 
 ## 실행
 
-프론트/백엔드를 **별도 터미널 2개**로 띄운다. 프론트의 `/api/*`는 `next.config.mjs`의
-rewrites로 `localhost:4000`에 프록시된다 — 백엔드가 꺼져 있으면 API 호출이 실패한다.
+로컬 개발에는 **DB · 백엔드 · 프론트 세 가지**가 떠 있어야 한다. DB는 Prisma가 관리하는 로컬
+Postgres로 `--detach`를 붙이면 백그라운드로 돌아가고, 백엔드/프론트는 터미널 2개를 잡는다.
+프론트의 `/api/*`는 `next.config.mjs`의 rewrites로 `localhost:4000`에 프록시된다 — 백엔드가
+꺼져 있으면 API 호출이 실패한다.
 
 ```bash
+cd backend  && npx prisma dev --name daejourneyu --detach   # localhost:51214, 이미 떠 있으면 그대로 재사용
 cd backend  && npm install && npm run dev    # http://localhost:4000 (tsx watch)
 cd frontend && npm install && npm run dev    # http://localhost:3000
 ```
+
+**IMPORTANT: DB는 `npm run dev`에 딸려 오지 않는다.** 재부팅·절전으로 detach된 Postgres가
+사라져도 백엔드·프론트는 멀쩡히 뜨고 화면도 그려지기 때문에, 증상이 DB와 무관해 보이는 곳에서
+나타난다 — 카카오 로그인이 `?error=kakao_db`로 되돌아오거나, 로그인·가입 API가 500을 뱉는 식이다.
+**인증 계열이 갑자기 안 되면 카카오 콘솔을 뒤지기 전에 DB 상태부터 확인한다.**
+
+```bash
+cd backend && npx prisma dev ls        # status가 running인지 확인. 꺼져 있으면 위 --detach 명령으로 다시 기동
+```
+
+DB를 다시 띄운 뒤 백엔드를 재시작할 필요는 없다 — Prisma가 다음 쿼리에서 알아서 재연결한다.
+접속 URL은 `backend/.env`의 `DATABASE_URL`이 정본이고, 포트(51214)는 `--name`으로 구분되는
+서버마다 고정이다. 서버 목록·정지는 `prisma dev ls|stop|rm`으로 다룬다.
 
 | | build | 그 외 |
 |---|---|---|
@@ -41,26 +57,35 @@ cd frontend && npm install && npm run dev    # http://localhost:3000
 양쪽 다 **테스트 스위트가 아직 없다.** 검증은 `npm run build`(타입 체크)까지가 현재 최선이며,
 테스트가 없다는 이유로 검증을 건너뛰지 말고 최소한 빌드는 통과시킨다.
 
+## 배포
+
+Vercel(프론트) + Railway(백엔드) + Supabase(DB)로 스테이징 배포돼 있다. 계정 연결·환경변수·
+겪었던 문제까지 전체 절차는 `docs/deployment.md` 참고 — 재배포하거나 새로 세팅할 때 그 문서
+순서를 따라가면 이미 겪은 함정(Root Directory 미지정, Vercel Production Branch 등)을 피할 수 있다.
+
+| | URL |
+|---|---|
+| 프론트 | https://daejourneyu.vercel.app |
+| 백엔드 | https://daejourneyu-production.up.railway.app |
+
 ## 현재 연동 상태 (중요)
 
 README의 "홈에서 백엔드 `/api/places`를 불러온다"는 설명은 **더 이상 맞지 않는다.** 초기 스캐폴딩
-이후 프론트가 재구축되면서 `app/page.tsx`는 `/home`으로 리다이렉트하고, 화면 데이터는 전부
+이후 프론트가 재구축되면서 `app/page.tsx`는 `/home`으로 리다이렉트하고, 화면 데이터는 대부분
 `frontend/src/mocks`의 목데이터를 TanStack Query 훅으로 읽는다. 실제 API 교체 지점은 코드에
 `// TODO(api)`로 표시되어 있다.
 
-**IMPORTANT: 프론트와 백엔드의 `Place` 모델은 아직 일치하지 않는다.** 어느 한쪽만 고치면 연동이
-깨지므로, 스키마를 바꿀 때는 반드시 양쪽을 함께 확인한다.
+**`Place`는 이제 Prisma로 영속화되어 있고, 프론트·백엔드 필드가 일치한다.** `/api/places`가
+`district`/`category`/`petFriendly`/`smallDogOnly`/`lat`/`lng`/`imageUrl` 등 프론트
+`src/types/place.ts` 필드명을 그대로 응답한다(예전엔 `gu`/`cat`처럼 백엔드 자체 필드명을 썼는데,
+그 불일치를 이 작업에서 없앴다). `backend/scripts/syncPlaces.ts`가 관광공사·대전관광공사·식약처·
+대전시·고캠핑·문체부 반려동물 동반가능 시설 현황(총 9개 소스 + CSV 1건)을 정규화·dedupe해서
+`npm run sync:places`로 채워 넣는다 — 수동 실행이라 소스가 갱신되면 다시 돌려야 한다.
 
-| | frontend (`src/types/place.ts`) | backend (`src/routes/places.ts`) |
-|---|---|---|
-| id | `string` | `number` |
-| 분류 | `category` (5종 유니언) | `cat` |
-| 지역 | `district` (5개 구 유니언) | `gu` |
-| 동반 | `petFriendly` + `condition` | `pet` |
-| 좌표 | `lat` / `lng` 필수 | 없음 |
-
-실 API 연동 작업을 시작할 때는 프론트 타입을 정본으로 삼아 백엔드를 맞추고, 백엔드의 임시 배열은
-Prisma + PostgreSQL로 교체하는 것이 계획된 방향이다.
+다만 이 데이터를 실제로 쓰는 건 아직 `frontend/src/components/course/PlacePickerSheet.tsx`(코스
+위저드 장소 선택 시트)뿐이다. 홈/맵 탭이 쓰는 `frontend/src/hooks/usePlaces.ts`는 여전히
+`mockPlaces`를 반환하는 상태(`TODO(api)` 그대로 남아 있음) — 실제 API로 바꾸는 건 그 탭 담당자가
+할 일로 남겨뒀다.
 
 ## 도메인 용어
 

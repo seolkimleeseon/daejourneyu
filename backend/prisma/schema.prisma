@@ -1,0 +1,281 @@
+// 대저니유 데이터 모델. 지금은 인증(User)과 반려동물(Pet)만 있고, 장소·코스는 목데이터를 쓰는 단계다.
+// 스키마를 고친 뒤에는 반드시 `npx prisma migrate dev`로 마이그레이션을 남긴다.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // 앱 런타임은 트랜잭션 모드 풀러(pgbouncer)를 통해 접속한다.
+  url       = env("DATABASE_URL")
+  // 마이그레이션은 풀러를 거치면 실패할 수 있어 direct/session 접속으로 따로 뺀다(Supabase+Prisma 권장 패턴).
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+
+  /// 카카오는 이메일 제공에 동의를 받아야 하므로 없을 수 있다.
+  email    String? @unique
+  nickname String
+  /// bcrypt 해시. 평문 비밀번호는 어디에도 저장하지 않는다. 소셜 계정은 null.
+  passwordHash String?
+
+  /// "local" | "kakao"
+  provider String @default("local")
+  /// 소셜 제공자가 발급한 회원번호. local 계정은 null.
+  providerId String?
+
+  pets Pet[]
+  courses Course[]
+  posts Post[]
+  reviews Review[]
+  postSaves PostSave[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerId])
+  @@map("users")
+}
+
+/// 반려동물. 사용자당 여러 마리를 등록할 수 있고, 마이탭에서 활성 개체를 전환한다.
+model Pet {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name     String
+  breed    String
+  weightKg Float
+  ageYears Int
+  /// "소형견" | "중형견" | "대형견" — 장소별 동반 조건 판단에 쓰인다.
+  size  String
+  emoji String
+
+  /// MBTI는 사람이 아니라 반려동물의 성향 유형이다. 퀴즈를 아직 안 봤으면 전부 null.
+  mbtiCode   String?
+  mbtiName   String?
+  mbtiTheme  String?
+  mbtiTraits String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("pets")
+}
+
+model Course {
+  id        String   @id @default(cuid())
+  label     String
+  emoji     String?
+  nights    Int
+  transport String
+  source    String
+  shared    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  days      CourseDay[]
+  schedules CourseSchedule[]
+  posts     Post[]
+  /// 이 코스가 '담기'로 만들어진 사본이라면 그 기록. 담기를 취소하면 코스도 같이 사라진다.
+  savedFrom PostSave[]
+}
+
+model CourseDay {
+  id       String @id @default(cuid())
+  dayIndex Int
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  stops    CourseStop[]
+
+  @@unique([courseId, dayIndex])
+}
+
+model CourseStop {
+  id          String  @id @default(cuid())
+  order       Int
+  placeId     String
+  name        String
+  category    String
+  district    String
+  condition   String
+  petFriendly Boolean
+  imageUrl    String?
+
+  courseDayId String
+  courseDay   CourseDay @relation(fields: [courseDayId], references: [id], onDelete: Cascade)
+
+  @@unique([courseDayId, order])
+}
+
+/// 코스 하나가 여러 날짜에 등록될 수 있다(1:N) — 반복 방문 등.
+model CourseSchedule {
+  id   String @id @default(cuid())
+  date String
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  festivalTitles CourseScheduleFestival[]
+
+  @@index([courseId])
+}
+
+model CourseScheduleFestival {
+  id    String @id @default(cuid())
+  title String
+
+  courseScheduleId String
+  courseSchedule CourseSchedule @relation(fields: [courseScheduleId], references: [id], onDelete: Cascade)
+}
+
+model Place {
+  id           String   @id
+  name         String
+  category     String
+  district     String
+  condition    String
+  petFriendly  Boolean
+  smallDogOnly Boolean  @default(false)
+  lat          Float
+  lng          Float
+  imageUrl     String?
+  source       String
+  sourceTier   Int
+  updatedAt    DateTime @updatedAt
+}
+
+/// 장소 후기. 사진·본문은 선택이고, 태그는 최소 1개~최대 5개(ReviewTag로 검증)가 유일한 필수값이다.
+/// placeId는 CourseStop/PostStop과 마찬가지로 Place 테이블에 FK로 걸지 않는다 — 홈/맵이 아직
+/// mockPlaces("place-1" 등)를 쓰고 있어 실제 Place 행과 id 체계가 다르기 때문(root CLAUDE.md
+/// "현재 연동 상태" 참고). placeName은 그 시점 이름을 스냅샷으로 남긴다.
+model Review {
+  id        String @id @default(cuid())
+  placeId   String
+  placeName String
+
+  text       String   @default("")
+  /// data URL 또는(향후) 업로드된 이미지 경로. 아직 별도 스토리지가 없어 프론트에서 data URL로 보낸다.
+  photoUrl   String?
+  likesCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  tags ReviewTag[]
+
+  @@index([placeId, createdAt])
+  @@index([authorId])
+}
+
+/// 후기 태그 사전. 사용자는 여기 등록된 것만 고를 수 있다(자유 입력 금지) — 운영진이 행을
+/// 추가/비활성화하는 방식으로 앱 재배포 없이 태그 구성을 바꾼다.
+model ReviewTagOption {
+  id        String   @id @default(cuid())
+  /// 안정적인 식별자(라벨이 바뀌어도 유지). 예: "LEASH_REQUIRED"
+  code      String   @unique
+  label     String
+  /// "PET_CONDITION" | "ENVIRONMENT" | "AMENITY" | "SERVICE" | "CAUTION"
+  category  String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+
+  reviewTags ReviewTag[]
+}
+
+model ReviewTag {
+  reviewId String
+  tagId    String
+
+  review Review          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  tag    ReviewTagOption @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([reviewId, tagId])
+  @@index([tagId])
+}
+
+/// 둘러보기(FEED)에 공유된 "코스 게시물". 코스 보관함에서 '코스 자랑하기'로 올라온다.
+model Post {
+  id String @id @default(cuid())
+
+  /// 올릴 때의 코스 이름. 코스를 지우거나 이름을 바꿔도 이미 올린 글은 그대로 남아야 한다.
+  caption String
+  /// 작성자가 남긴 한마디. 비워 둘 수 있다.
+  text String @default("")
+  /// 일정·이동수단·자치구처럼 코스에서 자동으로 뽑아 붙인 태그.
+  tags String[]
+
+  /// 작성자 표시용 스냅샷 — 활성 반려동물은 언제든 바뀌므로 글에 고정해 둔다.
+  authorName  String
+  authorEmoji String
+  /// 반려동물 MBTI 풀네임. 아직 검사 전이면 안내 문구가 그대로 들어온다.
+  petTypeName String
+
+  /// TODO(api): 좋아요/담기 토글이 서버로 넘어오기 전까지는 0에서 움직이지 않는다.
+  likes Int @default(0)
+  saves Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 어떤 코스를 자랑한 글인지. 코스를 지워도 글은 남겨야 하므로 SetNull로 끊는다.
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  stops PostStop[]
+  savedBy PostSave[]
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+/// 게시물에 박제된 방문 장소. 코스가 나중에 바뀌어도 글에 보이는 동선은 올릴 때 그대로여야 한다.
+model PostStop {
+  id          String  @id @default(cuid())
+  order       Int
+  placeId     String
+  name        String
+  category    String
+  district    String
+  condition   String
+  petFriendly Boolean
+  imageUrl    String?
+
+  postId String
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, order])
+}
+
+/// 둘러보기에서 남의 코스를 내 보관함에 담은 기록.
+/// `Post.saves`는 이 행 수를 비정규화해 들고 있는 값이라, 담기/취소는 항상 트랜잭션으로 같이 움직인다.
+model PostSave {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  /// 담으면서 보관함에 복사해 만든 코스. 사용자가 그 코스를 먼저 지우면 null이 된다.
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  /// 같은 글을 두 번 담을 수 없다 — 담긴 수가 부풀지 않게 DB가 막는다.
+  @@unique([userId, postId])
+  @@index([postId])
+}

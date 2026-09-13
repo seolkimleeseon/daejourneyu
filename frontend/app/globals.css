@@ -13,6 +13,8 @@
 
   /* 브랜드(민트/그린) — 메인 브랜드 컬러 스케일 */
   --color-brand: #35ad90;
+  /* 웹 화면 앱 프레임 바깥 배경처럼 아주 은은한 톤이 필요할 때만 쓰는 최연한 단계 */
+  --color-brand-50: #f1faf7;
   --color-brand-100: #d7f2eb;
   --color-brand-300: #a0ddd0;
   --color-brand-400: #72c8b3;
@@ -27,6 +29,10 @@
   --color-accent-coral: #ff8a3d;
   --color-accent-coral-light: #ffe9d6;
   --color-accent-navy: #183b56;
+
+  /* 소셜 로그인 브랜드 색 — 카카오 가이드 고정값이라 팔레트와 별개로 둔다 */
+  --color-kakao: #fee500;
+  --color-kakao-ink: #191600;
 
   /* 표면 */
   --color-surface: #f8f9fa;
@@ -54,6 +60,44 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-2xl: 22px;
+
+  /* 댕댕지도 탭: 구 선택 후 강아지가 곡선 점선길을 따라 목적지 핀으로 달려가는 1회성 로딩 연출(TravelingDog).
+     강아지 span에 offset-path로 SVG와 동일한 곡선 경로를 물려서 offset-distance만 0→100% 보간한다 —
+     경로가 완전히 일치하므로 강아지가 굽잇길을 그대로 타고 올라간다. dog-bob은 그 위에 얹는 종종걸음. */
+  --animate-dog-run: dog-run 1.35s cubic-bezier(0.4, 0.1, 0.5, 1) forwards;
+  --animate-dog-bob: dog-bob 0.34s ease-in-out infinite;
+
+  /* 사이드 패널 반짝이 등 상시 둥실 애니메이션 */
+  --animate-float: float 2.6s ease-in-out infinite;
+}
+
+@keyframes dog-run {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@keyframes dog-bob {
+  0%,
+  100% {
+    transform: translateY(1px) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(3deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(-3deg);
+  }
 }
 
 :root {
@@ -70,4 +114,43 @@ body {
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.2px;
+}
+
+/* 웹 화면에서 AppShell 양옆 배경이 보이면서 브라우저 기본 스크롤바가 그 위에 두껍고
+   칙칙하게 떠서 도드라졌다 — 스크롤 자체는 그대로 되지만 막대만 안 보이게 없앤다. */
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar {
+  display: none;
+}
+
+/* 얇고 은은한 스크롤바 — 바텀시트 등 스크롤 영역 공용 */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-steel-500);
+}
+
+/* 스크롤은 그대로 되지만 스크롤바만 안 보이게 — 칩 로우·일차 탭처럼 가로 스크롤이
+   필수는 아닌데 스크롤바 줄 때문에 UI가 지저분해 보이는 곳에 붙인다. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

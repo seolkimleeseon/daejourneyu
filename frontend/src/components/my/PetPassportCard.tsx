@@ -5,6 +5,8 @@ import type { Pet } from "@/types";
 interface PetPassportCardProps {
   pet: Pet | null;
   isLoggedIn: boolean;
+  /** 세션 복구가 끝나기 전. 로그인 여부를 아직 모르므로 "미로그인"으로 단정하지 않는다. */
+  loading?: boolean;
   onClick: () => void;
 }
 
@@ -12,7 +14,7 @@ interface PetPassportCardProps {
  * 프로토타입의 .passport 카드 포팅. 견종별 상세 SVG 렌더러는 STEP2 범위 밖이라
  * 아바타는 이모지로 대체했다 — TODO(step3): 실제 반려동물 사진/일러스트로 교체.
  */
-export function PetPassportCard({ pet, isLoggedIn, onClick }: PetPassportCardProps) {
+export function PetPassportCard({ pet, isLoggedIn, loading, onClick }: PetPassportCardProps) {
   return (
     <button
       type="button"
@@ -31,7 +33,12 @@ export function PetPassportCard({ pet, isLoggedIn, onClick }: PetPassportCardPro
           {pet?.emoji ?? "🐾"}
         </div>
 
-        {!isLoggedIn ? (
+        {loading ? (
+          <div className="flex-1 text-center">
+            <div className="text-sm font-extrabold text-brand-700">불러오는 중…</div>
+            <div className="mt-1 text-[11px] text-ink-muted">여권 정보를 확인하고 있어요</div>
+          </div>
+        ) : !isLoggedIn ? (
           <div className="flex-1 text-center">
             <div className="text-sm font-extrabold text-brand-700">로그인이 필요해요</div>
             <div className="mt-1 text-[11px] text-ink-muted">탭해서 로그인하기 →</div>

@@ -1,11 +1,299 @@
+"use client";
+
+import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
-import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
+import { FeedSegments, type FeedSegment } from "@/components/feed/FeedSegments";
+import { FeedSortSelect } from "@/components/feed/FeedSortSelect";
+import { FeedSearchBar } from "@/components/feed/FeedSearchBar";
+import { SameTypeFilter } from "@/components/feed/SameTypeFilter";
+import { HotPostCard } from "@/components/feed/HotPostCard";
+import { PostCard } from "@/components/feed/PostCard";
+import { ArticleCard } from "@/components/feed/ArticleCard";
+import { FeedEmptyState } from "@/components/feed/FeedEmptyState";
+import { InfiniteScrollSentinel } from "@/components/feed/InfiniteScrollSentinel";
+import { LoginModal } from "@/components/my/LoginModal";
+import { useFeedPosts, useHottestPost } from "@/hooks/usePosts";
+import { useArticles } from "@/hooks/useArticles";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { usePetStore } from "@/stores/usePetStore";
+import { sortArticles, type PostSortMode, type ArticleSortMode } from "@/lib/feed";
+
+const POST_SORT_OPTIONS: { value: PostSortMode; label: string }[] = [
+  { value: "saves", label: "담긴순" },
+  { value: "recent", label: "최신순" },
+];
+
+const ARTICLE_SORT_OPTIONS: { value: ArticleSortMode; label: string }[] = [
+  { value: "popular", label: "인기순" },
+  { value: "recent", label: "최신순" },
+];
 
 export default function FeedPage() {
   return (
+    <Suspense fallback={<LoadingState />}>
+      <FeedTabContent />
+    </Suspense>
+  );
+}
+
+function FeedTabContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hydrated = useAuthStore((state) => state.hydrated);
+  const activePet = usePetStore((state) => state.activePet());
+
+  const { data: articles = [], isLoading: articlesLoading } = useArticles();
+
+  /**
+   * 탭과 아티클 정렬은 주소(?tab=article&sort=recent)에 둔다. 상세 화면은 (shell) 밖 라우트라
+   * 들어가는 순간 이 페이지가 언마운트되는데, 로컬 state로 들고 있으면 뒤로가기로 돌아왔을 때
+   * '코스' 탭·인기순으로 초기화돼 "들어오기 전 화면"이 아니게 된다.
+   * '내 글'은 로그인 사용자 전용이라 주소로 바로 들어와도 비로그인이면 코스 탭을 보여준다.
+   */
+  const requestedSegment = parseSegment(searchParams.get("tab"));
+  const segment: FeedSegment =
+    requestedSegment === "mine" && !isLoggedIn ? "course" : requestedSegment;
+  const articleSort = parseArticleSort(searchParams.get("sort"));
+
+  /** 탭 전환은 히스토리에 쌓지 않는다 — 쌓으면 뒤로가기가 이전 화면이 아니라 이전 탭으로 간다. */
+  const replaceQuery = (next: { tab: FeedSegment; sort: ArticleSortMode }) => {
+    const params = new URLSearchParams();
+    // 기본값(코스 탭·인기순)은 주소에서 생략해 BottomNav의 /feed와 같은 상태로 둔다.
+    if (next.tab !== "course") params.set("tab", next.tab);
+    if (next.tab === "article" && next.sort !== "popular") params.set("sort", next.sort);
+    const search = params.toString();
+    router.replace(search ? `/feed?${search}` : "/feed", { scroll: false });
+  };
+
+  /** 정렬은 코스 탭과 내 글 탭이 함께 쓰는 값이다 — 둘 다 같은 코스 게시물 목록이라 기준도 같다. */
+  const [postSort, setPostSort] = useState<PostSortMode>("saves");
+  const [query, setQuery] = useState("");
+  /** 실제로 서버에 보낸 검색어. 입력창(query)과 따로 두어야 엔터를 치기 전까지 목록이 그대로 있다. */
+  const [keyword, setKeyword] = useState("");
+  const [sameTypeOnly, setSameTypeOnly] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  const searching = keyword.length > 0;
+
+  /**
+   * 검색·유형 필터·정렬은 전부 서버가 한다. 커서로 이어 받으므로 화면은 받은 만큼만 들고 있다.
+   * 검색 중에 유형 필터를 무시하는 규칙(프로토타입 jyFeedListHtml과 동일)도 서버가 지킨다.
+   */
+  const {
+    data: coursePosts,
+    total: courseTotal,
+    isLoading: postsLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useFeedPosts({ keyword, sort: postSort, sameTypeOnly, enabled: segment === "course" });
+
+  /**
+   * 배너는 정렬·필터·검색과 무관하게 전체에서 가장 많이 담긴 코스라, 목록 페이지가 아니라 따로 받아온다.
+   * 최신순에서도 그대로 띄운다 — 어떤 정렬로 보든 "가장 많이 담긴 코스"라는 정보는 같기 때문이다.
+   */
+  const showHotBanner = !searching;
+  const { data: hottestPost } = useHottestPost(segment === "course" && showHotBanner);
+
+  const sortedArticles = useMemo(
+    () => sortArticles(articles, articleSort),
+    [articles, articleSort]
+  );
+
+  /**
+   * 내 글도 코스 탭과 똑같은 카드·무한 스크롤로 보여준다. 예전엔 축약 카드 + 화면 페이지 나누기
+   * ("1/1 페이지")였는데, 같은 게시물이 탭마다 다른 모양이라 오히려 헷갈렸다.
+   * 삭제·수정은 게시물 상세 상단 바에 있으므로 목록 카드에는 두지 않는다.
+   */
+  const {
+    data: myPosts,
+    total: myTotal,
+    isLoading: myPostsLoading,
+    isFetchingNextPage: isFetchingNextMyPage,
+    hasNextPage: hasNextMyPage,
+    fetchNextPage: fetchNextMyPage,
+  } = useFeedPosts({ sort: postSort, mine: true, enabled: segment === "mine" && isLoggedIn });
+
+  /** '내 글'은 로그인 사용자의 게시물이므로 비로그인 상태에서는 로그인 모달로 유도한다. */
+  const handleSegmentChange = (next: FeedSegment) => {
+    // 세션 복구 전에는 로그인 여부를 알 수 없으므로 게이팅을 미룬다.
+    if (next === "mine" && !hydrated) return;
+    if (next === "mine" && !isLoggedIn) {
+      setLoginOpen(true);
+      return;
+    }
+    replaceQuery({ tab: next, sort: articleSort });
+  };
+
+  return (
     <>
       <TopBar title="둘러보기" />
-      <TabPlaceholder emoji="🧭" message="둘러보기 탭은 다음 스텝에서 채웁니다." />
+      <div className="px-4 pb-6 pt-3">
+        <FeedSegments value={segment} onChange={handleSegmentChange} />
+
+        {segment === "course" ? (
+          <div className="mt-3 flex flex-col gap-2.5">
+            <FeedSearchBar
+              value={query}
+              onChange={setQuery}
+              onSubmit={(next) => setKeyword(next.trim())}
+            />
+
+            {postsLoading ? (
+              <LoadingState />
+            ) : (
+              <>
+                {!searching ? (
+                  <>
+                    {showHotBanner && hottestPost ? <HotPostCard post={hottestPost} /> : null}
+                    <SameTypeFilter
+                      active={sameTypeOnly}
+                      petTypeName={activePet?.mbti?.name ?? null}
+                      onToggle={() => setSameTypeOnly((previous) => !previous)}
+                    />
+                  </>
+                ) : null}
+
+                {/* 건수와 정렬은 목록 바로 위에 붙여 둔다 — 정렬은 아래 카드 순서를 바꾸는 값이라
+                    탭 줄보다 목록에 붙어 있어야 무엇이 바뀌는지 바로 읽힌다.
+                    전체 건수는 서버가 필터·검색을 적용해 세어 준 값이라 그대로 보여주고,
+                    0건일 때는 아래 빈 상태 안내가 같은 말을 하므로 숫자는 접는다. */}
+                <div className="flex items-center gap-2 px-0.5">
+                  {courseTotal > 0 ? (
+                    <p className="text-[11px] text-ink-muted">
+                      {searching ? (
+                        <>
+                          🔍 전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
+                        </>
+                      ) : null}
+                      총 <b className="text-ink">{courseTotal}</b>개
+                    </p>
+                  ) : null}
+                  <FeedSortSelect
+                    value={postSort}
+                    options={POST_SORT_OPTIONS}
+                    onChange={setPostSort}
+                  />
+                </div>
+
+                {coursePosts.length > 0 ? (
+                  <>
+                    {coursePosts.map((post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))}
+                    <InfiniteScrollSentinel
+                      hasMore={hasNextPage}
+                      loading={isFetchingNextPage}
+                      onLoadMore={fetchNextPage}
+                    />
+                  </>
+                ) : (
+                  <FeedEmptyState
+                    emoji={searching ? "🔍" : "🧭"}
+                    title={searching ? `'${keyword}' 검색 결과가 없어요` : "아직 코스가 없어요"}
+                    description={
+                      searching
+                        ? "다른 장소명으로 검색해보세요"
+                        : "필터를 풀거나 첫 코스를 자랑해보세요"
+                    }
+                  />
+                )}
+              </>
+            )}
+          </div>
+        ) : null}
+
+        {segment === "article" ? (
+          <div className="mt-3 flex flex-col gap-2.5">
+            {articlesLoading ? (
+              <LoadingState />
+            ) : sortedArticles.length > 0 ? (
+              <>
+                <div className="flex items-center gap-2 px-0.5">
+                  <p className="text-[11px] text-ink-muted">
+                    총 <b className="text-ink">{sortedArticles.length}</b>개
+                  </p>
+                  <FeedSortSelect
+                    value={articleSort}
+                    options={ARTICLE_SORT_OPTIONS}
+                    onChange={(next) => replaceQuery({ tab: "article", sort: next })}
+                  />
+                </div>
+                {sortedArticles.map((article) => (
+                  <ArticleCard key={article.id} article={article} />
+                ))}
+              </>
+            ) : (
+              <FeedEmptyState
+                emoji="📰"
+                title="아직 등록된 아티클이 없어요"
+                description="새 소식이 올라오면 이곳에 보여드릴게요"
+              />
+            )}
+          </div>
+        ) : null}
+
+        {segment === "mine" ? (
+          <div className="mt-3 flex flex-col gap-2.5">
+            {/* 코스 작성 화면은 포팅 대상이 아니므로(PLAN.md §1) 보관함에서 공유할 코스를 고르게 한다. */}
+            <Link
+              href="/schedule/vault"
+              className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand text-sm font-extrabold text-white shadow-md"
+            >
+              ✎ 새 코스 자랑하기
+            </Link>
+
+            {myPostsLoading ? (
+              <LoadingState />
+            ) : myPosts.length > 0 ? (
+              <>
+                <div className="flex items-center gap-2 px-0.5">
+                  <p className="text-[11px] text-ink-muted">
+                    총 <b className="text-ink">{myTotal}</b>개
+                  </p>
+                  <FeedSortSelect
+                    value={postSort}
+                    options={POST_SORT_OPTIONS}
+                    onChange={setPostSort}
+                  />
+                </div>
+                {myPosts.map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))}
+                <InfiniteScrollSentinel
+                  hasMore={hasNextMyPage}
+                  loading={isFetchingNextMyPage}
+                  onLoadMore={fetchNextMyPage}
+                />
+              </>
+            ) : (
+              <FeedEmptyState
+                emoji="✍️"
+                title="아직 자랑한 코스가 없어요"
+                description="위 “새 코스 자랑하기”로 첫 코스를 올려보세요"
+              />
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
+}
+
+function LoadingState() {
+  return <div className="py-10 text-center text-xs text-ink-muted">불러오는 중…</div>;
+}
+
+/** 주소의 tab 값 — 모르는 값이 들어오면 기본 탭(코스)으로 둔다. */
+function parseSegment(value: string | null): FeedSegment {
+  return value === "article" || value === "mine" ? value : "course";
+}
+
+function parseArticleSort(value: string | null): ArticleSortMode {
+  return value === "recent" ? "recent" : "popular";
 }
