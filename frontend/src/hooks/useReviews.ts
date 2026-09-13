@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createReviewApi, fetchReviewsApi, type ReviewCreateInput } from "@/lib/api/reviews";
+import {
+  createReviewApi,
+  deleteReviewApi,
+  fetchReviewsApi,
+  type ReviewCreateInput,
+} from "@/lib/api/reviews";
 
 const REVIEWS_KEY = ["reviews"];
 
@@ -16,6 +21,15 @@ export function useCreateReview() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ReviewCreateInput) => createReviewApi(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: REVIEWS_KEY }),
+  });
+}
+
+/** 내가 쓴 후기 삭제 — 성공하면 목록 캐시를 통째로 무효화해 마이탭·장소 상세에 바로 반영한다. */
+export function useDeleteReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reviewId: string) => deleteReviewApi(reviewId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: REVIEWS_KEY }),
   });
 }

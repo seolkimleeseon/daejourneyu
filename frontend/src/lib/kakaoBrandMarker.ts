@@ -14,13 +14,28 @@ export const BRAND_MARKER_ANCHOR = { x: 18, y: 41 } as const;
 
 const BRAND_MINT = "#35ad90";
 
-const SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${BRAND_MARKER_SIZE.width}" height="${BRAND_MARKER_SIZE.height}" viewBox="0 0 36 44">
-<path d="M18 1.6C9.5 1.6 2.6 8.4 2.6 16.7c0 5.9 3.8 11.4 7.5 15.4 1.9 2 3.8 3.6 5.3 4.7 1.4 1.1 2.2 1.6 2.6 1.6s1.2-.5 2.6-1.6c1.5-1.1 3.4-2.7 5.3-4.7 3.7-4 7.5-9.5 7.5-15.4C33.4 8.4 26.5 1.6 18 1.6z" fill="${BRAND_MINT}" stroke="#ffffff" stroke-width="2.4"/>
-<ellipse cx="18" cy="19.3" rx="3.3" ry="2.8" fill="#ffffff"/>
+const PAW_ICON = `<ellipse cx="18" cy="19.3" rx="3.3" ry="2.8" fill="#ffffff"/>
 <circle cx="14.4" cy="15.6" r="1.55" fill="#ffffff"/>
 <circle cx="18" cy="13.7" r="1.7" fill="#ffffff"/>
-<circle cx="21.6" cy="15.6" r="1.55" fill="#ffffff"/>
-</svg>`;
+<circle cx="21.6" cy="15.6" r="1.55" fill="#ffffff"/>`;
 
-/** MarkerImage src로 넘길 data URI. */
-export const BRAND_MARKER_SRC = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(SVG)}`;
+function pinSvg(inner: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${BRAND_MARKER_SIZE.width}" height="${BRAND_MARKER_SIZE.height}" viewBox="0 0 36 44">
+<path d="M18 1.6C9.5 1.6 2.6 8.4 2.6 16.7c0 5.9 3.8 11.4 7.5 15.4 1.9 2 3.8 3.6 5.3 4.7 1.4 1.1 2.2 1.6 2.6 1.6s1.2-.5 2.6-1.6c1.5-1.1 3.4-2.7 5.3-4.7 3.7-4 7.5-9.5 7.5-15.4C33.4 8.4 26.5 1.6 18 1.6z" fill="${BRAND_MINT}" stroke="#ffffff" stroke-width="2.4"/>
+${inner}
+</svg>`;
+}
+
+/** MarkerImage src로 넘길 data URI. 로고(발바닥) 핀 — 마커가 하나뿐인 화면(장소 상세 등)에서 쓴다. */
+export const BRAND_MARKER_SRC = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(PAW_ICON))}`;
+
+/**
+ * 코스처럼 방문 순서가 있는 여러 핀을 한 지도에 같이 찍을 때 쓰는 번호 핀.
+ * 발바닥 대신 순번(order)을 박아 넣어 1, 2, 3… 순서를 한눈에 구분할 수 있게 한다.
+ */
+export function createNumberedBrandMarkerSrc(order: number): string {
+  const label = order > 99 ? "99+" : String(order);
+  const fontSize = label.length > 2 ? 11 : label.length > 1 ? 13 : 15;
+  const number = `<text x="18" y="19.3" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="${fontSize}" font-weight="700" fill="#ffffff">${label}</text>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(number))}`;
+}

@@ -11,6 +11,8 @@ import { PlaceMap } from "@/components/place/PlaceMap";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useReviews } from "@/hooks/useReviews";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { getConditionTags } from "@/lib/placeFilters";
+import { conditionSourceLabel } from "@/lib/courseFormat";
 
 export default function PlaceDetailPage({ params }: { params: { name: string } }) {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function PlaceDetailPage({ params }: { params: { name: string } }
   const place = places.find((p) => p.name === placeName);
   const { data: reviews = [], isLoading: reviewsLoading } = useReviews(place?.id);
   const placeReviews = place ? reviews : [];
+  const conditionTags = place ? getConditionTags(place.condition, place.smallDogOnly) : [];
 
   const handleWriteReview = () => {
     if (!isLoggedIn) {
@@ -73,7 +76,21 @@ export default function PlaceDetailPage({ params }: { params: { name: string } }
           <div className="text-xs font-bold text-ink">
             {place.petFriendly ? "🐾 반려동물 동반 가능" : "🚫 반려동물 동반 불가"}
           </div>
-          <div className="mt-1 text-xs text-ink-muted">{place.condition}</div>
+          {conditionTags.length > 0 ? (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {conditionTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-line-strong bg-surface px-2 py-0.5 text-[10px] font-medium text-ink-muted"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <div className="mt-1.5 text-xs text-ink-muted">
+            {conditionTags.length > 0 ? conditionSourceLabel(place.condition) : place.condition}
+          </div>
         </Card>
 
         <div className="mb-2 px-1 text-xs font-bold text-ink-muted">위치</div>
