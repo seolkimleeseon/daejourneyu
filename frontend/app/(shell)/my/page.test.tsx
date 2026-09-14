@@ -88,7 +88,7 @@ describe("마이 — 비로그인", () => {
     render(<MyPage />);
 
     expect(screen.queryByRole("button", { name: "전체 보기 ›" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "+ 반려동물 추가" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "반려동물 추가" })).toBeNull();
     expect(modalOpen(LOGIN_DESCRIPTION)).toBe(false);
 
     await user.click(passport());
@@ -119,26 +119,28 @@ describe("마이 — 로그인", () => {
     expect(nav.push).toHaveBeenCalledWith("/onboarding/pet-register?mode=edit&petId=pet-1&from=my");
   });
 
-  it("반려동물이 없으면 여권은 등록 폼으로 보내고 전환 칩은 감춘다", async () => {
+  it("반려동물이 없으면 여권은 등록 폼으로 보내고 전환 줄은 감춘다", async () => {
     usePetStore.setState({ pets: [], activePetIndex: 0 });
     render(<MyPage />);
 
     expect(screen.getByText("반려동물 미등록")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "+ 반려동물 추가" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "반려동물 추가" })).toBeNull();
     await userEvent.setup().click(passport());
 
     expect(nav.push).toHaveBeenCalledWith("/onboarding/pet-register?from=my");
   });
 
-  it("전환 칩으로 활성 반려동물을 바꾸고, 추가 칩은 등록 폼으로 보낸다", async () => {
+  it("전환 드롭다운으로 활성 반려동물을 바꾸고, 추가 버튼은 등록 폼으로 보낸다", async () => {
     const user = userEvent.setup();
     render(<MyPage />);
 
-    await user.click(screen.getByRole("button", { name: "두부" }));
+    // 여권 카드·뱃지 요약에도 이름이 들어가므로 aria-expanded로 드롭다운만 집는다.
+    await user.click(screen.getByRole("button", { name: /콩이/, expanded: false }));
+    await user.click(screen.getByRole("option", { name: /두부/ }));
     expect(usePetStore.getState().activePetIndex).toBe(1);
     expect(screen.getByText("시바견")).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "+ 반려동물 추가" }));
+    await user.click(screen.getByRole("button", { name: "반려동물 추가" }));
     expect(nav.push).toHaveBeenCalledWith("/onboarding/pet-register?from=my");
   });
 
