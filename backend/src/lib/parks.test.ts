@@ -47,6 +47,7 @@ function giveXml(items: string) {
 
 beforeEach(() => {
   fetchMock.mockReset();
+  kakao.supplementImagesByName.mockReset();
   vi.stubGlobal("fetch", fetchMock);
   process.env.PUBLIC_DATA_API_KEY = "public-key";
   // 사진 보충은 kakaoLocal 쪽 테스트가 따로 본다 — 여기선 받은 목록을 그대로 흘려보낸다.
