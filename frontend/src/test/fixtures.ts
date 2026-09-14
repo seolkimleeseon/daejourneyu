@@ -4,6 +4,7 @@ import type {
   CourseSchedule,
   CourseStop,
   FeedPost,
+  MbtiResult,
   Pet,
   Place,
   Review,
@@ -93,6 +94,16 @@ export function makeSchedule(overrides: Partial<CourseSchedule> = {}): CourseSch
     courseId: "course-1",
     date: "2026-08-01",
     festivalTitles: [],
+    ...overrides,
+  };
+}
+
+export function makeMbtiResult(overrides: Partial<MbtiResult> = {}): MbtiResult {
+  return {
+    code: "ENFP",
+    name: "호기심 탐험가",
+    theme: "산책",
+    traits: ["활발함", "사람 좋아함"],
     ...overrides,
   };
 }
