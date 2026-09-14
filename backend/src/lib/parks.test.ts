@@ -115,6 +115,22 @@ describe("공원 정보로 바꾸기", () => {
     expect(parks.map((p) => p.name)).toEqual(["한밭수목원"]);
   });
 
+  it("좌표 칸이 비어 있어도 버린다 — Number(\"\")가 0이라 0,0에 꽂히던 자리다", async () => {
+    giveXml(park({ ntatcSeq: "1", title: "빈좌표", latitude: "", longitude: "" }) + park({ ntatcSeq: "2" }));
+    const { fetchDaejeonParks } = await loadParks();
+
+    const parks = await fetchDaejeonParks();
+
+    expect(parks.map((p) => p.name)).toEqual(["한밭수목원"]);
+  });
+
+  it("좌표가 0으로 와도 버린다 — 대전에 0,0은 없다", async () => {
+    giveXml(park({ title: "영점좌표", latitude: "0", longitude: "0" }));
+    const { fetchDaejeonParks } = await loadParks();
+
+    await expect(fetchDaejeonParks()).resolves.toEqual([]);
+  });
+
   it("한 건만 와도 목록으로 다룬다 — XML→JSON 변환이 단일 항목을 객체로 만든다", async () => {
     const { fetchDaejeonParks } = await loadParks();
 

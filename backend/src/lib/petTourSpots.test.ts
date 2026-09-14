@@ -110,6 +110,18 @@ describe("관광지 정보로 바꾸기", () => {
     expect(first.address).toBe("대전광역시 서구 둔산대로 169");
   });
 
+  it("좌표가 없는 항목은 버린다 — 지도에 꽂을 수 없다", async () => {
+    giveSpots([
+      spot({ contentid: "no-coord", title: "좌표없음", mapx: "", mapy: "" }),
+      spot({ contentid: "ok", title: "한밭수목원" }),
+    ]);
+    const { fetchDaejeonPetTourSpots } = await loadPetTour();
+
+    const spots = await fetchDaejeonPetTourSpots({ contentTypeId: "12" });
+
+    expect(spots.map((s) => s.name)).toEqual(["한밭수목원"]);
+  });
+
   it("사진·전화가 빈 문자열이면 null로 둔다", async () => {
     giveSpots([spot({ firstimage: "", tel: "" })]);
     const { fetchDaejeonPetTourSpots } = await loadPetTour();

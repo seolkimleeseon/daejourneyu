@@ -98,6 +98,29 @@ beforeEach(() => {
   });
 });
 
+describe("쓸 수 없는 좌표", () => {
+  it("좌표가 0,0인 항목은 목록에 넣지 않는다 — 빈 좌표가 0으로 새어 들어온 것이다", async () => {
+    sources.campgrounds.mockResolvedValue([
+      { id: "camp-0", name: "좌표없는캠핑장", district: "동구", lat: 0, lng: 0, imageUrl: null },
+      { id: "camp-1", name: "대청호캠핑장", district: "동구", lat: 36.4, lng: 127.4, imageUrl: null },
+    ]);
+
+    const places = await fetchAggregatedPlaces();
+
+    expect(places.map((place) => place.name)).toEqual(["대청호캠핑장"]);
+  });
+
+  it("한 축만 0이어도 넣지 않는다", async () => {
+    sources.campgrounds.mockResolvedValue([
+      { id: "camp-0", name: "반쪽좌표캠핑장", district: "동구", lat: 36.4, lng: 0, imageUrl: null },
+    ]);
+
+    const places = await fetchAggregatedPlaces();
+
+    expect(places).toEqual([]);
+  });
+});
+
 describe("소스 실패 허용", () => {
   it("소스 하나가 터져도 나머지는 그대로 돌려준다", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});

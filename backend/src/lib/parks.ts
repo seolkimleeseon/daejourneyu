@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { assertPublicDataApiKey } from "./publicData";
+import { parseCoordinate } from "./coordinates";
 import { supplementImagesByName } from "./kakaoLocal";
 import { cached } from "./cache";
 
@@ -57,17 +58,22 @@ export async function fetchDaejeonParks(numOfRows = 50, pageNo = 1): Promise<Dae
     const items = parsed.ServiceResult?.MsgBody?.items ?? [];
 
     return items
-      .map((item) => ({
-        id: item.ntatcSeq,
-        // 원본 title에 "중   리"처럼 고정폭 공백 패딩이 낀 경우가 있어 연속 공백을 하나로 접는다.
-        name: item.title.replace(/\s+/g, " ").trim(),
-        address: item.address,
-        section: item.section,
-        lat: Number(item.latitude),
-        lng: Number(item.longitude),
-        imageUrl: null as string | null,
-      }))
-      .filter((park) => Number.isFinite(park.lat) && Number.isFinite(park.lng));
+      .map((item) => {
+        const lat = parseCoordinate(item.latitude);
+        const lng = parseCoordinate(item.longitude);
+        if (lat === null || lng === null) return null;
+        return {
+          id: item.ntatcSeq,
+          // 원본 title에 "중   리"처럼 고정폭 공백 패딩이 낀 경우가 있어 연속 공백을 하나로 접는다.
+          name: item.title.replace(/\s+/g, " ").trim(),
+          address: item.address,
+          section: item.section,
+          lat,
+          lng,
+          imageUrl: null as string | null,
+        } satisfies DaejeonPark;
+      })
+      .filter((park): park is DaejeonPark => park !== null);
   });
 
   return supplementImagesByName(parks, (park) => `대전 ${park.name}${park.section}`, MAX_IMAGE_SUPPLEMENT_PER_REQUEST);

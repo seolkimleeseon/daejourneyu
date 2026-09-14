@@ -139,6 +139,20 @@ describe("동반 가능 여부로 걸러내기", () => {
   it("동반 정보가 없으면 뺀다 — 모르는 곳을 가능한 것처럼 보여주지 않는다", async () => {
     expect(await names([camp({ facltNm: "정보없음캠핑장", animalCmgCl: "" })])).toEqual([]);
   });
+
+  it("동반 불가인 곳은 뺀다 — '불가능'이 '가능'을 부분 문자열로 품고 있어 새던 자리다", async () => {
+    expect(await names([camp({ facltNm: "출입금지캠핑장", animalCmgCl: "불가능" })])).toEqual([]);
+  });
+
+  it("가능과 불가능이 섞여 와도 가능한 곳만 남긴다", async () => {
+    expect(
+      await names([
+        camp({ facltNm: "가능캠핑장", animalCmgCl: "가능" }),
+        camp({ facltNm: "출입금지캠핑장", animalCmgCl: "불가능" }),
+        camp({ facltNm: "소형견캠핑장", animalCmgCl: "가능(소형견)" }),
+      ])
+    ).toEqual(["가능캠핑장", "소형견캠핑장"]);
+  });
 });
 
 describe("좌표", () => {

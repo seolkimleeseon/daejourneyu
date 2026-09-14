@@ -1,4 +1,5 @@
 import { fetchDaejeonOpenApi } from "./daejeonOpenApi";
+import { parseCoordinate } from "./coordinates";
 import { geocodeAddress, supplementImagesByName } from "./kakaoLocal";
 import { mapWithConcurrency } from "./concurrency";
 import { cached } from "./cache";
@@ -60,9 +61,9 @@ export async function fetchDaejeonExemplaryRestaurants(): Promise<DaejeonPlace[]
       .map((item, index) => {
         const district = DISTRICTS.find((candidate) => item.restrntAddr.includes(candidate));
         if (!district) return null;
-        const lat = Number(item.mapLat);
-        const lng = Number(item.mapLot);
-        if (!lat || !lng) return null;
+        const lat = parseCoordinate(item.mapLat);
+        const lng = parseCoordinate(item.mapLot);
+        if (lat === null || lng === null) return null;
         return {
           id: `restaurant-${index}`,
           name: item.restrntNm,
@@ -165,9 +166,9 @@ export async function fetchDaejeonShopping(): Promise<DaejeonPlace[]> {
       .map((item, index) => {
         const district = DISTRICTS.find((candidate) => item.shppgAddr.includes(candidate));
         if (!district) return null;
-        const lat = Number(item.mapLat);
-        const lng = Number(item.mapLot);
-        if (!lat || !lng) return null;
+        const lat = parseCoordinate(item.mapLat);
+        const lng = parseCoordinate(item.mapLot);
+        if (lat === null || lng === null) return null;
         return {
           id: `shopping-${index}`,
           name: item.shppgNm,
@@ -203,11 +204,11 @@ export async function fetchDaejeonTourspots(): Promise<DaejeonPlace[]> {
       const district = DISTRICTS.find((candidate) => item.tourspotAddr.includes(candidate));
       if (!district) return null;
 
-      const rawLat = Number(item.mapLat);
-      const rawLng = Number(item.mapLot);
-      let lat = rawLat;
-      let lng = rawLng;
-      if (!rawLat || !rawLng) {
+      const rawLat = parseCoordinate(item.mapLat);
+      const rawLng = parseCoordinate(item.mapLot);
+      let lat = rawLat ?? 0;
+      let lng = rawLng ?? 0;
+      if (rawLat === null || rawLng === null) {
         const point = await geocodeAddress(item.tourspotAddr).catch(() => null);
         if (!point) return null;
         lat = point.lat;
