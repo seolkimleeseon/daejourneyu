@@ -1,4 +1,5 @@
 import { assertPublicDataApiKey } from "./publicData";
+import { parseCoordinate } from "./coordinates";
 import { cached } from "./cache";
 
 const ENDPOINT = "https://apis.data.go.kr/B551011/GoCamping/locationBasedList";
@@ -64,12 +65,14 @@ export async function fetchDaejeonCampgrounds(): Promise<DaejeonCampground[]> {
 
     return items
       .map((item, index) => {
-        if (!item.animalCmgCl?.includes("가능")) return null;
+        // "불가능"도 "가능"을 부분 문자열로 품고 있어 includes로 보면 동반 불가가 통과한다.
+        // 값은 "가능" · "가능(소형견)" · "불가능" · 빈 값 네 가지뿐이라 앞글자로 가른다.
+        if (!item.animalCmgCl?.trim().startsWith("가능")) return null;
         const district = DISTRICTS.find((candidate) => item.sigunguNm === candidate);
         if (!district) return null;
-        const lat = Number(item.mapY);
-        const lng = Number(item.mapX);
-        if (!lat || !lng) return null;
+        const lat = parseCoordinate(item.mapY);
+        const lng = parseCoordinate(item.mapX);
+        if (lat === null || lng === null) return null;
         return {
           id: `camp-${index}`,
           name: item.facltNm,

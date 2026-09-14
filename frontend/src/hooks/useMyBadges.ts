@@ -3,7 +3,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useReviews } from "@/hooks/useReviews";
-import { usePosts } from "@/hooks/usePosts";
+import { useMyPosts } from "@/hooks/usePosts";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import {
@@ -35,7 +35,9 @@ export function useMyBadges(): MyBadges {
   const pets = usePetStore((state) => state.pets);
   const activePet = usePetStore((state) => state.activePet());
   const { data: reviews = [] } = useReviews();
-  const { data: posts = [] } = usePosts();
+  // 뱃지가 보는 건 내 글이다(받은 좋아요 합계). 전체 목록은 서버 페이지 단위로 바뀌어 여기서 못 쓴다.
+  // TODO(api): '이웃사랑'은 내가 남의 글에 누른 좋아요라 좋아요 영속화 뒤 별도 소스가 필요하다.
+  const { data: posts } = useMyPosts("recent", isLoggedIn);
   // 취향 계열(소형견 전용·전 견종)은 CourseStop에 없는 조건을 Place에서 찾아야 한다.
   const { data: places = [] } = usePlaces();
   // 마이탭 진입이 SCHEDULE 탭을 거치지 않을 수 있으므로(딥링크 등) 여기서도 직접 동기화한다.

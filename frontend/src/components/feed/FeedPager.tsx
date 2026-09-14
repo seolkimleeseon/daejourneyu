@@ -3,28 +3,37 @@
 import { cn } from "@/lib/cn";
 
 interface FeedPagerProps {
-  /** 0부터 시작하는 현재 페이지 */
+  /** 현재 페이지(0-base) */
   page: number;
   totalPages: number;
   onChange: (page: number) => void;
 }
 
-/** 내 글 목록 페이지네이션. 한 페이지뿐이면 호출부에서 렌더하지 않는다. */
+/**
+ * 목록 아래 페이지 번호 줄.
+ *
+ * 둘러보기 본문은 무한 스크롤이지만(InfiniteScrollSentinel), 내 글·내 후기처럼 **내가 쓴 것을
+ * 관리하는 목록**은 페이지로 끊는다 — 지운 뒤 같은 자리로 돌아와야 하는데 무한 스크롤은
+ * 그 위치를 다시 잡아주지 못한다.
+ */
 export function FeedPager({ page, totalPages, onChange }: FeedPagerProps) {
+  if (totalPages <= 1) return null;
+
   return (
-    <div className="mt-3.5 flex items-center justify-center gap-1.5">
-      <PagerButton label="이전 페이지" disabled={page === 0} onClick={() => onChange(page - 1)}>
+    <nav aria-label="페이지" className="flex items-center justify-center gap-1.5 py-3">
+      <PagerArrow label="이전 페이지" disabled={0 === page} onClick={() => onChange(page - 1)}>
         ‹
-      </PagerButton>
+      </PagerArrow>
 
       {Array.from({ length: totalPages }, (_, index) => (
         <button
           key={index}
           type="button"
-          onClick={() => onChange(index)}
+          aria-label={`${index + 1}페이지`}
           aria-current={index === page ? "page" : undefined}
+          onClick={() => onChange(index)}
           className={cn(
-            "inline-flex h-6 min-w-6 items-center justify-center rounded-lg px-1.5 text-[11px] font-bold transition-colors",
+            "h-7 min-w-7 rounded-full px-2 text-xs font-semibold transition-colors",
             index === page ? "bg-brand text-white" : "bg-surface text-ink-muted"
           )}
         >
@@ -32,32 +41,35 @@ export function FeedPager({ page, totalPages, onChange }: FeedPagerProps) {
         </button>
       ))}
 
-      <PagerButton
+      <PagerArrow
         label="다음 페이지"
         disabled={page === totalPages - 1}
         onClick={() => onChange(page + 1)}
       >
         ›
-      </PagerButton>
-    </div>
+      </PagerArrow>
+    </nav>
   );
 }
 
-interface PagerButtonProps {
+function PagerArrow({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
   label: string;
   disabled: boolean;
   onClick: () => void;
   children: string;
-}
-
-function PagerButton({ label, disabled, onClick, children }: PagerButtonProps) {
+}) {
   return (
     <button
       type="button"
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="h-7 w-7 rounded-lg bg-surface text-base text-ink transition-opacity disabled:opacity-35"
+      className="grid h-7 w-7 place-items-center rounded-full bg-surface text-xs font-semibold text-ink-muted transition-colors disabled:opacity-35"
     >
       {children}
     </button>

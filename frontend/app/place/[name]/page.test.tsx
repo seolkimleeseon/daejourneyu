@@ -1,0 +1,207 @@
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { makePlace, makeReview } from "@/test/fixtures";
+import PlaceDetailPage from "./page";
+
+const nav = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/place/한밭수목원" }));
+
+const hooks = vi.hoisted(() => ({ usePlaces: vi.fn(), useReviews: vi.fn() }));
+vi.mock("@/hooks/usePlaces", () => ({ usePlaces: hooks.usePlaces }));
+vi.mock("@/hooks/useReviews", () => ({ useReviews: hooks.useReviews }));
+
+/** 지도는 카카오 SDK가 있어야 그려진다 — 좌표만 남기고 비운다. */
+const map = vi.hoisted(() => ({ render: vi.fn() }));
+vi.mock("@/components/place/PlaceMap", () => ({
+  PlaceMap: (props: Record<string, unknown>) => {
+    map.render(props);
+    return <div data-testid="place-map" />;
+  },
+}));
+
+const 한밭수목원 = makePlace({
+  id: "p1",
+  name: "한밭수목원",
+  district: "서구",
+  category: "산책",
+  condition: "문화체육관광부 인증 · 전 견종 동반 가능 · 목줄",
+  lat: 36.36,
+  lng: 127.38,
+});
+
+function setup(name = "한밭수목원") {
+  const view = render(<PlaceDetailPage params={{ name }} />);
+  return { ...view, user: userEvent.setup() };
+}
+
+/** 로그인 모달은 닫혀 있어도 DOM에 남는다 — 열림 여부는 오버레이 불투명도로 본다. */
+function loginModalOpen(): boolean {
+  return screen.getByText("로그인이 필요해요").closest(".fixed")?.className.includes("opacity-100") ?? false;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  hooks.usePlaces.mockReturnValue({ data: [한밭수목원], isLoading: false });
+  hooks.useReviews.mockReturnValue({ data: [], isLoading: false });
+  useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: null });
+});
+
+describe("장소를 찾는 동안", () => {
+  it("불러오는 중이면 '없는 장소'라고 단정하지 않는다", () => {
+    hooks.usePlaces.mockReturnValue({ data: undefined, isLoading: true });
+    setup();
+
+    expect(screen.getByText("불러오는 중…")).toBeTruthy();
+    expect(screen.queryByText("존재하지 않는 장소예요.")).toBeNull();
+  });
+
+  it("다 불러왔는데 없으면 그렇게 말한다", () => {
+    setup("없는장소");
+
+    expect(screen.getByText("존재하지 않는 장소예요.")).toBeTruthy();
+  });
+
+  it("주소에 인코딩된 이름도 풀어서 찾는다", () => {
+    setup(encodeURIComponent("한밭수목원"));
+
+    expect(screen.getByText("🐾 반려동물 동반 가능")).toBeTruthy();
+  });
+});
+
+describe("장소 정보", () => {
+  it("분류와 구를 태그로 단다", () => {
+    setup();
+
+    expect(screen.getByText("산책")).toBeTruthy();
+    expect(screen.getByText("서구")).toBeTruthy();
+  });
+
+  it("소형견만 가능한 곳은 제목 옆 태그로 먼저 짚어준다", () => {
+    hooks.usePlaces.mockReturnValue({
+      data: [makePlace({ ...한밭수목원, smallDogOnly: true })],
+      isLoading: false,
+    });
+    const { container } = setup();
+
+    // 아래 조건 칩에도 같은 문구가 붙으므로 머리 태그 줄 안에서만 찾는다.
+    const tagRow = container.querySelector(".mb-3.flex.flex-wrap") as HTMLElement;
+    expect(within(tagRow).getByText("소형견만")).toBeTruthy();
+  });
+
+  it("동반 불가인 곳은 가능하다고 하지 않는다", () => {
+    hooks.usePlaces.mockReturnValue({
+      data: [makePlace({ ...한밭수목원, petFriendly: false })],
+      isLoading: false,
+    });
+    setup();
+
+    expect(screen.getByText("🚫 반려동물 동반 불가")).toBeTruthy();
+  });
+
+  it("긴 조건 문구는 칩으로 쪼개고 아래엔 출처만 남긴다", () => {
+    setup();
+
+    expect(screen.getByText("전 견종 가능")).toBeTruthy();
+    expect(screen.getByText("목줄 필수")).toBeTruthy();
+    expect(screen.getByText("문화체육관광부 인증")).toBeTruthy();
+  });
+
+  it("쪼갤 키워드가 없으면 원문을 그대로 보여준다 — 빈 줄로 두지 않는다", () => {
+    hooks.usePlaces.mockReturnValue({
+      data: [makePlace({ ...한밭수목원, condition: "대전시 공공데이터" })],
+      isLoading: false,
+    });
+    setup();
+
+    expect(screen.getByText("대전시 공공데이터")).toBeTruthy();
+  });
+
+  it("지도에 그 장소의 좌표를 꽂는다", () => {
+    setup();
+
+    expect(map.render).toHaveBeenLastCalledWith({ name: "한밭수목원", lat: 36.36, lng: 127.38 });
+  });
+});
+
+describe("후기", () => {
+  it("그 장소의 후기만 불러온다", () => {
+    setup();
+
+    expect(hooks.useReviews).toHaveBeenLastCalledWith("p1");
+  });
+
+  it("아직 없으면 첫 후기를 남겨보라고 한다", () => {
+    setup();
+
+    expect(screen.getByText("후기 0개")).toBeTruthy();
+    expect(screen.getByText("아직 후기가 없어요. 첫 후기를 남겨보세요.")).toBeTruthy();
+  });
+
+  it("불러오는 중이면 '없다'고 단정하지 않는다", () => {
+    hooks.useReviews.mockReturnValue({ data: undefined, isLoading: true });
+    setup();
+
+    expect(screen.queryByText(/아직 후기가 없어요/)).toBeNull();
+  });
+
+  it("작성자·작성 시점·태그를 함께 보여준다", () => {
+    hooks.useReviews.mockReturnValue({
+      data: [
+        makeReview({
+          id: "r1",
+          authorName: "콩이네",
+          createdAtLabel: "2일 전",
+          text: "그늘이 많아요",
+          tags: [{ code: "LEASH_REQUIRED", label: "목줄 필수", category: "PET_CONDITION" }],
+        }),
+      ],
+      isLoading: false,
+    });
+    setup();
+
+    expect(screen.getByText("후기 1개")).toBeTruthy();
+    expect(screen.getByText("콩이네")).toBeTruthy();
+    expect(screen.getByText("2일 전")).toBeTruthy();
+    expect(screen.getByText("그늘이 많아요")).toBeTruthy();
+  });
+
+  it("사진을 붙인 후기는 누가 올린 사진인지 대체 텍스트로 밝힌다", () => {
+    hooks.useReviews.mockReturnValue({
+      data: [makeReview({ id: "r1", authorName: "콩이네", photoUrl: "data:image/png;base64,AAA" })],
+      isLoading: false,
+    });
+    setup();
+
+    expect(screen.getByAltText("콩이네님이 첨부한 사진")).toBeTruthy();
+  });
+});
+
+describe("후기 쓰기", () => {
+  it("로그인했으면 작성 화면으로 보낸다", async () => {
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "후기 쓰기 ›" }));
+
+    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review");
+  });
+
+  it("비로그인이면 작성 화면 대신 로그인 창을 연다", async () => {
+    useAuthStore.setState({ isLoggedIn: false });
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "후기 쓰기 ›" }));
+
+    expect(nav.push).not.toHaveBeenCalled();
+    expect(loginModalOpen()).toBe(true);
+  });
+
+  it("목록 아래 큰 버튼도 같은 곳으로 보낸다 — 길게 읽고 내려온 사람을 위로 올려보내지 않는다", async () => {
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "후기 쓰기" }));
+
+    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review");
+  });
+});

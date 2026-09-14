@@ -8,6 +8,7 @@
 import { fetchDaejeonPetTourSpots } from "./petTourSpots";
 import { fetchDaejeonPetFacilities } from "./petFacilities";
 import { fetchVerifiedPetRestaurants } from "./verifiedPetRestaurants";
+import { isUsablePoint } from "./coordinates";
 import { fetchDaejeonParks } from "./parks";
 import {
   fetchDaejeonCultureFacilities,
@@ -44,9 +45,8 @@ function findDistrict(text: string): string | undefined {
   return DISTRICTS.find((candidate) => text.includes(candidate));
 }
 
-function isFinitePoint(lat: number, lng: number): boolean {
-  return Number.isFinite(lat) && Number.isFinite(lng);
-}
+/** 지도에 꽂을 수 있는 좌표인지 — 빈 값이 0으로 새어 들어오는 것까지 막는다(coordinates.ts). */
+const isFinitePoint = isUsablePoint;
 
 /** 관광타입(12:관광지 14:문화시설 15:축제공연행사 28:레포츠 38:쇼핑 39:음식점) → 앱 카테고리.
  * 15(축제)·38(쇼핑)은 마땅한 카테고리가 없어 체험·나들이 성격으로 보고 문화로 묶는다.

@@ -1,4 +1,5 @@
 import { assertPublicDataApiKey, extractItems, fetchPublicDataJson, type PublicDataEnvelope } from "./publicData";
+import { parseCoordinate } from "./coordinates";
 import { cached } from "./cache";
 
 const ENDPOINT = "https://apis.data.go.kr/B551011/KorPetTourService2/areaBasedList2";
@@ -57,14 +58,19 @@ interface FetchOptions {
   numOfRows?: number;
 }
 
-function mapRawItem(item: PetTourRawItem): PetTourSpot {
+/** 좌표가 없는 항목은 지도에 꽂을 수 없어 아예 버린다(null). */
+function mapRawItem(item: PetTourRawItem): PetTourSpot | null {
+  const lat = parseCoordinate(item.mapy);
+  const lng = parseCoordinate(item.mapx);
+  if (lat === null || lng === null) return null;
+
   return {
     id: item.contentid,
     contentTypeId: item.contenttypeid,
     name: item.title,
     address: [item.addr1, item.addr2].filter(Boolean).join(" "),
-    lat: Number(item.mapy),
-    lng: Number(item.mapx),
+    lat,
+    lng,
     imageUrl: item.firstimage || null,
     tel: item.tel || null,
   };
@@ -92,7 +98,9 @@ async function fetchByContentType(
     if (sigunguCode) search.set("sigunguCode", sigunguCode);
 
     const data = await fetchPublicDataJson<PublicDataEnvelope<PetTourRawItem>>(`${ENDPOINT}?${search.toString()}`);
-    return extractItems(data).map(mapRawItem);
+    return extractItems(data)
+      .map(mapRawItem)
+      .filter((spot): spot is PetTourSpot => spot !== null);
   });
 }
 

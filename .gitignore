@@ -13,6 +13,9 @@ backend/prisma/*.db-journal
 # JetBrains IDE 개인 설정
 .idea/
 
+# macOS Finder가 폴더마다 만드는 메타데이터
+.DS_Store
+
 # Claude Code 개인 로컬 지침 (커밋 안 함)
 CLAUDE.local.md
 .vercel

@@ -2,6 +2,7 @@ import type { Article, Course, FeedPost } from "@/types";
 import type { PostCreateInput } from "@/lib/api/posts";
 import type { FeedInteraction } from "@/stores/useFeedStore";
 import { nightsLabel } from "@/lib/courseFormat";
+import { DISTRICTS } from "@/lib/placeFilters";
 
 export interface ResolvedPostInteraction {
   liked: boolean;
@@ -11,21 +12,22 @@ export interface ResolvedPostInteraction {
 }
 
 /**
- * 원본 게시물 + 사용자가 토글한 오버라이드를 합쳐 화면에 보일 값을 계산한다.
- * 카운트는 원본 값에서 토글 여부만큼만 가감한다(서버 재조회 없이 낙관적 표시).
+ * 화면에 보일 값을 계산한다.
+ *
+ * 담기(saved/saves)는 서버가 정본이라 게시물 값을 그대로 쓴다 — 낙관적 표시는 useToggleSave가
+ * 쿼리 캐시를 직접 갈아끼우는 쪽에서 처리한다. 아직 서버가 없는 좋아요만 로컬 오버라이드로 덮는다.
  */
 export function resolvePostInteraction(
   post: FeedPost,
   override: FeedInteraction | undefined
 ): ResolvedPostInteraction {
   const liked = override?.liked ?? post.liked;
-  const saved = override?.saved ?? post.saved;
 
   return {
     liked,
     likes: post.likes + (liked === post.liked ? 0 : liked ? 1 : -1),
-    saved,
-    saves: post.saves + (saved === post.saved ? 0 : saved ? 1 : -1),
+    saved: post.saved,
+    saves: post.saves,
   };
 }
 
@@ -48,75 +50,12 @@ export type PostSortMode = "saves" | "recent";
 /** 아티클 탭 정렬 — 프로토타입의 jyArticleSort('인기순' | '최신순')에 대응 */
 export type ArticleSortMode = "popular" | "recent";
 
-/**
- * 최신순 정렬에 쓰는 순번. FeedPost에는 작성일 필드가 없어서, 프로토타입이 `b.id - a.id`로
- * 정렬하던 것과 같이 id 끝의 일련번호를 최신도 대용으로 쓴다.
- * TODO(api): 서버 연동 시 createdAt을 받아 그걸로 교체한다.
- */
-function postSequence(post: FeedPost): number {
-  const matched = /(\d+)$/.exec(post.id);
-  return matched ? Number(matched[1]) : 0;
-}
-
-/**
- * 장소·문구·작성자·태그를 한꺼번에 훑는 코스 검색.
- * 프로토타입과 동일하게 **유형 필터와 무관하게 항상 전체 코스**를 대상으로 한다.
- */
-export function searchPosts(posts: FeedPost[], query: string): FeedPost[] {
-  const keyword = query.trim().toLowerCase();
-  if (!keyword) return posts;
-
-  return posts.filter(
-    (post) =>
-      post.stops.some((stop) => stop.name.toLowerCase().includes(keyword)) ||
-      post.caption.toLowerCase().includes(keyword) ||
-      post.text.toLowerCase().includes(keyword) ||
-      post.authorName.toLowerCase().includes(keyword) ||
-      post.tags.some((tag) => tag.toLowerCase().includes(keyword))
-  );
-}
-
-/**
- * 담긴순은 오버라이드가 아니라 **원본 saves**로 정렬한다 — '담기'를 누른 순간 목록이 재배치되면
- * 방금 누른 카드를 눈으로 놓치기 때문이다. 표시 수치만 낙관적으로 올리고 순서는 유지한다.
- */
-export function sortPosts(posts: FeedPost[], mode: PostSortMode): FeedPost[] {
-  return [...posts].sort((a, b) =>
-    mode === "saves" ? b.saves - a.saves : postSequence(b) - postSequence(a)
-  );
-}
-
 export function sortArticles(articles: Article[], mode: ArticleSortMode): Article[] {
-  return [...articles].sort((a, b) =>
-    mode === "popular" ? b.likes - a.likes : b.date.localeCompare(a.date)
-  );
-}
-
-/** '👑 지금 가장 많이 담아갔어요' 배너에 올릴 코스. 목록이 비면 null. */
-export function findHottestPost(posts: FeedPost[]): FeedPost | null {
-  return posts.reduce<FeedPost | null>(
-    (hottest, post) => (!hottest || post.saves > hottest.saves ? post : hottest),
-    null
-  );
-}
-
-export interface PageSlice<T> {
-  items: T[];
-  /** 범위를 벗어난 요청을 보정한 뒤의 실제 페이지 번호(0부터) */
-  page: number;
-  totalPages: number;
-}
-
-/** 내 글 목록 페이지네이션. 항목이 없어도 totalPages는 1로 둬서 "1/1 페이지"로 표시된다. */
-export function paginate<T>(items: T[], page: number, perPage: number): PageSlice<T> {
-  const totalPages = Math.max(Math.ceil(items.length / perPage), 1);
-  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
-
-  return {
-    items: items.slice(safePage * perPage, safePage * perPage + perPage),
-    page: safePage,
-    totalPages,
-  };
+  return [...articles].sort((a, b) => {
+    // 좋아요 수가 같으면 최신 글을 위로 — 동률일 때 순서가 렌더마다 흔들리지 않게 한다.
+    if (mode === "popular" && b.likes !== a.likes) return b.likes - a.likes;
+    return b.date.localeCompare(a.date);
+  });
 }
 
 /** 아티클 카드의 날짜 표기 — 프로토타입 jyFmt와 동일하게 "8월 12일" 형태로 줄인다. */
@@ -125,11 +64,38 @@ export function formatFeedDate(date: string): string {
   return `${Number(month)}월 ${Number(day)}일`;
 }
 
-/** 자랑하기 글에 자동으로 붙는 태그 — 코스에서 뽑아낼 수 있는 것만 넣는다(일정·이동수단·자치구). */
+/**
+ * 게시물 카드의 등록일 표기 — createdAt은 ISO 문자열이라 날짜 부분만 잘라 쓴다.
+ * 같은 해면 아티클과 똑같이 "8월 12일", 해가 넘어간 글만 연도를 붙여 구분한다.
+ */
+export function formatPostDate(createdAt: string): string {
+  const [year, month, day] = createdAt.slice(0, 10).split("-");
+  if (!year || !month || !day) return "";
+  const label = `${Number(month)}월 ${Number(day)}일`;
+  return Number(year) === new Date().getFullYear() ? label : `${year}년 ${label}`;
+}
+
+/** 자랑하기 글에 자동으로 붙는 태그 — 코스를 훑어볼 때 필요한 일정 길이와 자치구만 넣는다. */
 function buildCourseTags(course: Course): string[] {
   const stops = course.days.flat();
   const districts = [...new Set(stops.map((stop) => stop.district))];
-  return [nightsLabel(course.nights), course.transport, ...districts];
+  return [nightsLabel(course.nights), ...districts];
+}
+
+/** "당일치기" 또는 "2박 3일" — nightsLabel이 만들어내는 두 가지 형태. */
+const NIGHTS_TAG_PATTERN = /^(당일치기|\d+박 \d+일)$/;
+const DISTRICT_TAGS = new Set<string>(DISTRICTS);
+
+/**
+ * 화면에 실제로 보여줄 태그만 남긴다 — 일정 길이와 자치구 둘뿐이다.
+ *
+ * 예전에 올라간 글에는 이동수단("자차"/"대중교통")이나 견종 태그가 섞여 있는데, 목록에서
+ * 코스를 고를 때 훑는 정보는 "며칠짜리인지"와 "어느 동네인지"라 나머지는 태그 줄만 길게 만든다.
+ * 저장된 값을 지우지 않고 표시할 때 거르는 이유는 이동수단 태그를 담기(보관함 사본)가
+ * 아직 참고하기 때문이다 — backend/src/routes/posts.ts의 buildSavedCourseData 참고.
+ */
+export function visiblePostTags(tags: string[]): string[] {
+  return tags.filter((tag) => NIGHTS_TAG_PATTERN.test(tag) || DISTRICT_TAGS.has(tag));
 }
 
 export interface CoursePostAuthor {
@@ -163,4 +129,26 @@ export function buildPostInputFromCourse(
 /** 이 코스를 이미 자랑했는지 — 같은 코스로 두 번 들어와도 글이 두 개 생기지 않게 막는 데 쓴다. */
 export function findPostByCourseId(posts: FeedPost[], courseId: string): FeedPost | null {
   return posts.find((post) => post.courseId === courseId) ?? null;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  /** 실제로 보여준 페이지 번호(0-base). 넘겨받은 page가 범위를 벗어나면 잘라낸 값이 돌아온다. */
+  page: number;
+  totalPages: number;
+}
+
+/**
+ * 목록을 페이지 단위로 자른다.
+ *
+ * 넘겨받은 `page`를 그대로 믿지 않고 범위 안으로 가둔 뒤 자르는 게 핵심이다 — 마지막 페이지의
+ * 마지막 항목을 지우면(내가 쓴 후기 삭제) 페이지 수가 줄면서 현재 페이지가 빈 화면이 된다.
+ * 호출부가 state를 되돌리기 전에 렌더가 먼저 돌기 때문에, 자를 때 같이 보정해서 돌려준다.
+ */
+export function paginate<T>(items: T[], page: number, perPage: number): PagedResult<T> {
+  const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
+  const start = safePage * perPage;
+
+  return { items: items.slice(start, start + perPage), page: safePage, totalPages };
 }

@@ -6,7 +6,7 @@
 ## 현재 상태
 
 Express API 서버의 **스캐폴딩 단계**다. 실제로 존재하는 건 헬스체크와 `/api/places` 하나뿐이고,
-데이터는 `routes/places.ts` 안의 하드코딩 배열이다. DB·인증·테스트·린터 모두 아직 없다.
+데이터는 `routes/places.ts` 안의 하드코딩 배열이다. DB·인증·린터 모두 아직 없다.
 
 ```
 src/
@@ -21,10 +21,18 @@ src/
 npm run dev      # tsx watch src/index.ts — http://localhost:4000
 npm run build    # tsc → dist/ (타입 체크 겸용)
 npm start        # node dist/index.js
+npm test         # vitest run (1회 실행)
+npm run test:watch  # vitest 감시 모드
 ```
 
-테스트 스위트가 없으므로 **변경 후 최소한 `npm run build`를 통과시킨다.** 타입 체크가 현재
-유일한 자동 검증 수단이다. 라우트를 추가·수정했으면 `curl`로 실제 응답까지 확인한다.
+**변경 후 `npm test`와 `npm run build`를 둘 다 통과시킨다.** 테스트는 Vitest
+(`vitest.config.mts`, 환경 `node`)로 대상 파일 옆 `src/**/*.test.ts`에 두며, `tsconfig.json`에서
+제외되어 `dist/`에는 빌드되지 않는다(테스트 파일 자체의 타입은 `tsc`가 검사하지 않는다).
+라우트 테스트는 supertest로 라우터를 작은 Express 앱에 붙여 호출하고, `../lib/prisma`와
+`../lib/auth`는 `vi.mock`으로 바꿔 DB·`JWT_SECRET` 없이 돈다(`src/routes/posts.test.ts` 참고).
+쿠키 `daejourneyu_token=valid:<userId>`를 보내면 그 사용자로 로그인한 것으로 취급한다.
+Prisma를 mock하므로 **쿼리 인자가 맞는지까지만** 보장된다 — 실제 DB 동작(제약·트랜잭션)은
+확인되지 않으니, 테스트가 없는 라우트는 물론 스키마를 건드린 변경도 `curl`로 실제 응답까지 확인한다.
 
 ## 규약
 

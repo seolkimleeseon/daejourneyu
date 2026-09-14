@@ -83,9 +83,15 @@ export const usePetStore = create<PetState>((set, get) => ({
     const result = await deletePetRequest(petId);
     if (result.ok) {
       set((state) => {
+        const removedIndex = state.pets.findIndex((pet) => pet.id === petId);
         const pets = state.pets.filter((pet) => pet.id !== petId);
-        // 지운 게 활성 개체였거나 그보다 앞이면 인덱스가 밀린다. 범위 밖으로 나가지 않게 자른다.
-        return { pets, activePetIndex: Math.min(state.activePetIndex, Math.max(pets.length - 1, 0)) };
+        // 활성 개체보다 앞을 지우면 뒤가 한 칸씩 당겨진다 — 인덱스를 같이 줄이지 않으면
+        // 보고 있던 여권이 옆 개체로 바뀐다. 그 뒤 범위 밖으로 나가지 않게 자른다.
+        const shifted =
+          -1 !== removedIndex && removedIndex < state.activePetIndex
+            ? state.activePetIndex - 1
+            : state.activePetIndex;
+        return { pets, activePetIndex: Math.min(shifted, Math.max(pets.length - 1, 0)) };
       });
     }
     return result;

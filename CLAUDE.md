@@ -49,13 +49,27 @@ DB를 다시 띄운 뒤 백엔드를 재시작할 필요는 없다 — Prisma가
 접속 URL은 `backend/.env`의 `DATABASE_URL`이 정본이고, 포트(51214)는 `--name`으로 구분되는
 서버마다 고정이다. 서버 목록·정지는 `prisma dev ls|stop|rm`으로 다룬다.
 
-| | build | 그 외 |
-|---|---|---|
-| frontend | `npm run build` (타입 체크 포함) | `npm run lint`, `npm start` |
-| backend | `npm run build` (tsc → `dist/`) | `npm start` |
+| | build | test | 그 외 |
+|---|---|---|---|
+| frontend | `npm run build` (타입 체크 포함) | `npm test` (`npm run test:watch`) | `npm run lint`, `npm start` |
+| backend | `npm run build` (tsc → `dist/`) | `npm test` (`npm run test:watch`) | `npm start` |
 
-양쪽 다 **테스트 스위트가 아직 없다.** 검증은 `npm run build`(타입 체크)까지가 현재 최선이며,
-테스트가 없다는 이유로 검증을 건너뛰지 말고 최소한 빌드는 통과시킨다.
+양쪽 다 **Vitest**로 테스트를 돌린다. 테스트는 대상 파일 옆에 둔다
+(`src/lib/feed.ts` ↔ `src/lib/feed.test.ts`, `app/(shell)/feed/page.tsx` ↔ `page.test.tsx`).
+
+- **프론트**: 확장자로 환경이 갈린다. `*.test.ts`는 node(순수 함수·API 클라이언트·스토어),
+  `*.test.tsx`는 jsdom + Testing Library(컴포넌트·페이지·훅). 픽스처는 `src/test/`에 있다.
+- **백엔드**: 라우트는 supertest로 실제 라우터를 태우되 `lib/prisma`·`lib/auth`를 mock해서
+  DB·`JWT_SECRET` 없이 돈다(`src/routes/posts.test.ts` 참고).
+
+변경 후에는 **`npm test`와 `npm run build`를 둘 다 통과시킨다.** 프론트 테스트 파일은 `next build`의
+타입 체크 대상이고, 백엔드 테스트 파일은 `tsconfig.json`에서 제외되어 `dist/`에 빌드되지 않는다.
+현재 테스트가 있는 범위는 둘러보기·마이 탭과 `/api/posts`·`/api/reviews`다.
+
+양쪽 `package.json`의 `"overrides": { "vite": "$vite" }`는 지우지 않는다. 없으면 vitest의 peer
+계산이 vite 8을 끌어오고, vite 8 → `@vitejs/devtools` → `vitest@*`(5.x) 순환 때문에 npm 10이
+`Cannot read properties of null (reading 'edgesOut')`로 설치에 실패한다. vite 7은 `@types/node
+^20.19`를 요구해서 `@types/node`도 20.19.x로 올려 두었다.
 
 ## 배포
 

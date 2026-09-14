@@ -17,9 +17,23 @@ npm run dev      # Next.js 개발 서버 실행 (개발 모드에서는 PWA 서�
 npm run build    # 프로덕션 빌드 (타입 체크도 함께 수행)
 npm run start    # 프로덕션 빌드 실행
 npm run lint     # next lint
+npm test         # vitest run (1회 실행)
+npm run test:watch  # vitest 감시 모드
 ```
 
-아직 테스트 스위트는 구성되어 있지 않다.
+테스트는 Vitest(`vitest.config.mts`)로 대상 파일 옆에 둔다. **확장자로 환경이 갈린다** —
+`*.test.ts`는 node(순수 함수·API 클라이언트·스토어), `*.test.tsx`는 jsdom + Testing Library
+(컴포넌트·페이지·훅). `@/*` 별칭은 테스트에서도 그대로 동작한다.
+
+- 픽스처(`makePost`·`makeCourse`·`makeBadge` 등)와 QueryClient 래퍼는 `src/test/`에서 가져다 쓴다.
+- `next/link`는 `vitest.setup.dom.tsx`에서 평범한 `<a>`로 바꿔 두었다. `next/navigation`은 앱
+  라우터 없이는 던지므로 테스트 파일마다 `vi.mock`한다(`app/(shell)/feed/page.test.tsx` 참고).
+- 페이지 테스트는 서버 데이터 훅(`usePosts` 등)을 통째로 mock하고, 훅 자체는
+  `src/hooks/*.test.tsx`에서 API 클라이언트만 mock해 검증한다.
+- 공용 스토어는 모듈 상태라 테스트 파일 안에서 이어진다. `beforeEach`에서 `setState`로 초기화한다.
+- jsdom에 없는 `IntersectionObserver` 같은 전역은 `vi.stubGlobal`로 넣는다.
+- `Modal`은 닫혀 있어도 DOM에 남아 있다(투명도로만 숨김). 열림 여부는 오버레이의 `opacity-100`
+  클래스로 확인한다.
 
 ## 기술 스택
 
