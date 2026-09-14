@@ -5,6 +5,7 @@ import {
   formatFeedDate,
   formatPostDate,
   formatStopSummary,
+  paginate,
   resolveArticleLike,
   resolvePostInteraction,
   sortArticles,
@@ -180,5 +181,28 @@ describe("findPostByCourseId", () => {
 
   it("없으면 null", () => {
     expect(findPostByCourseId(posts, "c9")).toBeNull();
+  });
+});
+
+describe("paginate", () => {
+  const items = ["a", "b", "c", "d", "e"];
+
+  it("페이지 크기만큼 잘라내고 전체 페이지 수를 함께 준다", () => {
+    expect(paginate(items, 0, 2)).toEqual({ items: ["a", "b"], page: 0, totalPages: 3 });
+    expect(paginate(items, 2, 2)).toEqual({ items: ["e"], page: 2, totalPages: 3 });
+  });
+
+  it("항목이 없어도 페이지 수는 1로 둔다", () => {
+    expect(paginate([], 0, 4)).toEqual({ items: [], page: 0, totalPages: 1 });
+  });
+
+  it("범위를 벗어난 페이지는 마지막 페이지로 당겨 빈 화면을 막는다", () => {
+    // 마지막 페이지의 마지막 후기를 지우면 페이지 수가 줄어드는데, 호출부 state는 아직 그대로다.
+    expect(paginate(items, 9, 2)).toEqual({ items: ["e"], page: 2, totalPages: 3 });
+    expect(paginate(["a"], 3, 2)).toEqual({ items: ["a"], page: 0, totalPages: 1 });
+  });
+
+  it("음수 페이지는 첫 페이지로 본다", () => {
+    expect(paginate(items, -1, 2)).toEqual({ items: ["a", "b"], page: 0, totalPages: 3 });
   });
 });

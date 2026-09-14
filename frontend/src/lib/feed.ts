@@ -130,3 +130,25 @@ export function buildPostInputFromCourse(
 export function findPostByCourseId(posts: FeedPost[], courseId: string): FeedPost | null {
   return posts.find((post) => post.courseId === courseId) ?? null;
 }
+
+export interface PagedResult<T> {
+  items: T[];
+  /** 실제로 보여준 페이지 번호(0-base). 넘겨받은 page가 범위를 벗어나면 잘라낸 값이 돌아온다. */
+  page: number;
+  totalPages: number;
+}
+
+/**
+ * 목록을 페이지 단위로 자른다.
+ *
+ * 넘겨받은 `page`를 그대로 믿지 않고 범위 안으로 가둔 뒤 자르는 게 핵심이다 — 마지막 페이지의
+ * 마지막 항목을 지우면(내가 쓴 후기 삭제) 페이지 수가 줄면서 현재 페이지가 빈 화면이 된다.
+ * 호출부가 state를 되돌리기 전에 렌더가 먼저 돌기 때문에, 자를 때 같이 보정해서 돌려준다.
+ */
+export function paginate<T>(items: T[], page: number, perPage: number): PagedResult<T> {
+  const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
+  const start = safePage * perPage;
+
+  return { items: items.slice(start, start + perPage), page: safePage, totalPages };
+}
