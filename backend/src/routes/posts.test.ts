@@ -1,7 +1,6 @@
-import express from "express";
-import cookieParser from "cookie-parser";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestApp } from "../test/testApp";
 
 const { prisma } = vi.hoisted(() => {
   const model = () => ({
@@ -27,14 +26,6 @@ import postsRouter from "./posts";
 
 const AS_USER_1 = "daejourneyu_token=valid:user-1";
 const INCLUDE = { stops: { orderBy: { order: "asc" } } };
-
-function createApp() {
-  const app = express();
-  app.use(express.json());
-  app.use(cookieParser());
-  app.use("/api/posts", postsRouter);
-  return app;
-}
 
 function stopRow(order: number, overrides: Record<string, unknown> = {}) {
   return {
@@ -71,7 +62,7 @@ function postRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-const app = createApp();
+const app = createTestApp("/api/posts", postsRouter);
 
 beforeEach(() => {
   vi.resetAllMocks();

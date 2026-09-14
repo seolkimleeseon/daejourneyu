@@ -1,7 +1,6 @@
-import express from "express";
-import cookieParser from "cookie-parser";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestApp } from "../test/testApp";
 
 const { prisma } = vi.hoisted(() => ({
   prisma: {
@@ -58,15 +57,7 @@ function reviewRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function createApp() {
-  const app = express();
-  app.use(express.json());
-  app.use(cookieParser());
-  app.use("/api/reviews", reviewsRouter);
-  return app;
-}
-
-const app = createApp();
+const app = createTestApp("/api/reviews", reviewsRouter);
 
 beforeEach(() => {
   vi.resetAllMocks();
