@@ -6,6 +6,10 @@ import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { makePet } from "@/test/fixtures";
 
+/** 수정 화면의 '여행 유형' 칸(PetMbtiCard)이 재검사로 보낼 때 라우터를 쓴다. */
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => nav }));
+
 const addPet = vi.fn();
 const updatePet = vi.fn();
 const removePet = vi.fn();

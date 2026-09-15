@@ -11,6 +11,7 @@ import type { Breed } from "@/lib/breeds";
 import { FormField } from "./FormField";
 import { BreedField } from "./BreedField";
 import { PetDeleteModal } from "./PetDeleteModal";
+import { PetMbtiCard } from "./PetMbtiCard";
 
 const SIZES: PetSize[] = ["소형견", "중형견", "대형견"];
 /** 서버(`backend/src/routes/pets.ts`)와 같은 상한. 왕복 없이 즉시 알려주려고 여기서도 본다. */
@@ -243,6 +244,9 @@ export function PetRegisterForm({ mode, petId, onCompleted }: PetRegisterFormPro
           장소마다 동반 조건이 크기별로 다르기 때문에 꼭 확인해주세요.
         </p>
       </div>
+
+      {/* 등록 화면에는 띄우지 않는다 — 아직 저장된 개체가 없어서 검사 결과를 붙일 대상이 없다. */}
+      {mode === "edit" && target ? <PetMbtiCard pet={target} /> : null}
 
       {formError ? <p className="px-0.5 text-[11px] text-accent-coral">{formError}</p> : null}
 
