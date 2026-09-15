@@ -13,7 +13,7 @@ interface QuestionCardProps {
 export function QuestionCard({ question, selected, onSelect }: QuestionCardProps) {
   const cardClass = (letter: string) =>
     cn(
-      "rounded-lg border-[1.5px] border-line-strong bg-card p-4 text-center transition-colors",
+      "flex min-h-[92px] flex-col items-center justify-center rounded-lg border-[1.5px] border-line-strong bg-card p-4 text-center transition-colors",
       selected === letter && "border-brand-300 bg-brand-100"
     );
 
@@ -21,10 +21,12 @@ export function QuestionCard({ question, selected, onSelect }: QuestionCardProps
     <div>
       <div className="mb-6">
         <span className="mb-2 block text-center text-[9px] font-semibold text-accent-purple">{question.tag}</span>
-        <div className="mb-3 flex justify-center">
+        <div className="mb-3 flex h-14 items-center justify-center">
           <Emoji3D emoji={question.emoji} size={56} glowClassName="bg-brand-300" />
         </div>
-        <div className="text-center text-sm font-semibold leading-relaxed text-ink">{question.question}</div>
+        <div className="flex min-h-[2.75rem] items-center justify-center text-center text-sm font-semibold leading-relaxed text-ink">
+          {question.question}
+        </div>
       </div>
       <div className="flex flex-col gap-3">
         <button type="button" className={cardClass(question.optionA.letter)} onClick={() => onSelect(question.optionA.letter)}>
