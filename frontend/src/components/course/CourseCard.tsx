@@ -33,7 +33,7 @@ export function CourseCard({ course, scheduleCount = 0, onClick, onAddSchedule }
       className="mb-3.5 flex w-full cursor-pointer items-stretch overflow-hidden rounded-2xl border border-line bg-card shadow-sm active:bg-surface"
     >
       <div className="flex w-[72px] shrink-0 items-center justify-center border-r border-dashed border-line bg-surface">
-        <Emoji3D emoji={emoji} size={44} glowClassName={GLOW_CLASS[course.source]} />
+        <Emoji3D emoji={emoji} size={44} glowClassName={GLOW_CLASS[course.source]} shadow={false} />
       </div>
 
       <div className="min-w-0 flex-1 px-4 py-3.5">
