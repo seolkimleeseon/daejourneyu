@@ -173,6 +173,9 @@ function MbtiCourseWizard() {
   const quickStart = searchParams.get("quick") === "1" && isLoggedIn && !!savedMbtiCode;
 
   const [phase, setPhase] = useState<Phase>(quickStart ? "result" : "intro");
+  // quickStart로 곧장 결과부터 보여준 경우엔 이번 세션에 퀴즈를 실제로 푼 적이 없으므로,
+  // 결과 화면에서 뒤로가기를 누르면 인트로/퀴즈로 보내지 않고 바로 이전 화면(내 여정)으로 나간다.
+  const [resultFromQuiz, setResultFromQuiz] = useState(!quickStart);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<MbtiAnswer[]>(() => Array(MBTI_QUESTIONS.length).fill(null));
   const [mbtiCode, setMbtiCode] = useState(quickStart ? savedMbtiCode! : "");
@@ -195,6 +198,7 @@ function MbtiCourseWizard() {
       const code = scoreAnswers(next);
       setMbtiCode(code);
       void persistMbti(code);
+      setResultFromQuiz(true);
       setPhase("result");
     } else {
       setCurrentQuestion((prev) => prev + 1);
@@ -281,7 +285,11 @@ function MbtiCourseWizard() {
       // 상단 뒤로가기는 검사 도중에도 언제든 내 여정 탭으로 바로 나갈 수 있어야 해서 기본
       // 동작(default: router.back())으로 흘려보낸다.
       case "result":
-        setPhase("intro");
+        if (resultFromQuiz) {
+          setPhase("intro");
+        } else {
+          router.back();
+        }
         return;
       case "nights":
         setPhase("result");
