@@ -31,19 +31,33 @@ export function pickCurrentForecast(forecast: WeatherForecast[]): WeatherForecas
   return forecast.find((item) => toTimestamp(item.date, item.time) >= now) ?? forecast[forecast.length - 1];
 }
 
-/** "☀️ 18°C · 맑음" 형태의 요약 문구. 강수 예보가 있으면 하늘 상태 대신 강수 종류를 보여준다. */
-export function formatWeatherSummary(item: WeatherForecast): string {
+function weatherEmoji(item: WeatherForecast): string {
   const hasPrecip = !!item.precipitationType && item.precipitationType > 0;
-  const emoji = hasPrecip
+  return hasPrecip
     ? PRECIP_EMOJI[item.precipitationType as number]
     : item.skyCondition
       ? SKY_EMOJI[item.skyCondition]
       : "🌡️";
-  const label = hasPrecip
+}
+
+function weatherLabel(item: WeatherForecast): string {
+  const hasPrecip = !!item.precipitationType && item.precipitationType > 0;
+  return hasPrecip
     ? PRECIP_LABEL[item.precipitationType as number]
     : item.skyCondition
       ? SKY_LABEL[item.skyCondition]
       : "";
+}
+
+/** "☀️ 18°C · 맑음" 형태의 요약 문구. 강수 예보가 있으면 하늘 상태 대신 강수 종류를 보여준다. */
+export function formatWeatherSummary(item: WeatherForecast): string {
+  const label = weatherLabel(item);
   const temp = item.temperatureC !== null ? `${Math.round(item.temperatureC)}°C` : "-";
-  return `${emoji} ${temp}${label ? ` · ${label}` : ""}`;
+  return `${weatherEmoji(item)} ${temp}${label ? ` · ${label}` : ""}`;
+}
+
+/** "☀️ 18°C" 형태의 짧은 요약 — 장소별 날씨 티커처럼 폭이 좁은 배지용. */
+export function formatWeatherShort(item: WeatherForecast): string {
+  const temp = item.temperatureC !== null ? `${Math.round(item.temperatureC)}°C` : "-";
+  return `${weatherEmoji(item)} ${temp}`;
 }

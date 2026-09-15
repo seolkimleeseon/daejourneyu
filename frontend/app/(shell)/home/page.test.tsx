@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CrowdPlace } from "@/lib/crowd";
+import type { TickerPlace } from "@/lib/placeTicker";
 import type { ActiveTrip } from "@/lib/schedule";
 import type { Pet } from "@/types";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -40,8 +40,8 @@ interface StatusCardProps {
   pet: Pet | null;
   isLoggedIn: boolean;
   upcomingTrip: ActiveTrip | null;
-  crowdPlaces: CrowdPlace[];
-  crowdLoading?: boolean;
+  tickerPlaces: TickerPlace[];
+  tickerLoading?: boolean;
 }
 
 /** 상태 카드에 마지막으로 넘어간 값. */
@@ -121,7 +121,7 @@ describe("상태 카드에 넘기는 값", () => {
     setup();
 
     expect(statusProps().upcomingTrip).toMatchObject({ ddayLabel: "D-3", courseLabel: "유성 산책 코스" });
-    expect(statusProps().crowdPlaces).toEqual([{ id: "a", name: "갑천", category: "산책" }]);
+    expect(statusProps().tickerPlaces).toEqual([{ id: "a", name: "갑천", category: "산책" }]);
   });
 
   it("비로그인이면 여정을 찾지 않는다 — 남의 일정일 수 있다", () => {
@@ -139,7 +139,7 @@ describe("상태 카드에 넘기는 값", () => {
     setup();
 
     // 매번 다른 순서로 섞어 보여주는 게 의도라 순서는 따지지 않는다.
-    const names = statusProps().crowdPlaces.map((place) => place.name);
+    const names = statusProps().tickerPlaces.map((place) => place.name);
     expect([...names].sort()).toEqual(["댕댕카페", "한밭수목원"]);
   });
 
@@ -147,7 +147,7 @@ describe("상태 카드에 넘기는 값", () => {
     places.usePlaces.mockReturnValue({ data: undefined, isPending: true });
     setup();
 
-    expect(statusProps()).toMatchObject({ crowdLoading: true });
+    expect(statusProps()).toMatchObject({ tickerLoading: true });
   });
 
   it("여정이 있으면 장소를 기다리지 않는다 — 보여줄 게 이미 있다", () => {
@@ -158,7 +158,7 @@ describe("상태 카드에 넘기는 값", () => {
     });
     setup();
 
-    expect(statusProps()).toMatchObject({ crowdLoading: false });
+    expect(statusProps()).toMatchObject({ tickerLoading: false });
   });
 });
 

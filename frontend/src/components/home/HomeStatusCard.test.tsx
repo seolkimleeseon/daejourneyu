@@ -35,7 +35,7 @@ function setup(props: Partial<React.ComponentProps<typeof HomeStatusCard>> = {})
       pet={null}
       isLoggedIn={false}
       upcomingTrip={null}
-      crowdPlaces={[]}
+      tickerPlaces={[]}
       {...props}
     />
   );
@@ -147,15 +147,15 @@ describe("날씨", () => {
   });
 });
 
-describe("혼잡도 티커", () => {
+describe("장소별 날씨 티커", () => {
   it("장소를 받으면 티커에 넘긴다", () => {
-    setup({ crowdPlaces: [{ id: "p1", name: "한밭수목원", category: "산책" }] });
+    setup({ tickerPlaces: [{ id: "p1", name: "한밭수목원", category: "산책" }] });
 
     expect(screen.getByText("한밭수목원")).toBeTruthy();
   });
 
   it("불러오는 중이라는 사실도 함께 넘긴다", () => {
-    setup({ crowdPlaces: [], crowdLoading: true });
+    setup({ tickerPlaces: [], tickerLoading: true });
 
     expect(screen.getByText(/모으고 있어요/)).toBeTruthy();
   });
