@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { TopBar } from "@/components/shell/TopBar";
+import { LoginModal } from "@/components/my/LoginModal";
 import { useArticle } from "@/hooks/useArticles";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { resolveArticleLike } from "@/lib/feed";
 import { cn } from "@/lib/cn";
@@ -19,6 +22,10 @@ export default function ArticleDetailPage() {
   const { data: article, isLoading } = useArticle(articleId);
   const override = useFeedStore((state) => state.articleLikes[articleId]);
   const toggleArticleLike = useFeedStore((state) => state.toggleArticleLike);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  /** 세션 복구 전에는 로그인 여부를 알 수 없다 — 이때 막으면 로그인 사용자도 게이팅에 걸린다. */
+  const authHydrated = useAuthStore((state) => state.hydrated);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   /**
    * 들어오기 전 화면(둘러보기·홈)으로 되돌아간다. 공유 링크로 새 탭에서 바로 열면 되돌아갈
@@ -56,6 +63,16 @@ export default function ArticleDetailPage() {
 
   const { liked, likes } = resolveArticleLike(article, override);
 
+  /** 좋아요는 "누가" 눌렀는지가 있어야 의미가 있는 값이라 로그인 사용자만 누를 수 있다. */
+  const handleLike = () => {
+    if (!authHydrated) return;
+    if (!isLoggedIn) {
+      setLoginOpen(true);
+      return;
+    }
+    toggleArticleLike(articleId, !liked);
+  };
+
   return (
     <>
       <TopBar title="아티클" showBack onBack={handleBack} />
@@ -74,7 +91,7 @@ export default function ArticleDetailPage() {
 
         <button
           type="button"
-          onClick={() => toggleArticleLike(articleId, !liked)}
+          onClick={handleLike}
           className={cn(
             "mt-6 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors",
             liked
@@ -96,6 +113,8 @@ export default function ArticleDetailPage() {
           📰 다른 아티클 더 보러갈래요
         </Link>
       </article>
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
 }

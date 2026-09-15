@@ -1,12 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ArticleCard } from "@/components/feed/ArticleCard";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
-import { makeArticle } from "@/test/fixtures";
+import { makeArticle, makeUser } from "@/test/fixtures";
 
 beforeEach(() => {
   useFeedStore.setState({ overrides: {}, articleLikes: {} });
+  useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: makeUser() });
 });
 
 describe("ArticleCard", () => {
@@ -43,5 +45,37 @@ describe("ArticleCard", () => {
 
     await user.click(button);
     expect(button.textContent).toBe("♡ 5");
+  });
+
+  it("비로그인 상태에서는 좋아요를 기록하지 않고 로그인부터 안내한다", async () => {
+    useAuthStore.setState({ isLoggedIn: false, hydrated: true, user: null });
+    const onRequireLogin = vi.fn();
+    render(
+      <ArticleCard
+        article={makeArticle({ id: "a1", likes: 5, liked: false })}
+        onRequireLogin={onRequireLogin}
+      />
+    );
+
+    await userEvent.setup().click(screen.getByRole("button"));
+
+    expect(onRequireLogin).toHaveBeenCalledTimes(1);
+    expect(useFeedStore.getState().articleLikes).toEqual({});
+  });
+
+  it("세션 복구 전에는 아무 판단도 하지 않는다 — 로그인 사용자를 막으면 안 된다", async () => {
+    useAuthStore.setState({ isLoggedIn: false, hydrated: false, user: null });
+    const onRequireLogin = vi.fn();
+    render(
+      <ArticleCard
+        article={makeArticle({ id: "a1", likes: 5, liked: false })}
+        onRequireLogin={onRequireLogin}
+      />
+    );
+
+    await userEvent.setup().click(screen.getByRole("button"));
+
+    expect(onRequireLogin).not.toHaveBeenCalled();
+    expect(useFeedStore.getState().articleLikes).toEqual({});
   });
 });

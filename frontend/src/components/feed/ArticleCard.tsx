@@ -3,19 +3,38 @@
 import Link from "next/link";
 import type { Article } from "@/types";
 import { Card } from "@/components/ui/Card";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { resolveArticleLike, formatFeedDate } from "@/lib/feed";
 import { cn } from "@/lib/cn";
 
 interface ArticleCardProps {
   article: Article;
+  /**
+   * 비로그인 상태에서 좋아요를 눌렀을 때. 좋아요는 "누가" 눌렀는지가 있어야 의미가 있는 값이라
+   * 로그인 사용자만 누를 수 있고, 게이팅 모달은 목록을 가진 화면이 하나만 들고 있다
+   * (카드마다 모달을 달면 스크롤되는 목록에 모달이 수십 개 붙는다).
+   */
+  onRequireLogin?: () => void;
 }
 
 /** 둘러보기 '아티클' 세그 카드. 아티클 상세는 홈 탭과 공유하는 공용 라우트다. */
-export function ArticleCard({ article }: ArticleCardProps) {
+export function ArticleCard({ article, onRequireLogin }: ArticleCardProps) {
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  /** 세션 복구 전에는 로그인 여부를 알 수 없다 — 이때 막으면 로그인 사용자도 게이팅에 걸린다. */
+  const authHydrated = useAuthStore((state) => state.hydrated);
   const override = useFeedStore((state) => state.articleLikes[article.id]);
   const toggleArticleLike = useFeedStore((state) => state.toggleArticleLike);
   const { liked, likes } = resolveArticleLike(article, override);
+
+  const handleLike = () => {
+    if (!authHydrated) return;
+    if (!isLoggedIn) {
+      onRequireLogin?.();
+      return;
+    }
+    toggleArticleLike(article.id, !liked);
+  };
 
   return (
     <Card className="p-0">
@@ -37,7 +56,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         <span>조회 {article.views.toLocaleString()}</span>
         <button
           type="button"
-          onClick={() => toggleArticleLike(article.id, !liked)}
+          onClick={handleLike}
           aria-pressed={liked}
           className={cn("font-bold transition-colors", liked ? "text-accent-coral" : "text-ink-muted")}
         >
