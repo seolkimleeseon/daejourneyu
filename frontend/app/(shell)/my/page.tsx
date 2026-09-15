@@ -17,6 +17,7 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useReviews } from "@/hooks/useReviews";
 import { useMyBadges } from "@/hooks/useMyBadges";
 import type { Badge } from "@/lib/badges";
+import { ro } from "@/lib/josa";
 
 export default function MyPage() {
   const router = useRouter();
@@ -36,6 +37,16 @@ export default function MyPage() {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   const { badges, nearest, nearestMessage } = useMyBadges();
+
+  /**
+   * 대표(활성) 반려동물 전환. 여권 카드와 뱃지 주어가 통째로 바뀌는 조작인데 화면이 조용히
+   * 갈아끼워지기만 하면 눌린 게 맞는지 알기 어려워서, 무엇으로 바뀌었는지 토스트로 말해준다.
+   */
+  const handleSwitchPet = (index: number) => {
+    switchActivePet(index);
+    const pet = pets[index];
+    if (pet) showToast(`대표 반려동물을 ${pet.emoji} ${pet.name}${ro(pet.name)} 바꿨어요`);
+  };
 
   const handlePassportClick = () => {
     if (!hydrated) return;
@@ -77,7 +88,7 @@ export default function MyPage() {
           <PetSwitcher
             pets={pets}
             activeIndex={activePetIndex}
-            onSwitch={switchActivePet}
+            onSwitch={handleSwitchPet}
             onAddPet={() => router.push("/onboarding/pet-register?from=my")}
           />
         ) : null}

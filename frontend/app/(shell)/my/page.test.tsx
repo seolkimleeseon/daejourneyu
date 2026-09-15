@@ -150,6 +150,8 @@ describe("마이 — 로그인", () => {
     await user.click(screen.getByRole("option", { name: /두부/ }));
     expect(usePetStore.getState().activePetIndex).toBe(1);
     expect(screen.getByText("시바견")).toBeTruthy();
+    // 여권과 뱃지 주어가 통째로 바뀌는 조작이라 무엇으로 바뀌었는지 토스트로 알린다.
+    expect(useToastStore.getState().message).toBe("대표 반려동물을 🐶 두부로 바꿨어요");
 
     await user.click(screen.getByRole("button", { name: "반려동물 추가" }));
     expect(nav.push).toHaveBeenCalledWith("/onboarding/pet-register?from=my");
