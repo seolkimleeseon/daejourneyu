@@ -35,7 +35,7 @@ function gotBadge(index: number) {
 }
 
 function tileNames(): string[] {
-  return Array.from(document.querySelectorAll(".grid > div")).map(
+  return Array.from(document.querySelectorAll(".grid > button")).map(
     (tile) => tile.children[1]?.textContent ?? ""
   );
 }
@@ -43,7 +43,7 @@ function tileNames(): string[] {
 describe("BadgeGrid", () => {
   it("반려동물 이름을 주어로, 모은 수/전체 수를 헤더에 보여준다", () => {
     render(
-      <BadgeGrid badges={[gotBadge(0), makeBadge({ id: IDS[8] })]} petName="콩이" onOpenAll={vi.fn()} />
+      <BadgeGrid badges={[gotBadge(0), makeBadge({ id: IDS[8] })]} petName="콩이" onSelectBadge={vi.fn()} onOpenAll={vi.fn()} />
     );
 
     expect(screen.getByText("콩이의 여행 뱃지")).toBeTruthy();
@@ -51,7 +51,7 @@ describe("BadgeGrid", () => {
   });
 
   it("반려동물 이름이 없으면 '내 여행 뱃지'", () => {
-    render(<BadgeGrid badges={[makeBadge()]} onOpenAll={vi.fn()} />);
+    render(<BadgeGrid badges={[makeBadge()]} onSelectBadge={vi.fn()} onOpenAll={vi.fn()} />);
 
     expect(screen.getByText("내 여행 뱃지")).toBeTruthy();
   });
@@ -66,7 +66,7 @@ describe("BadgeGrid", () => {
       makeBadge({ id: IDS[12], name: "비밀 뱃지", hidden: true, current: 0, target: 1 }),
     ];
 
-    render(<BadgeGrid badges={[...got, ...pending]} onOpenAll={vi.fn()} />);
+    render(<BadgeGrid badges={[...got, ...pending]} onSelectBadge={vi.fn()} onOpenAll={vi.fn()} />);
 
     expect(tileNames()).toEqual([
       "획득1",
@@ -85,7 +85,7 @@ describe("BadgeGrid", () => {
   it("미획득분이 모자라면 남는 칸을 획득분으로 채운다", () => {
     const got = Array.from({ length: 8 }, (_, index) => gotBadge(index));
 
-    render(<BadgeGrid badges={got} onOpenAll={vi.fn()} />);
+    render(<BadgeGrid badges={got} onSelectBadge={vi.fn()} onOpenAll={vi.fn()} />);
 
     expect(tileNames()).toHaveLength(8);
   });
@@ -101,7 +101,7 @@ describe("BadgeGrid", () => {
       tileLabel: "조건 비공개",
     });
 
-    render(<BadgeGrid badges={[hiddenGot]} onOpenAll={vi.fn()} />);
+    render(<BadgeGrid badges={[hiddenGot]} onSelectBadge={vi.fn()} onOpenAll={vi.fn()} />);
 
     expect(screen.getByText("야행성 산책러")).toBeTruthy();
     expect(screen.getByText("🎉 뱃지를 모두 모았어요!")).toBeTruthy();
@@ -110,11 +110,20 @@ describe("BadgeGrid", () => {
   it("헤더와 타일 사이에 남은 거리 줄을 끼우고, 전체 보기를 누르면 알린다", async () => {
     const onOpenAll = vi.fn();
     render(
-      <BadgeGrid badges={[makeBadge()]} nearline={<p>하나만 더</p>} onOpenAll={onOpenAll} />
+      <BadgeGrid badges={[makeBadge()]} nearline={<p>하나만 더</p>} onSelectBadge={vi.fn()} onOpenAll={onOpenAll} />
     );
 
     expect(screen.getByText("하나만 더")).toBeTruthy();
     await userEvent.setup().click(screen.getByRole("button", { name: "전체 보기 ›" }));
     expect(onOpenAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("타일을 누르면 그 뱃지를 알려준다 — 획득 조건은 상세 모달이 답한다", async () => {
+    const onSelectBadge = vi.fn();
+    const badge = makeBadge({ id: "traveler", name: "여행 초보" });
+    render(<BadgeGrid badges={[badge]} onSelectBadge={onSelectBadge} onOpenAll={vi.fn()} />);
+
+    await userEvent.setup().click(screen.getByText("여행 초보"));
+    expect(onSelectBadge).toHaveBeenCalledWith(badge);
   });
 });

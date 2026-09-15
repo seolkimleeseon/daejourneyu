@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -28,6 +28,11 @@ function renderMyPage() {
 
 function modalOpen(description: string): boolean {
   return screen.getByText(description).closest(".fixed")?.className.includes("opacity-100") ?? false;
+}
+
+/** 모달은 닫혀도 DOM에 남으므로(투명도로만 숨김) 버튼을 집을 때 해당 모달 안으로 범위를 좁힌다. */
+function modalOf(description: string): HTMLElement {
+  return screen.getByText(description).closest(".fixed") as HTMLElement;
 }
 
 function passport(): HTMLElement {
@@ -163,6 +168,26 @@ describe("마이 — 로그인", () => {
 
     await user.click(screen.getByRole("button", { name: "전체 보기 ›" }));
     expect(nav.push).toHaveBeenLastCalledWith("/my/badges");
+  });
+
+  it("뱃지 타일을 누르면 받은 뱃지는 무엇으로 받았는지, 아직인 뱃지는 조건을 알려준다", async () => {
+    const user = userEvent.setup();
+    renderMyPage();
+
+    // 받은 뱃지 — 무엇으로 받았는지(description)를 말해준다.
+    await user.click(screen.getByText("첫 반려인"));
+    expect(modalOpen("다녀온 일정")).toBe(true);
+    expect(within(modalOf("다녀온 일정")).getByText("획득")).toBeTruthy();
+
+    await user.click(within(modalOf("다녀온 일정")).getByRole("button", { name: "닫기" }));
+    expect(modalOpen("다녀온 일정")).toBe(false);
+
+    // 아직인 뱃지 — 획득 조건(how)과 진행도를 말해준다.
+    await user.click(screen.getByText("대전 한바퀴"));
+    const badgeModal = modalOf("코스에 날짜를 붙여 다녀오면 쌓여요");
+    expect(badgeModal.className).toContain("opacity-100");
+    expect(within(badgeModal).getByText("미획득")).toBeTruthy();
+    expect(within(badgeModal).getByText("4/5")).toBeTruthy();
   });
 
   it("내가 쓴 후기 수는 내 후기만 세고, 누르면 후기 목록으로 보낸다", async () => {

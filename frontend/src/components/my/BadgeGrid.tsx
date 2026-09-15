@@ -21,6 +21,8 @@ interface BadgeGridProps {
   petName?: string | null;
   /** 헤더와 타일 사이에 끼우는 슬롯. 지금은 '남은 거리' 한 줄이 들어온다. */
   nearline?: ReactNode;
+  /** 타일 하나를 눌렀을 때. 획득 조건·진행도는 상세 모달이 답한다(아래 주석 참고). */
+  onSelectBadge: (badge: Badge) => void;
   onOpenAll: () => void;
 }
 
@@ -41,10 +43,11 @@ function byCloseness(a: Badge, b: Badge): number {
  * 자물쇠로 덮지 않는 것도 같은 이유다 — 무슨 뱃지인지 보여야 해볼 만한 것으로 읽히고,
  * 남은 거리가 보여야 목표 구배(goal gradient)로 얻는 동기부여가 살아난다.
  *
- * "뭘 하면 받나"는 이 그리드가 답하지 않는다. 4열 타일에는 획득 조건이 들어갈 자리가 없어
- * 전체 목록 화면(/my/badges)이 계열별 섹션과 함께 담당한다.
+ * "뭘 하면 받나"는 타일 자체가 답하지 않는다. 4열 타일에는 획득 조건이 들어갈 자리가 없기
+ * 때문이다 — 대신 타일을 누르면 상세 모달이 그 한 뱃지에 대해 답하고, 계열별로 훑어보는 건
+ * 전체 목록 화면(/my/badges)이 담당한다.
  */
-export function BadgeGrid({ badges, petName, nearline, onOpenAll }: BadgeGridProps) {
+export function BadgeGrid({ badges, petName, nearline, onSelectBadge, onOpenAll }: BadgeGridProps) {
   const gotCount = badges.filter((badge) => badge.got).length;
 
   const got = badges.filter((badge) => badge.got);
@@ -79,10 +82,12 @@ export function BadgeGrid({ badges, petName, nearline, onOpenAll }: BadgeGridPro
 
       <div className="grid grid-cols-4 gap-2">
         {visible.map((badge) => (
-          <div
+          <button
             key={badge.id}
+            type="button"
+            onClick={() => onSelectBadge(badge)}
             className={cn(
-              "rounded-xl border px-1 pb-2.5 pt-3 text-center",
+              "rounded-xl border px-1 pb-2.5 pt-3 text-center active:opacity-60",
               badge.got ? "border-brand-300 bg-brand-100" : "border-dashed border-line-strong"
             )}
           >
@@ -95,7 +100,7 @@ export function BadgeGrid({ badges, petName, nearline, onOpenAll }: BadgeGridPro
             <div className="mt-0.5 text-[8px] leading-tight text-ink-muted">
               {badge.hidden && !badge.got ? "비밀" : badge.tileLabel}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 

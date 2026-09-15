@@ -7,6 +7,7 @@ import { PetPassportCard } from "@/components/my/PetPassportCard";
 import { PetSwitcher } from "@/components/my/PetSwitcher";
 import { BadgeGrid } from "@/components/my/BadgeGrid";
 import { BadgeNearline } from "@/components/my/BadgeNearline";
+import { BadgeDetailModal } from "@/components/my/BadgeDetailModal";
 import { MenuItem } from "@/components/my/MenuItem";
 import { LoginModal } from "@/components/my/LoginModal";
 import { LogoutModal } from "@/components/my/LogoutModal";
@@ -15,6 +16,7 @@ import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useReviews } from "@/hooks/useReviews";
 import { useMyBadges } from "@/hooks/useMyBadges";
+import type { Badge } from "@/lib/badges";
 
 export default function MyPage() {
   const router = useRouter();
@@ -30,6 +32,8 @@ export default function MyPage() {
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  /** 뱃지 상세 모달의 대상. null이면 닫힌 상태다. */
+  const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   const { badges, nearest, nearestMessage } = useMyBadges();
 
@@ -90,6 +94,7 @@ export default function MyPage() {
                   onGo={(href) => router.push(href)}
                 />
               }
+              onSelectBadge={setSelectedBadge}
               onOpenAll={() => router.push("/my/badges")}
             />
           </div>
@@ -122,6 +127,14 @@ export default function MyPage() {
         <div className="mt-5 pb-1 text-center text-[9px] text-ink-muted">대저니유 v1.0.0</div>
       </div>
 
+      <BadgeDetailModal
+        badge={selectedBadge}
+        onClose={() => setSelectedBadge(null)}
+        onGo={(href) => {
+          setSelectedBadge(null);
+          router.push(href);
+        }}
+      />
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
       <LogoutModal open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </>
