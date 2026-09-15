@@ -28,6 +28,7 @@ async function submit() {
   await actor.type(screen.getByLabelText("이메일"), " kong@example.com ");
   await actor.type(screen.getByLabelText("닉네임"), " 콩이맘 ");
   await actor.type(screen.getByLabelText("비밀번호"), "pw12345678");
+  await actor.type(screen.getByLabelText("비밀번호 확인"), "pw12345678");
   await actor.click(screen.getByRole("button", { name: "가입하고 시작하기" }));
 }
 
@@ -98,12 +99,43 @@ describe("회원가입", () => {
     await actor.type(screen.getByLabelText("이메일"), "kong@example.com");
     await actor.type(screen.getByLabelText("닉네임"), "콩이맘");
     await actor.type(screen.getByLabelText("비밀번호"), "pw12345678");
+    await actor.type(screen.getByLabelText("비밀번호 확인"), "pw12345678");
     await actor.click(screen.getByRole("button", { name: "가입하고 시작하기" }));
 
     const pending = screen.getByRole("button", { name: "가입 중…" });
     expect(pending.hasAttribute("disabled")).toBe(true);
 
     resolveSignup({ ok: true, user });
+  });
+
+  it("비밀번호 재확인이 다르면 서버로 보내지 않고 그 자리에서 알린다", async () => {
+    const actor = userEvent.setup();
+    render(<SignupPage />);
+
+    await actor.type(screen.getByLabelText("이메일"), "kong@example.com");
+    await actor.type(screen.getByLabelText("닉네임"), "콩이맘");
+    await actor.type(screen.getByLabelText("비밀번호"), "pw12345678");
+    await actor.type(screen.getByLabelText("비밀번호 확인"), "pw1234567");
+    await actor.click(screen.getByRole("button", { name: "가입하고 시작하기" }));
+
+    expect(screen.getByText("비밀번호가 일치하지 않아요")).toBeTruthy();
+    expect(signup).not.toHaveBeenCalled();
+  });
+
+  it("비밀번호를 고치면 낡은 불일치 안내는 지운다", async () => {
+    const actor = userEvent.setup();
+    render(<SignupPage />);
+
+    // FormField는 오류 문구까지 <label> 안에 담으므로, 오류가 뜨면 라벨 텍스트가 달라진다 —
+    // 입력 요소를 미리 잡아두고 그대로 다시 쓴다.
+    const confirmInput = screen.getByLabelText("비밀번호 확인");
+    await actor.type(screen.getByLabelText("비밀번호"), "pw12345678");
+    await actor.type(confirmInput, "pw1234567");
+    await actor.click(screen.getByRole("button", { name: "가입하고 시작하기" }));
+    expect(screen.getByText("비밀번호가 일치하지 않아요")).toBeTruthy();
+
+    await actor.type(confirmInput, "8");
+    expect(screen.queryByText("비밀번호가 일치하지 않아요")).toBeNull();
   });
 
   it("로그인 링크와 카카오 버튼에 next를 이어 넘긴다", () => {

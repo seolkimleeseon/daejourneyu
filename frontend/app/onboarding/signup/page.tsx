@@ -31,14 +31,24 @@ function SignupPageInner() {
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  /** 서버가 모르는 필드(재확인)라 AuthFieldErrors와 따로 둔다. */
+  const [passwordConfirmError, setPasswordConfirmError] = useState<string | undefined>();
   const [errors, setErrors] = useState<AuthFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const handleSubmit = async () => {
+    // 재확인은 서버로 보내지 않는 값이라 여기서만 본다 — 통과하기 전에는 가입 요청 자체를 막는다.
+    if (password !== passwordConfirm) {
+      setPasswordConfirmError("비밀번호가 일치하지 않아요");
+      return;
+    }
+
     setPending(true);
     setFormError(null);
     setErrors({});
+    setPasswordConfirmError(undefined);
 
     const result = await signup({ email: email.trim(), nickname: nickname.trim(), password });
     setPending(false);
@@ -93,10 +103,26 @@ function SignupPageInner() {
           label="비밀번호"
           type="password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            // 비밀번호를 고치는 순간 기존 불일치 안내는 낡은 정보가 된다.
+            setPasswordConfirmError(undefined);
+          }}
           placeholder="8자 이상"
           autoComplete="new-password"
           error={errors.password}
+        />
+        <FormField
+          label="비밀번호 확인"
+          type="password"
+          value={passwordConfirm}
+          onChange={(event) => {
+            setPasswordConfirm(event.target.value);
+            setPasswordConfirmError(undefined);
+          }}
+          placeholder="비밀번호를 한 번 더 입력해주세요"
+          autoComplete="new-password"
+          error={passwordConfirmError}
         />
 
         {formError ? <p className="px-0.5 text-[11px] text-accent-coral">{formError}</p> : null}
