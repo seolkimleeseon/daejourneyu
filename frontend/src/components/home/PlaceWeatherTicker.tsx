@@ -19,28 +19,25 @@ const INTERVAL_MS = 2200;
 const TRANSITION_MS = 500;
 
 /**
- * 좌표가 있는 장소는 그 지점 기준 날씨 배지를, 없거나(코스에서 온 장소) 못 불러왔으면 빈칸 대신
- * "상세보기" 안내를 보인다 — 줄 전체가 이미 그 장소 상세로 가는 버튼이라 같은 동작을 가리킨다.
+ * 좌표가 있는 장소는 그 지점 기준 날씨 배지를 보여준다. 아직 못 불러왔거나(로딩 중) 좌표가
+ * 없거나(코스에서 온 장소) 에러가 났으면 "상세보기"를 기본값으로 보이다가, 날씨가 도착하면
+ * 그 자리에서 텍스트만 바뀐다 — 줄 전체가 이미 그 장소 상세로 가는 버튼이라 같은 동작을
+ * 가리킨다. 배지 자체를 비웠다 채웠다 하면(null 반환) 그 자리가 깜빡여 보이므로, 항상 같은
+ * 배지를 렌더링한 채 안의 텍스트만 교체한다.
  */
 function TickerWeatherBadge({ lat, lng }: { lat?: number; lng?: number }) {
   const hasCoords = lat !== undefined && lng !== undefined;
-  const { data, isPending } = useWeather({ lat, lng, enabled: hasCoords });
+  const { data } = useWeather({ lat, lng, enabled: hasCoords });
   const current = data ? pickCurrentForecast(data.forecast) : null;
 
-  if (current) {
-    return (
-      <span className="shrink-0 rounded-lg bg-card px-2.5 py-1 text-[9px] font-bold text-brand-700 shadow-sm">
-        {formatWeatherShort(current)}
-      </span>
-    );
-  }
-
-  // 좌표가 있어 실제로 불러오는 중이면(첫 로딩) 깜빡였다 바뀌는 걸 피하려고 잠깐 비워둔다.
-  if (hasCoords && isPending) return null;
-
   return (
-    <span className="shrink-0 rounded-lg bg-card px-2.5 py-1 text-[9px] font-bold text-brand-700/70 shadow-sm">
-      상세보기
+    <span
+      className={cn(
+        "shrink-0 rounded-lg bg-card px-2.5 py-1 text-[9px] font-bold shadow-sm",
+        current ? "text-brand-700" : "text-brand-700/70"
+      )}
+    >
+      {current ? formatWeatherShort(current) : "상세보기"}
     </span>
   );
 }

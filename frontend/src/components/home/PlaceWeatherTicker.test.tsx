@@ -86,12 +86,12 @@ describe("목록 표시", () => {
     expect(screen.getByText("상세보기")).toBeTruthy();
   });
 
-  it("좌표가 있어도 아직 불러오는 중이면 깜빡이지 않게 잠깐 비워둔다", () => {
+  it("좌표가 있어도 아직 불러오는 중이면 상세보기를 기본값으로 보여준다 — 자리 자체가 비었다 채워지면 깜빡여 보인다", () => {
     weather.useWeather.mockReturnValue({ data: undefined, isPending: true });
     render(<PlaceWeatherTicker places={[places[0]]} />);
 
     expect(screen.queryByText(/°C/)).toBeNull();
-    expect(screen.queryByText("상세보기")).toBeNull();
+    expect(screen.getByText("상세보기")).toBeTruthy();
   });
 
   it("좌표는 있는데 날씨를 못 불러왔으면 상세보기 안내로 대신 채운다", () => {
