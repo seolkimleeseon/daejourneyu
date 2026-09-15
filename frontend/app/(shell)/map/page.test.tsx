@@ -64,10 +64,11 @@ describe("구 고르기", () => {
     expect(screen.queryByRole("button", { name: "구 다시 선택" })).toBeNull();
   });
 
-  it("구를 누르면 그 구 목록으로 보낸다", async () => {
+  it("구를 고르고 확인 버튼을 누르면 그 구 목록으로 보낸다", async () => {
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: /유성구/ }));
+    await user.click(screen.getByRole("button", { name: "유성구 선택" }));
+    await user.click(screen.getByRole("button", { name: "유성구 둘러보기" }));
 
     expect(nav.push).toHaveBeenCalledWith("/map?district=%EC%9C%A0%EC%84%B1%EA%B5%AC");
   });
@@ -85,7 +86,8 @@ describe("강아지 이동 연출", () => {
   it("구를 새로 고르면 목록 전에 강아지가 달려간다", async () => {
     const { user, rerender } = setup();
 
-    await user.click(screen.getByRole("button", { name: /유성구/ }));
+    await user.click(screen.getByRole("button", { name: "유성구 선택" }));
+    await user.click(screen.getByRole("button", { name: "유성구 둘러보기" }));
     // 라우터는 mock이라 주소가 저절로 안 바뀐다 — 이동 결과를 직접 반영해준다.
     search.params = new URLSearchParams("district=유성구");
     rerender(<MapPage />);
