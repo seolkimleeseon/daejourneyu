@@ -64,7 +64,7 @@ function SignupPageInner() {
     <>
       <TopBar title="회원가입" showBack />
       <div className="flex flex-col gap-3.5 px-5 pb-8 pt-4">
-        <KakaoLoginButton next={next} label="카카오로 3초 만에 가입" />
+        <KakaoLoginButton next={next} label="카카오로 시작하기" />
 
         <div className="flex items-center gap-2 py-1">
           <span className="h-px flex-1 bg-line" />
