@@ -70,8 +70,13 @@ export function Emoji3D({ emoji, size = 28, className, glowClassName, shadow = t
   const src = EMOJI_3D_MAP[emoji];
 
   if (!src) {
+    // 3D 렌더가 없는 이모지도 매핑된 아이콘과 같은 정사각 박스를 차지해야, 같은 자리에서
+    // 쓰일 때(예: 타일 버튼 3개 나란히) 아이콘 크기·위치가 달라 보이지 않는다.
     return (
-      <span className={cn("inline-block leading-none", className)} style={{ fontSize: size * 0.75 }}>
+      <span
+        className={cn("relative inline-flex items-center justify-center leading-none", className)}
+        style={{ width: size, height: size, fontSize: size * 0.75 }}
+      >
         {emoji}
       </span>
     );
