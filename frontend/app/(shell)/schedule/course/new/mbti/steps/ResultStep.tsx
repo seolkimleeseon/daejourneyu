@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { CourseButton } from "@/components/course/CourseButton";
 import { Button } from "@/components/ui/Button";
-import { Emoji3D } from "@/components/ui/Emoji3D";
 import { TraitChip } from "@/components/mbti/TraitChip";
 import { ThemeBar } from "@/components/mbti/ThemeBar";
 import { TraitStatBar } from "@/components/mbti/TraitStatBar";
@@ -30,8 +30,8 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
             <span>DAEJEONIYU</span>
           </div>
 
-          <div className="relative mx-auto my-3 flex h-28 w-28 items-center justify-center rounded-full bg-card">
-            <Emoji3D emoji={type.emoji} size={76} glowClassName="bg-accent-purple" />
+          <div className="relative mx-auto my-2 h-32 w-32">
+            <Image src={`/icons/mbti-types/${code}.png`} alt={type.name} fill className="object-contain" priority />
           </div>
 
           <div className="text-xl font-extrabold tracking-wide text-accent-purple">{code}</div>
