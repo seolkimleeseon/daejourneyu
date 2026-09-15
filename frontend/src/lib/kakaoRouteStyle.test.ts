@@ -15,7 +15,7 @@ describe("동선 선 스타일", () => {
   });
 
   it("실선이 아니라 파선이다 — 도로가 아니라 '계획된 여정'으로 읽히게", () => {
-    expect(ROUTE_PATH_STYLE.style).toBe("dash");
+    expect(ROUTE_PATH_STYLE.style).toBe("shortdash");
   });
 
   it("지도 타일 위에서 비쳐 보이되 묻히지는 않을 만큼만 투명하다", () => {

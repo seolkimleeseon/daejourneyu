@@ -11,6 +11,9 @@ export const ROUTE_PATH_STYLE = {
   color: "#1e7d64",
   weight: 4,
   opacity: 0.9,
-  /** 실선이 아니라 파선 — 도로가 아니라 "계획된 여정"으로 읽히게. */
-  style: "dash",
+  /**
+   * 실선이 아니라 파선 — 도로가 아니라 "계획된 여정"으로 읽히게.
+   * "dash"는 간격이 넓어 굵어 보여서 더 잘게 끊기는 "shortdash"로 조정.
+   */
+  style: "shortdash",
 } as const;
