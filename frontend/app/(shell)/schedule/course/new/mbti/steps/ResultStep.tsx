@@ -8,7 +8,14 @@ import { TraitChip } from "@/components/mbti/TraitChip";
 import { ThemeBar } from "@/components/mbti/ThemeBar";
 import { TraitStatBar } from "@/components/mbti/TraitStatBar";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
-import { resolveMbtiType, structureAxisLabel, structureAxisValue, topTheme, type CourseTheme } from "@/lib/mbti";
+import {
+  MBTI_DECOR_COUNT,
+  resolveMbtiType,
+  structureAxisLabel,
+  structureAxisValue,
+  topTheme,
+  type CourseTheme,
+} from "@/lib/mbti";
 
 interface ResultStepProps {
   code: string;
@@ -20,6 +27,7 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
   const type = resolveMbtiType(code);
   const sortedThemes = (Object.entries(type.theme) as [CourseTheme, number][]).sort((a, b) => b[1] - a[1]);
   const captureRef = useRef<HTMLDivElement>(null);
+  const decorCount = MBTI_DECOR_COUNT[code] ?? 0;
 
   return (
     <div className="px-5 pb-6 pt-2">
@@ -30,8 +38,18 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
             <span>DAEJEONIYU</span>
           </div>
 
-          <div className="relative mx-auto my-2 h-32 w-32">
+          <div className="relative mx-auto my-2 h-32 w-32 animate-float">
             <Image src={`/icons/mbti-types/${code}.png`} alt={type.name} fill className="object-contain" priority />
+            {Array.from({ length: decorCount }, (_, i) => (
+              <Image
+                key={i}
+                src={`/icons/mbti-types/decor/${code}-${i}.png`}
+                alt=""
+                fill
+                className="animate-twinkle object-contain"
+                style={{ animationDelay: `${i * 0.35}s` }}
+              />
+            ))}
           </div>
 
           <div className="text-xl font-extrabold tracking-wide text-accent-purple">{code}</div>
