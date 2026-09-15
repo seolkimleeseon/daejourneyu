@@ -9,6 +9,9 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:up": "prisma dev --name daejourneyu --detach",
+    "db:ls": "prisma dev ls",
+    "db:stop": "prisma dev stop daejourneyu",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"

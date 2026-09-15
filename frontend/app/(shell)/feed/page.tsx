@@ -30,6 +30,13 @@ const ARTICLE_SORT_OPTIONS: { value: ArticleSortMode; label: string }[] = [
   { value: "recent", label: "최신순" },
 ];
 
+/**
+ * 아티클 목록에서 한 번에 보여줄 개수. 코스 탭처럼 자동 무한 스크롤로 두지 않고 '더보기' 버튼을
+ * 쓰는 이유는, 아티클이 목록의 끝(둘러보기 탭의 마지막 섹션)이라 스크롤이 계속 늘어나면
+ * 페이지 바닥에 닿을 수가 없기 때문이다 — 더 볼지는 사용자가 정한다.
+ */
+const ARTICLE_PAGE_SIZE = 4;
+
 export default function FeedPage() {
   return (
     <Suspense fallback={<LoadingState />}>
@@ -75,6 +82,8 @@ function FeedTabContent() {
   const [keyword, setKeyword] = useState("");
   const [sameTypeOnly, setSameTypeOnly] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  /** 지금까지 펼친 아티클 수. 정렬을 바꾸면 목록의 의미가 달라지므로 처음으로 되돌린다. */
+  const [articleLimit, setArticleLimit] = useState(ARTICLE_PAGE_SIZE);
 
   const searching = keyword.length > 0;
 
@@ -102,6 +111,8 @@ function FeedTabContent() {
     () => sortArticles(articles, articleSort),
     [articles, articleSort]
   );
+  const visibleArticles = sortedArticles.slice(0, articleLimit);
+  const remainingArticles = sortedArticles.length - visibleArticles.length;
 
   /**
    * 내 글도 코스 탭과 똑같은 카드·무한 스크롤로 보여준다. 예전엔 축약 카드 + 화면 페이지 나누기
@@ -219,12 +230,28 @@ function FeedTabContent() {
                   <FeedSortSelect
                     value={articleSort}
                     options={ARTICLE_SORT_OPTIONS}
-                    onChange={(next) => replaceQuery({ tab: "article", sort: next })}
+                    onChange={(next) => {
+                      setArticleLimit(ARTICLE_PAGE_SIZE);
+                      replaceQuery({ tab: "article", sort: next });
+                    }}
                   />
                 </div>
-                {sortedArticles.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
+                {visibleArticles.map((article) => (
+                  <ArticleCard
+                    key={article.id}
+                    article={article}
+                    onRequireLogin={() => setLoginOpen(true)}
+                  />
                 ))}
+                {remainingArticles > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setArticleLimit((previous) => previous + ARTICLE_PAGE_SIZE)}
+                    className="flex min-h-11 w-full items-center justify-center rounded-lg border border-line-strong bg-card text-xs font-bold text-ink-muted active:opacity-60"
+                  >
+                    아티클 더보기 ({remainingArticles}개 남음)
+                  </button>
+                ) : null}
               </>
             ) : (
               <FeedEmptyState

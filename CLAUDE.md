@@ -31,7 +31,7 @@ Postgres로 `--detach`를 붙이면 백그라운드로 돌아가고, 백엔드/�
 꺼져 있으면 API 호출이 실패한다.
 
 ```bash
-cd backend  && npx prisma dev --name daejourneyu --detach   # localhost:51214, 이미 떠 있으면 그대로 재사용
+cd backend  && npm run db:up                 # localhost:51214, 이미 떠 있으면 그대로 재사용
 cd backend  && npm install && npm run dev    # http://localhost:4000 (tsx watch)
 cd frontend && npm install && npm run dev    # http://localhost:3000
 ```
@@ -42,12 +42,16 @@ cd frontend && npm install && npm run dev    # http://localhost:3000
 **인증 계열이 갑자기 안 되면 카카오 콘솔을 뒤지기 전에 DB 상태부터 확인한다.**
 
 ```bash
-cd backend && npx prisma dev ls        # status가 running인지 확인. 꺼져 있으면 위 --detach 명령으로 다시 기동
+cd backend && npm run db:ls            # status가 running인지 확인. 꺼져 있으면 npm run db:up
 ```
+
+DB 명령은 전부 `backend/package.json`의 스크립트로 있다 — `db:up`(기동) / `db:ls`(상태) /
+`db:stop`(정지). 셋 다 `prisma dev`를 `--name daejourneyu`로 감싼 것뿐이라, 이름·플래그를
+외울 필요 없이 스크립트를 쓴다(`rm` 같은 나머지는 `npx prisma dev <command>`로 직접).
 
 DB를 다시 띄운 뒤 백엔드를 재시작할 필요는 없다 — Prisma가 다음 쿼리에서 알아서 재연결한다.
 접속 URL은 `backend/.env`의 `DATABASE_URL`이 정본이고, 포트(51214)는 `--name`으로 구분되는
-서버마다 고정이다. 서버 목록·정지는 `prisma dev ls|stop|rm`으로 다룬다.
+서버마다 고정이다.
 
 | | build | test | 그 외 |
 |---|---|---|---|

@@ -28,6 +28,29 @@ daejourneyu-starter/
 
 ## 실행 방법
 
+로컬 개발에는 **DB · 백엔드 · 프론트 세 가지**가 떠 있어야 한다. DB는 백그라운드로 돌기 때문에
+터미널을 잡지 않고, 백엔드·프론트가 터미널 하나씩 쓴다.
+
+### 0) DB — 터미널 안 잡음 (백그라운드)
+```bash
+cd backend
+npm run db:up        # Prisma 로컬 Postgres 기동 (localhost:51214). 이미 떠 있으면 그대로 재사용
+```
+
+**DB는 `npm run dev`에 딸려 오지 않는다.** 재부팅·절전으로 꺼져도 백엔드·프론트는 멀쩡히 뜨고
+화면도 그려지기 때문에, 증상이 DB와 무관해 보이는 곳에서 나타난다 — 카카오 로그인이
+`?error=kakao_db`로 되돌아오거나, 로그인·가입 API가 500을 뱉는 식이다.
+**인증 계열이 갑자기 안 되면 카카오 콘솔을 뒤지기 전에 DB 상태부터 확인한다.**
+
+| 명령 | 하는 일 |
+|---|---|
+| `npm run db:up` | 기동 (`prisma dev --name daejourneyu --detach`) |
+| `npm run db:ls` | 상태 확인 — `status`가 `running`인지 본다 |
+| `npm run db:stop` | 정지 |
+
+DB를 다시 띄운 뒤 백엔드를 재시작할 필요는 없다 — Prisma가 다음 쿼리에서 알아서 재연결한다.
+접속 URL은 `backend/.env`의 `DATABASE_URL`이 정본이다.
+
 ### 1) 백엔드 (터미널 A)
 ```bash
 cd backend
@@ -41,7 +64,7 @@ cd frontend
 npm install
 npm run dev          # http://localhost:3000
 ```
-브라우저에서 http://localhost:3000 접속 → 백엔드의 장소 목록이 보이면 연동 성공.
+브라우저에서 http://localhost:3000 접속.
 
 ## PWA
 - `public/manifest.json` + `next-pwa`로 서비스워커 자동 생성 (프로덕션 빌드 시).

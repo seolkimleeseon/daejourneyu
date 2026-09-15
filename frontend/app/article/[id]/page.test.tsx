@@ -1,14 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
-import { makeArticle } from "@/test/fixtures";
+import { makeArticle, makeUser } from "@/test/fixtures";
 import ArticleDetailPage from "./page";
 
 const nav = vi.hoisted(() => ({ replace: vi.fn(), back: vi.fn(), push: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "a1" }),
   useRouter: () => nav,
+  // 좋아요 게이팅에 쓰는 LoginModal이 현재 경로를 next로 붙인다.
+  usePathname: () => "/article/a1",
 }));
 
 const hooks = vi.hoisted(() => ({ useArticle: vi.fn() }));
@@ -22,6 +25,7 @@ function setHistoryLength(length: number) {
 beforeEach(() => {
   vi.clearAllMocks();
   useFeedStore.setState({ overrides: {}, articleLikes: {} });
+  useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: makeUser() });
   hooks.useArticle.mockReturnValue({
     data: makeArticle({
       id: "a1",
@@ -78,6 +82,19 @@ describe("아티클 상세", () => {
 
     expect(button.textContent).toBe("❤️도움돼요 6");
     expect(useFeedStore.getState().articleLikes).toEqual({ a1: true });
+  });
+
+  it("비로그인 상태에서는 도움돼요를 기록하지 않고 로그인 모달을 띄운다", async () => {
+    useAuthStore.setState({ isLoggedIn: false, hydrated: true, user: null });
+    render(<ArticleDetailPage />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: /도움돼요/ }));
+
+    const loginModal = screen
+      .getByText("로그인하면 반려동물 여권과 내 활동을 볼 수 있어요.")
+      .closest(".fixed");
+    expect(loginModal?.className).toContain("opacity-100");
+    expect(useFeedStore.getState().articleLikes).toEqual({});
   });
 
   it("목록에서 좋아요를 눌렀던 상태를 이어받는다", () => {

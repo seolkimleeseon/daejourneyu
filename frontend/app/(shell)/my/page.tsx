@@ -7,6 +7,7 @@ import { PetPassportCard } from "@/components/my/PetPassportCard";
 import { PetSwitcher } from "@/components/my/PetSwitcher";
 import { BadgeGrid } from "@/components/my/BadgeGrid";
 import { BadgeNearline } from "@/components/my/BadgeNearline";
+import { BadgeDetailModal } from "@/components/my/BadgeDetailModal";
 import { MenuItem } from "@/components/my/MenuItem";
 import { LoginModal } from "@/components/my/LoginModal";
 import { LogoutModal } from "@/components/my/LogoutModal";
@@ -15,6 +16,8 @@ import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useReviews } from "@/hooks/useReviews";
 import { useMyBadges } from "@/hooks/useMyBadges";
+import type { Badge } from "@/lib/badges";
+import { ro } from "@/lib/josa";
 
 export default function MyPage() {
   const router = useRouter();
@@ -30,8 +33,20 @@ export default function MyPage() {
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  /** 뱃지 상세 모달의 대상. null이면 닫힌 상태다. */
+  const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   const { badges, nearest, nearestMessage } = useMyBadges();
+
+  /**
+   * 대표(활성) 반려동물 전환. 여권 카드와 뱃지 주어가 통째로 바뀌는 조작인데 화면이 조용히
+   * 갈아끼워지기만 하면 눌린 게 맞는지 알기 어려워서, 무엇으로 바뀌었는지 토스트로 말해준다.
+   */
+  const handleSwitchPet = (index: number) => {
+    switchActivePet(index);
+    const pet = pets[index];
+    if (pet) showToast(`대표 반려동물을 ${pet.emoji} ${pet.name}${ro(pet.name)} 바꿨어요`);
+  };
 
   const handlePassportClick = () => {
     if (!hydrated) return;
@@ -73,7 +88,7 @@ export default function MyPage() {
           <PetSwitcher
             pets={pets}
             activeIndex={activePetIndex}
-            onSwitch={switchActivePet}
+            onSwitch={handleSwitchPet}
             onAddPet={() => router.push("/onboarding/pet-register?from=my")}
           />
         ) : null}
@@ -90,6 +105,7 @@ export default function MyPage() {
                   onGo={(href) => router.push(href)}
                 />
               }
+              onSelectBadge={setSelectedBadge}
               onOpenAll={() => router.push("/my/badges")}
             />
           </div>
@@ -122,6 +138,14 @@ export default function MyPage() {
         <div className="mt-5 pb-1 text-center text-[9px] text-ink-muted">대저니유 v1.0.0</div>
       </div>
 
+      <BadgeDetailModal
+        badge={selectedBadge}
+        onClose={() => setSelectedBadge(null)}
+        onGo={(href) => {
+          setSelectedBadge(null);
+          router.push(href);
+        }}
+      />
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
       <LogoutModal open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </>

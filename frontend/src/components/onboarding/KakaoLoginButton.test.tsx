@@ -6,7 +6,7 @@ describe("KakaoLoginButton", () => {
   it("fetch가 아니라 링크여야 한다 — OAuth는 페이지 이동으로 시작한다", () => {
     render(<KakaoLoginButton />);
 
-    const link = screen.getByRole("link", { name: /카카오로 시작하기/ });
+    const link = screen.getByRole("link", { name: /카카오 로그인/ });
     expect(link.getAttribute("href")).toBe("/api/auth/kakao/start");
   });
 
@@ -25,8 +25,16 @@ describe("KakaoLoginButton", () => {
   });
 
   it("문구를 바꿔 가입 화면에서도 쓴다", () => {
-    render(<KakaoLoginButton label="카카오로 3초 만에 가입" />);
+    render(<KakaoLoginButton label="카카오로 시작하기" />);
 
-    expect(screen.getByRole("link", { name: /3초 만에 가입/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /카카오로 시작하기/ })).toBeTruthy();
+  });
+
+  it("카카오 가이드 색을 그대로 쓴다 — 노란 배경에 검정 라벨", () => {
+    render(<KakaoLoginButton />);
+
+    const className = screen.getByRole("link").getAttribute("class") ?? "";
+    expect(className).toContain("bg-kakao");
+    expect(className).toContain("text-kakao-ink");
   });
 });
