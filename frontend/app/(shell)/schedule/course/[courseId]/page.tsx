@@ -37,12 +37,13 @@ import type { CourseStop } from "@/types";
  * tone별 배경이 티켓 배경색과 같은 계열이면 경계가 안 보이는 문제 방지. 글자색은 tone 그대로 유지. */
 const TICKET_TAG_CLASS = "cursor-default border border-line bg-card";
 
+/** Emoji3D에 3D 렌더가 있는 것만 골랐다 — 매핑 안 된 이모지는 OS 기본 폰트로 그려져서
+ * Windows/Mac에서 모양이 달라 보인다(예: 윈도우 vs 맥 이모지 폰트 차이). */
 const EMOJI_CHOICES = [
-  "🐾", "🐶", "🐕", "🐩", "🦮", "🐈",
-  "🌳", "🌲", "🏞️", "🌸", "🍁", "❄️",
-  "🚶", "🏃", "🎾", "🏖️", "🌊", "⛺",
-  "🍖", "🍰", "☕", "🎨", "🏛️", "🎪",
-  "🚗", "🚌", "📍", "🌙", "☀️", "❤️",
+  "🐾", "🐶", "🐕", "🐩", "🐈", "🦴",
+  "🌳", "🌸", "🌈", "🌙", "⭐", "🎈",
+  "🎾", "🥾", "🏛️", "🎯", "🎨", "🎉",
+  "🍖", "🥐", "📍", "🗺️", "🏠", "🎒",
 ];
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
@@ -225,7 +226,14 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 {SOURCE_LABEL[course.source]}
               </Tag>
               <Tag tone="brand" className={TICKET_TAG_CLASS}>
-                {course.nights > 0 ? "🌙" : "☀️"} {nightsLabel(course.nights)}
+                {course.nights > 0 ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Emoji3D emoji="🌙" size={14} shadow={false} className="shrink-0" />
+                    {nightsLabel(course.nights)}
+                  </span>
+                ) : (
+                  `☀️ ${nightsLabel(course.nights)}`
+                )}
               </Tag>
               <Tag tone="purple" className={TICKET_TAG_CLASS}>
                 {course.transport === "자차" ? "🚗" : "🚌"} {course.transport}
@@ -377,6 +385,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             <button
               key={emoji}
               type="button"
+              aria-label={emoji}
               onClick={() => {
                 setDraftEmoji(emoji);
                 setEmojiPickerOpen(false);
@@ -386,7 +395,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 draftEmoji === emoji ? "bg-brand-100 ring-2 ring-brand" : "bg-surface"
               )}
             >
-              {emoji}
+              <Emoji3D emoji={emoji} size={24} shadow={false} />
             </button>
           ))}
         </div>

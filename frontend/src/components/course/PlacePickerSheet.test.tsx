@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
@@ -267,7 +267,7 @@ describe("다른 지역 보충", () => {
   it("고른 카테고리는 풀지 않는다 — 푸는 건 구 조건뿐이다", async () => {
     const { container, user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "🏛️ 문화" }));
+    await user.click(screen.getByRole("button", { name: /^\s*문화\s*$/ }));
     await user.click(screen.getByRole("button", { name: "유성구" }));
 
     expect(gridNames(container)[1]).toEqual(["시립미술관"]);
@@ -431,13 +431,16 @@ describe("카드 표시", () => {
     const { container } = setup();
     // 카테고리 칩에도 같은 이모지가 있어 카드 안으로 범위를 좁힌다 — 카드엔 처음엔 배지 하나뿐이다.
     const card = container.querySelector("div.grid button") as HTMLElement;
-    // 사진 영역만 본다 — 카드 하단의 구 표기(📍)도 Emoji3D라 <img>를 하나 더 갖고 있다.
+    // 사진 영역만 본다. 산책 카테고리 아이콘(🌳)은 Emoji3D 3D 렌더 대상이라 텍스트가 아니라
+    // deciduous_tree_3d 이미지로 나온다 — 실제 사진과 구별해 개수를 센다.
     const photoArea = card.querySelector(".aspect-\\[4\\/3\\]") as HTMLElement;
-    expect(within(card).getAllByText(/🌳/)).toHaveLength(1);
+    const treeIcons = () =>
+      Array.from(photoArea.querySelectorAll("img")).filter((img) => img.src.includes("deciduous_tree_3d"));
+    expect(treeIcons()).toHaveLength(1);
 
-    fireEvent.error(photoArea.querySelector("img") as HTMLImageElement);
+    fireEvent.error(photoArea.querySelector('img:not([src*="deciduous_tree_3d"])') as HTMLImageElement);
 
-    expect(photoArea.querySelector("img")).toBeNull();
-    expect(within(card).getAllByText(/🌳/)).toHaveLength(2);
+    expect(photoArea.querySelector('img:not([src*="deciduous_tree_3d"])')).toBeNull();
+    expect(treeIcons()).toHaveLength(2);
   });
 });
