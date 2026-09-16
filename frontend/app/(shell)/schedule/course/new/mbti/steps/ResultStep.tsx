@@ -3,10 +3,10 @@
 import { useRef } from "react";
 import { CourseButton } from "@/components/course/CourseButton";
 import { Button } from "@/components/ui/Button";
-import { Emoji3D } from "@/components/ui/Emoji3D";
 import { TraitChip } from "@/components/mbti/TraitChip";
 import { ThemeBar } from "@/components/mbti/ThemeBar";
 import { TraitStatBar } from "@/components/mbti/TraitStatBar";
+import { MbtiCharacter } from "@/components/mbti/MbtiCharacter";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { resolveMbtiType, structureAxisLabel, structureAxisValue, topTheme, type CourseTheme } from "@/lib/mbti";
 
@@ -30,9 +30,7 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
             <span>DAEJEONIYU</span>
           </div>
 
-          <div className="relative mx-auto my-3 flex h-28 w-28 items-center justify-center rounded-full bg-card">
-            <Emoji3D emoji={type.emoji} size={76} glowClassName="bg-accent-purple" />
-          </div>
+          <MbtiCharacter code={code} name={type.name} size={112} />
 
           <div className="text-xl font-extrabold tracking-wide text-accent-purple">{code}</div>
           <div className="mb-1.5 text-sm font-bold text-ink">{type.name}</div>
