@@ -76,7 +76,7 @@ describe("다음 행동", () => {
   it("코스 만들기는 1등 테마를 들고 넘어간다", async () => {
     const { user } = setup("ESFP");
 
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
 
     expect(onContinue).toHaveBeenCalledWith("맛집");
   });
@@ -101,10 +101,10 @@ describe("다음 행동", () => {
   });
 
   it("공유용으로 캡처할 곳은 결과 카드다 — 버튼까지 같이 찍히면 안 된다", () => {
-    setup();
+    setup("ENFP");
     const captureRef = share.render.mock.lastCall?.[0].captureRef as { current: HTMLElement };
 
-    expect(captureRef.current.textContent).toContain("대저니유 · 반려동물 여행 MBTI");
+    expect(captureRef.current.textContent).toContain(MBTI_TYPES.ENFP.name);
     expect(captureRef.current.textContent).not.toContain("다시 검사하기");
   });
 });

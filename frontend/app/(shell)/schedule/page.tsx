@@ -80,7 +80,8 @@ function ScheduleTabContent() {
               icon3D
               variant="filled"
               tone="brand"
-              emoji={savedMbtiType ? savedMbtiType.emoji : "✨"}
+              emoji="✨"
+              iconSrc={savedMbtiType ? `/icons/mbti-types/${savedMbtiType.code}.png` : undefined}
               title="MBTI 맞춤 코스"
               subtitle={savedMbtiType ? `${savedMbtiType.code}로 바로 추천받기` : "성향 테스트로 코스 자동 생성"}
               onClick={() =>

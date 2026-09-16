@@ -103,12 +103,13 @@ function PickablePlaceCard({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-3xl">
-            {CATEGORY_ICON[place.category]}
+          <div className="flex h-full w-full items-center justify-center">
+            <Emoji3D emoji={CATEGORY_ICON[place.category]} size={32} />
           </div>
         )}
-        <span className="absolute left-1.5 top-1.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">
-          {CATEGORY_ICON[place.category]} {place.category}
+        <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">
+          <Emoji3D emoji={CATEGORY_ICON[place.category]} size={12} shadow={false} className="shrink-0" />
+          {place.category}
         </span>
         {isAdded ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/35 text-2xl font-bold text-white">
@@ -262,8 +263,16 @@ export function PlacePickerSheet() {
           전체
         </Tag>
         {CATEGORIES.map((cat) => (
-          <Tag key={cat} tone="neutral-ghost" active={category === cat} className="shrink-0" onClick={() => setCategory(cat)}>
-            {CATEGORY_ICON[cat]} {cat}
+          <Tag
+            key={cat}
+            tone="neutral-ghost"
+            active={category === cat}
+            className="inline-flex shrink-0 items-center gap-1"
+            onClick={() => setCategory(cat)}
+          >
+            <Emoji3D emoji={CATEGORY_ICON[cat]} size={14} shadow={false} className="shrink-0" />
+            {" "}
+            {cat}
           </Tag>
         ))}
       </div>

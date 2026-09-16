@@ -315,12 +315,12 @@ describe("편집", () => {
     await user.clear(screen.getByPlaceholderText("코스 이름"));
     await user.type(screen.getByPlaceholderText("코스 이름"), "가을 산책");
     await user.click(screen.getByRole("button", { name: /대표 이모지 바꾸기/ }));
-    await user.click(screen.getByRole("button", { name: "🍁" }));
+    await user.click(screen.getByRole("button", { name: "🌸" }));
     await user.click(screen.getByRole("button", { name: /저장하기/ }));
 
     expect(updateCourse).toHaveBeenCalledWith("c1", {
       label: "가을 산책",
-      emoji: "🍁",
+      emoji: "🌸",
       days: [[갑천, 댕댕카페]],
     });
   });
