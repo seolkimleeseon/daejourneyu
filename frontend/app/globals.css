@@ -26,6 +26,8 @@
   --color-accent-purple-light: #e7edfd;
   --color-accent-amber: #b8891c;
   --color-accent-amber-light: #fdf3d2;
+  /* 댕댕지도 TravelingDog 전용 — 골든리트리버 털색을 낸 밝은 골드. amber보다 밝고 채도가 낮다 */
+  --color-accent-gold: #e0a458;
   --color-accent-coral: #ff8a3d;
   --color-accent-coral-light: #ffe9d6;
   --color-accent-navy: #183b56;
