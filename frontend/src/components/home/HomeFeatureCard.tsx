@@ -49,18 +49,20 @@ export function HomeFeatureCard({
       {emoji ? (
         <span className="absolute right-5 top-5 z-10 text-2xl opacity-90">{emoji}</span>
       ) : null}
-      <span className="relative font-mono text-[9px] font-bold uppercase tracking-widest text-white/70">
+      <span className="relative font-mono text-[9px] font-bold uppercase tracking-widest text-white/70 [text-shadow:0_1px_3px_rgb(0_0_0_/_45%)]">
         {eyebrow}
       </span>
-      <div className="relative mt-1.5 max-w-[70%] text-xl font-extrabold leading-tight text-white">
+      <div className="relative mt-1.5 max-w-[70%] text-xl font-extrabold leading-tight text-white [text-shadow:0_1px_4px_rgb(0_0_0_/_45%)]">
         {titleLines[0]}
         <br />
         {titleLines[1]}
       </div>
       {subtitle ? (
-        <div className="relative mt-1.5 max-w-[75%] text-[11px] text-white/80">{subtitle}</div>
+        <div className="relative mt-1.5 max-w-[75%] text-[11px] text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0_/_45%)]">
+          {subtitle}
+        </div>
       ) : null}
-      <span className="relative mt-4 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-bold text-white">
+      <span className="relative mt-4 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-bold text-white [text-shadow:0_1px_3px_rgb(0_0_0_/_45%)]">
         {ctaLabel} →
       </span>
     </button>

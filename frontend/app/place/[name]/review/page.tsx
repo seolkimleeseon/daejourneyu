@@ -89,7 +89,8 @@ export default function ReviewWritePage({ params }: { params: { name: string } }
           showToast("후기가 등록되었어요");
           router.replace(`/place/${encodeURIComponent(placeName)}`);
         },
-        onError: () => showToast("후기 등록에 실패했어요. 잠시 후 다시 시도해주세요"),
+        onError: (err) =>
+          showToast(err instanceof Error ? err.message : "후기 등록에 실패했어요. 잠시 후 다시 시도해주세요"),
       }
     );
   };
