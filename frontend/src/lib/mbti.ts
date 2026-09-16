@@ -335,6 +335,30 @@ export const MBTI_TYPES: Record<string, MbtiTypeInfo> = Object.fromEntries(
   Object.entries(T).map(([code, info]) => [code, { code, ...info }])
 );
 
+/**
+ * 유형별로 몸에 지니지 않고 옆에 따로 떠 있는 소품(지도·나침반·하트 등) 개수.
+ * 원본 소품 시트에서 개별로 오려 `public/icons/mbti-types/decor/{code}-{index}.png`로
+ * 저장해뒀고, 결과 화면에서 캐릭터 옆 자리에 떠 있는 것처럼 배치하며 애니메이션을 준다.
+ */
+export const MBTI_DECOR_COUNT: Record<string, number> = {
+  ENTJ: 2,
+  ENTP: 2,
+  ENFJ: 2,
+  ENFP: 2,
+  ESTJ: 2,
+  ESTP: 2,
+  ESFJ: 2,
+  ESFP: 2,
+  INTJ: 2,
+  INTP: 2,
+  INFJ: 2,
+  INFP: 2,
+  ISTJ: 2,
+  ISTP: 2,
+  ISFJ: 2,
+  ISFP: 2,
+};
+
 const DEFAULT_LETTER: Record<string, MbtiAxisLetter> = { EI: "I", SN: "S", TF: "F", JP: "P" };
 
 /** 12개 답변(EI/SN/TF/JP 각 letter 또는 NEUTRAL/null)으로 4글자 MBTI 코드를 산출한다. */
