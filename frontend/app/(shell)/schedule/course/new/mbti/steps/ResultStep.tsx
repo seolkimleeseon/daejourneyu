@@ -38,17 +38,22 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
             <span>DAEJEONIYU</span>
           </div>
 
-          <div className="relative mx-auto my-2 h-32 w-32 animate-float">
-            <Image src={`/icons/mbti-types/${code}.png`} alt={type.name} fill className="object-contain" priority />
+          <div className="relative mx-auto my-2 h-28 w-28">
+            <div className="absolute inset-0 animate-float">
+              <Image src={`/icons/mbti-types/${code}.png`} alt={type.name} fill className="object-contain" priority />
+            </div>
             {Array.from({ length: decorCount }, (_, i) => (
-              <Image
+              <div
                 key={i}
-                src={`/icons/mbti-types/decor/${code}-${i}.png`}
-                alt=""
-                fill
-                className="animate-twinkle object-contain"
-                style={{ animationDelay: `${i * 0.35}s` }}
-              />
+                className={
+                  i === 0
+                    ? "absolute -right-3 -top-2 h-11 w-11 animate-float"
+                    : "absolute -left-3 -bottom-1 h-10 w-10 animate-twinkle"
+                }
+                style={{ animationDelay: `${i * 0.4}s` }}
+              >
+                <Image src={`/icons/mbti-types/decor/${code}-${i}.png`} alt="" fill className="object-contain" />
+              </div>
             ))}
           </div>
 

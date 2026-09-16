@@ -336,27 +336,27 @@ export const MBTI_TYPES: Record<string, MbtiTypeInfo> = Object.fromEntries(
 );
 
 /**
- * 유형별 캐릭터 일러스트(`public/icons/mbti-types/{code}.png`)에서 별·하트 등 몸통과
- * 떨어진 소품만 따로 오려낸 개수. `public/icons/mbti-types/decor/{code}-{index}.png`로
- * 저장돼 있고, 결과 화면에서 본체 위에 겹쳐 그리며 반짝이는 애니메이션을 준다.
+ * 유형별로 몸에 지니지 않고 옆에 따로 떠 있는 소품(지도·나침반·하트 등) 개수.
+ * 원본 소품 시트에서 개별로 오려 `public/icons/mbti-types/decor/{code}-{index}.png`로
+ * 저장해뒀고, 결과 화면에서 캐릭터 옆 자리에 떠 있는 것처럼 배치하며 애니메이션을 준다.
  */
 export const MBTI_DECOR_COUNT: Record<string, number> = {
-  ISTJ: 1,
-  ISFJ: 0,
-  INFJ: 3,
-  INTJ: 2,
-  ISTP: 1,
-  ISFP: 0,
-  INFP: 3,
-  INTP: 5,
-  ESTP: 0,
-  ESFP: 5,
-  ENFP: 0,
-  ENTP: 0,
-  ESTJ: 1,
-  ESFJ: 0,
-  ENFJ: 1,
   ENTJ: 0,
+  ENTP: 2,
+  ENFJ: 1,
+  ENFP: 1,
+  ESTJ: 2,
+  ESTP: 1,
+  ESFJ: 0,
+  ESFP: 1,
+  INTJ: 1,
+  INTP: 2,
+  INFJ: 1,
+  INFP: 1,
+  ISTJ: 1,
+  ISTP: 1,
+  ISFJ: 1,
+  ISFP: 1,
 };
 
 const DEFAULT_LETTER: Record<string, MbtiAxisLetter> = { EI: "I", SN: "S", TF: "F", JP: "P" };
