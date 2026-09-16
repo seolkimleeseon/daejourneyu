@@ -41,16 +41,22 @@ export function verifyAccessToken(token: string): TokenPayload | null {
   }
 }
 
-/** 로그인 성공 시 토큰을 httpOnly 쿠키로 심는다 — JS가 읽을 수 없어 XSS로 탈취되지 않는다. */
+/**
+ * 로그인 성공 시 토큰을 httpOnly 쿠키로 심는다 — JS가 읽을 수 없어 XSS로 탈취되지 않는다.
+ *
+ * sameSite는 항상 "lax"다. 한때 프론트(Vercel)가 백엔드(Railway)를 브라우저에서 직접(크로스
+ * 오리진) 호출하도록 바꾸면서 "none"으로 풀었던 적이 있는데, Safari(모바일·데스크톱 공통)의
+ * ITP가 SameSite 속성과 무관하게 서드파티 쿠키를 기본 차단해서 Safari에서만 로그인이 계속
+ * "성공은 했는데 로그인 안 된 것처럼" 보이는 문제가 났다. next.config.mjs의 rewrites로 다시
+ * 프론트와 동일 출처처럼 호출하는 구조로 되돌리면서 "lax"로 원복 — 그때 재측정해보니 프록시를
+ * 거치는 오버헤드도 리전(싱가포르) 전환 이후로는 거의 없었다.
+ */
 export function setAuthCookie(res: Response, token: string) {
-  const isProd = process.env.NODE_ENV === "production";
   res.cookie(ACCESS_TOKEN_COOKIE, token, {
     httpOnly: true,
-    // 프로덕션은 프론트(Vercel)가 백엔드(Railway)를 브라우저에서 직접(크로스 오리진) 호출하므로
-    // sameSite:"none"이 필요하다 — none은 secure 없이는 브라우저가 거부하므로 반드시 같이 켠다.
-    // 로컬은 next.config.mjs rewrite로 동일 출처가 되어 기존처럼 "lax"(+http)로 충분하다.
-    sameSite: isProd ? "none" : "lax",
-    secure: isProd,
+    sameSite: "lax",
+    // 로컬 개발은 http라 secure를 켜면 쿠키가 아예 저장되지 않는다.
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
   });
