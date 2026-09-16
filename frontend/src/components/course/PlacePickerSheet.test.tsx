@@ -431,11 +431,13 @@ describe("카드 표시", () => {
     const { container } = setup();
     // 카테고리 칩에도 같은 이모지가 있어 카드 안으로 범위를 좁힌다 — 카드엔 처음엔 배지 하나뿐이다.
     const card = container.querySelector("div.grid button") as HTMLElement;
+    // 사진 영역만 본다 — 카드 하단의 구 표기(📍)도 Emoji3D라 <img>를 하나 더 갖고 있다.
+    const photoArea = card.querySelector(".aspect-\\[4\\/3\\]") as HTMLElement;
     expect(within(card).getAllByText(/🌳/)).toHaveLength(1);
 
-    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    fireEvent.error(photoArea.querySelector("img") as HTMLImageElement);
 
-    expect(container.querySelector("img")).toBeNull();
+    expect(photoArea.querySelector("img")).toBeNull();
     expect(within(card).getAllByText(/🌳/)).toHaveLength(2);
   });
 });

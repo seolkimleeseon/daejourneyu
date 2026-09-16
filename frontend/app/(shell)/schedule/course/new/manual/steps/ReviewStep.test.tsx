@@ -113,11 +113,11 @@ describe("순서 편집", () => {
 
   it("편집 중엔 동반 가능 태그를 접는다 — 손잡이와 같이 두면 줄이 복잡해진다", async () => {
     const { user } = setup();
-    expect(screen.getAllByText("🐾 동반 가능")).toHaveLength(2);
+    expect(screen.getAllByText("동반 가능")).toHaveLength(2);
 
     await user.click(editToggle());
 
-    expect(screen.queryByText("🐾 동반 가능")).toBeNull();
+    expect(screen.queryByText("동반 가능")).toBeNull();
   });
 
   it("다시 누르면 편집을 끝낸다", async () => {

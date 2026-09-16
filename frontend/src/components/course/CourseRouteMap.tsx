@@ -8,6 +8,7 @@ import {
   createNumberedBrandMarkerSrc,
 } from "@/lib/kakaoBrandMarker";
 import { ROUTE_PATH_STYLE } from "@/lib/kakaoRouteStyle";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import type { CourseStop, Place } from "@/types";
 
@@ -138,7 +139,10 @@ export function CourseRouteMap(props: CourseRouteMapProps) {
       ) : null}
       {status === "error" ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-surface px-3 text-center text-xs text-ink-muted">
-          <span>🗺️ 지도를 표시할 수 없어요</span>
+          <span className="flex items-center gap-1">
+            <Emoji3D emoji="🗺️" size={16} shadow={false} />
+            지도를 표시할 수 없어요
+          </span>
           {errorReason ? <span className="text-[10px] text-ink-muted/80">{errorReason}</span> : null}
         </div>
       ) : null}

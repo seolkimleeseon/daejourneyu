@@ -8,6 +8,7 @@ import { ThemeBar } from "@/components/mbti/ThemeBar";
 import { TraitStatBar } from "@/components/mbti/TraitStatBar";
 import { MbtiCharacter } from "@/components/mbti/MbtiCharacter";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { resolveMbtiType, structureAxisLabel, structureAxisValue, topTheme, type CourseTheme } from "@/lib/mbti";
 
 interface ResultStepProps {
@@ -58,7 +59,9 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
           </div>
 
           <div className="mb-4 rounded-xl bg-surface p-3 text-left">
-            <div className="mb-1 text-xs font-bold text-ink">🐾 찰떡 코스</div>
+            <div className="mb-1 flex items-center gap-1 text-xs font-bold text-ink">
+              <Emoji3D emoji="🐾" size={14} shadow={false} />찰떡 코스
+            </div>
             <div className="mb-2 text-[11px] leading-relaxed text-ink-muted">{type.goodFor}</div>
             <div className="mb-1 text-xs font-bold text-ink">😮‍💨 조금 힘들 수 있어요</div>
             <div className="text-[11px] leading-relaxed text-ink-muted">{type.toughFor}</div>
@@ -72,7 +75,7 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
       </div>
       <div>
         <CourseButton className="mt-4 gap-1.5" onClick={() => onContinue(topTheme(type))}>
-          <span className="inline-flex w-5 shrink-0 justify-center text-base leading-none">🐾</span>
+          <Emoji3D emoji="🐾" size={20} shadow={false} className="shrink-0" />
           <span>이 성향으로 코스 만들기</span>
         </CourseButton>
         <ResultShareActions

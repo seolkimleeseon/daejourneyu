@@ -15,6 +15,7 @@ import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
 import { KakaoPlacePreviewSheet } from "@/components/course/KakaoPlacePreviewSheet";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import {
   conditionSourceLabel,
   isUnverifiedCondition,
@@ -94,7 +95,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     return (
       <>
         <TopBar title="코스 상세" showBack />
-        <TabPlaceholder emoji="🐾" message={"코스를 찾을 수 없어요\n삭제되었거나 접근할 수 없는 코스예요"} />
+        <TabPlaceholder icon3D emoji="🐾" message={"코스를 찾을 수 없어요\n삭제되었거나 접근할 수 없는 코스예요"} />
       </>
     );
   }
@@ -197,14 +198,14 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
           </div>
 
           <div className="px-4 pb-3 pt-2 text-center">
-            <div className="text-4xl">{displayEmoji}</div>
+            <Emoji3D emoji={displayEmoji} size={48} className="mx-auto" />
             {editMode ? (
               <button
                 type="button"
                 onClick={() => setEmojiPickerOpen(true)}
                 className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-brand-300 bg-card px-2.5 py-1 text-[11px] font-semibold text-brand-700"
               >
-                <span>🎨</span>대표 이모지 바꾸기
+                <Emoji3D emoji="🎨" size={14} shadow={false} />대표 이모지 바꾸기
               </button>
             ) : null}
 
@@ -239,8 +240,12 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             {courseSchedules.length > 0 ? (
               <div className="mt-3 flex flex-wrap justify-center gap-1.5">
                 {courseSchedules.map((s) => (
-                  <div key={s.id} className="rounded-xl bg-card px-3 py-2 text-xs font-semibold text-brand-700">
-                    📅 {s.date}에 가기로 했어요
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-1 rounded-xl bg-card px-3 py-2 text-xs font-semibold text-brand-700"
+                  >
+                    <Emoji3D emoji="📅" size={14} shadow={false} />
+                    {s.date}에 가기로 했어요
                     {s.festivalTitles.length > 0 ? ` · ${s.festivalTitles.join(", ")}` : ""}
                   </div>
                 ))}
@@ -336,7 +341,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 </>
               ) : (
                 <>
-                  <span>📅</span>일정을 추가하기
+                  <Emoji3D emoji="📅" size={16} shadow={false} />일정을 추가하기
                 </>
               )}
             </Button>
@@ -356,7 +361,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 className="mt-1"
                 onClick={() => router.push(`/schedule/course/${course.id}/share`)}
               >
-                <span>🧭</span>이 코스 둘러보기에 공유하기
+                <Emoji3D emoji="🧭" size={16} shadow={false} />이 코스 둘러보기에 공유하기
               </Button>
             ) : null}
           </>
@@ -459,8 +464,9 @@ function DayStops({
 
   return (
     <div>
-      <div className="mb-2 text-xs font-bold text-brand-700">
-        {totalDays > 1 ? `📍 ${dayIndex + 1}일차 동선` : "📍 동선"} · {day.length}곳
+      <div className="mb-2 flex items-center gap-1 text-xs font-bold text-brand-700">
+        <Emoji3D emoji="📍" size={14} shadow={false} />
+        {totalDays > 1 ? `${dayIndex + 1}일차 동선` : "동선"} · {day.length}곳
       </div>
       {!editMode ? <CourseRouteMap stops={day} /> : null}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
@@ -511,8 +517,17 @@ function DayStops({
                     </>
                   ) : (
                     <>
-                      <Tag tone={stop.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
-                        {stop.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
+                      <Tag
+                        tone={stop.petFriendly ? "brand" : "coral"}
+                        className="flex cursor-default items-center gap-0.5 px-2 py-1 text-[10px]"
+                      >
+                        {stop.petFriendly ? (
+                          <>
+                            <Emoji3D emoji="🐾" size={10} shadow={false} />동반 가능
+                          </>
+                        ) : (
+                          "🚫 동반 불가"
+                        )}
                       </Tag>
                       {/* 식약처·문체부처럼 실제로 확정된 소스도 원문 조건이 길면(대표메뉴·견종 제한 등
                           세부사항까지 다 붙어서) 카드 한 줄에 넘친다 — 출처만 짧게 보여준다. */}

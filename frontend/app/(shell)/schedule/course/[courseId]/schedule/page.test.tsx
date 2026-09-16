@@ -29,7 +29,7 @@ function dayCell(day: string): HTMLElement {
 
 /** 등록된 일정 한 줄. */
 function scheduleRow(date: string): HTMLElement {
-  return screen.getByText(`📅 ${date}`).parentElement as HTMLElement;
+  return screen.getByText(date).parentElement as HTMLElement;
 }
 
 const saveButton = () => screen.getByRole("button", { name: /일정 등록하기/ });
@@ -91,7 +91,7 @@ describe("이미 등록된 일정", () => {
     const dates = Array.from(container.querySelectorAll(".flex-col.gap-1\\.5 .text-ink")).map(
       (el) => el.textContent
     );
-    expect(dates).toEqual(["📅 2026-09-20", "📅 2026-10-03"]);
+    expect(dates).toEqual(["2026-09-20", "2026-10-03"]);
   });
 
   it("이미 잡힌 날은 달력에도 점으로 표시한다", () => {
@@ -133,7 +133,7 @@ describe("새 날짜 고르기", () => {
   it("오늘을 기본으로 골라 둔다 — 대부분 가까운 날을 잡는다", () => {
     setup();
 
-    expect(screen.getByText("📅 선택한 날짜: 2026-09-14")).toBeTruthy();
+    expect(screen.getByText("선택한 날짜: 2026-09-14")).toBeTruthy();
   });
 
   it("달력에서 누른 날로 바꾼다", async () => {
@@ -141,7 +141,7 @@ describe("새 날짜 고르기", () => {
 
     await user.click(dayCell("25"));
 
-    expect(screen.getByText("📅 선택한 날짜: 2026-09-25")).toBeTruthy();
+    expect(screen.getByText("선택한 날짜: 2026-09-25")).toBeTruthy();
   });
 });
 

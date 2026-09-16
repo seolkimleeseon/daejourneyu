@@ -83,14 +83,14 @@ describe("일차별 동선", () => {
   it("하루짜리면 일차 대신 테마로 이름 붙인다 — '1일차'는 알려주는 게 없다", () => {
     setup({ theme: "맛집" });
 
-    expect(screen.getByText("📍 맛집형 동선 · 2곳")).toBeTruthy();
+    expect(screen.getByText("맛집형 동선 · 2곳")).toBeTruthy();
   });
 
   it("여러 날이면 일차마다 동선과 곳 수를 적는다", () => {
     setup({ nights: 1, days: [[한밭수목원, 댕댕카페], [시립미술관]] });
 
-    expect(screen.getByText("📍 1일차 동선 · 2곳")).toBeTruthy();
-    expect(screen.getByText("📍 2일차 동선 · 1곳")).toBeTruthy();
+    expect(screen.getByText("1일차 동선 · 2곳")).toBeTruthy();
+    expect(screen.getByText("2일차 동선 · 1곳")).toBeTruthy();
   });
 
   it("일차마다 지도를 따로 꽂는다 — 하루 동선을 한 장에 몰아 그리면 읽히지 않는다", () => {
@@ -129,7 +129,7 @@ describe("일차별 동선", () => {
     expect(screen.getByText("카카오맵 검색 결과")).toBeTruthy();
     expect(screen.getByText("🔍 동반 가능 여부 확인 필요")).toBeTruthy();
     // 장소 줄엔 확정 배지를 달지 않는다(머리말의 코스 요약 배지 하나만 남는다).
-    expect(onScreen("🐾 동반 가능")).toHaveLength(1);
+    expect(onScreen("동반 가능")).toHaveLength(1);
   });
 });
 
@@ -152,11 +152,11 @@ describe("순서 편집", () => {
   it("편집 중엔 동반 가능 태그를 접는다", async () => {
     const { user } = setup();
     // 머리말 요약 배지 1개 + 장소 2줄.
-    expect(onScreen("🐾 동반 가능")).toHaveLength(3);
+    expect(onScreen("동반 가능")).toHaveLength(3);
 
     await user.click(editToggle());
 
-    expect(onScreen("🐾 동반 가능")).toHaveLength(1);
+    expect(onScreen("동반 가능")).toHaveLength(1);
   });
 });
 

@@ -7,6 +7,7 @@ import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Card } from "@/components/ui/Card";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
 import { MonthCalendarGrid } from "@/components/course/MonthCalendarGrid";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
@@ -85,7 +86,7 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
       <TopBar title="일정 추가" showBack />
       <div className="px-4 pb-6 pt-3">
         <Card className="flex items-center gap-2">
-          <span className="text-lg">🐾</span>
+          <Emoji3D emoji="🐾" size={20} shadow={false} />
           <span className="text-sm font-bold text-ink">{course.label}</span>
         </Card>
 
@@ -98,7 +99,10 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
                   key={s.id}
                   className="flex items-center justify-between rounded-lg border border-line bg-card px-3 py-2 text-sm"
                 >
-                  <span className="text-ink">📅 {s.date}</span>
+                  <span className="flex items-center gap-1 text-ink">
+                    <Emoji3D emoji="📅" size={14} shadow={false} />
+                    {s.date}
+                  </span>
                   <button
                     type="button"
                     disabled={saving}
@@ -119,10 +123,13 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
           onSelectDate={setDate}
           markedDates={new Set(courseSchedules.map((s) => s.date))}
         />
-        <div className="mt-1.5 px-1 text-[11px] text-ink-muted">📅 선택한 날짜: {date}</div>
+        <div className="mt-1.5 flex items-center gap-1 px-1 text-[11px] text-ink-muted">
+          <Emoji3D emoji="📅" size={12} shadow={false} />
+          선택한 날짜: {date}
+        </div>
 
         <Button className="mt-5" onClick={handleSave} disabled={saving}>
-          <span>📅</span>일정 등록하기
+          <Emoji3D emoji="📅" size={16} shadow={false} />일정 등록하기
         </Button>
       </div>
     </>

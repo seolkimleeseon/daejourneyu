@@ -8,6 +8,7 @@ import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { CourseShareCard } from "@/components/course/CourseShareCard";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { conditionSourceLabel, isUnverifiedCondition, NEEDS_CHECK_LABEL, nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { routeDistanceKm } from "@/lib/nearestNeighborRoute";
 import type { Place } from "@/types";
@@ -128,8 +129,8 @@ export function ReviewStep({
                         🚫 동반 불가
                       </Tag>
                     ) : (
-                      <Tag tone="brand" className="cursor-default px-2 py-0.5 text-[10px]">
-                        🐾 동반 가능
+                      <Tag tone="brand" className="flex cursor-default items-center gap-0.5 px-2 py-0.5 text-[10px]">
+                        <Emoji3D emoji="🐾" size={10} shadow={false} />동반 가능
                       </Tag>
                     )}
                   </div>

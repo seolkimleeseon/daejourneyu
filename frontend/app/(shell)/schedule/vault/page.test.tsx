@@ -89,8 +89,8 @@ describe("코스 목록", () => {
     });
     setup();
 
-    expect(screen.getByText("📅 등록된 일정 2개 · 추가하기 ›")).toBeTruthy();
-    expect(screen.getByText("📅 일정 추가하기 ›")).toBeTruthy();
+    expect(screen.getByText("등록된 일정 2개 · 추가하기 ›")).toBeTruthy();
+    expect(screen.getByText("일정 추가하기 ›")).toBeTruthy();
   });
 });
 

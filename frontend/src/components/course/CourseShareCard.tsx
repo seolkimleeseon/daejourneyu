@@ -184,7 +184,10 @@ export function CourseShareCard({ title, tags, days }: CourseShareCardProps) {
             color: COLOR.inkMuted,
           }}
         >
-          🐾 대저니유에서 만든 반려동물 여행 코스
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Emoji3D emoji="🐾" size={12} shadow={false} />
+            대저니유에서 만든 반려동물 여행 코스
+          </span>
         </div>
       </div>
     </div>

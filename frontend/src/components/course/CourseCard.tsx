@@ -52,9 +52,10 @@ export function CourseCard({ course, scheduleCount = 0, onClick, onAddSchedule }
             event.stopPropagation();
             onAddSchedule();
           }}
-          className="mt-2 text-xs font-semibold text-brand"
+          className="mt-2 flex items-center gap-1 text-xs font-semibold text-brand"
         >
-          {scheduleCount > 0 ? `📅 등록된 일정 ${scheduleCount}개 · 추가하기 ›` : "📅 일정 추가하기 ›"}
+          <Emoji3D emoji="📅" size={12} shadow={false} />
+          {scheduleCount > 0 ? `등록된 일정 ${scheduleCount}개 · 추가하기 ›` : "일정 추가하기 ›"}
         </button>
       </div>
     </div>

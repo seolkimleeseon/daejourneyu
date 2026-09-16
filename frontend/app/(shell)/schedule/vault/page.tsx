@@ -56,7 +56,7 @@ export default function CourseVaultPage() {
             />
           ))
         ) : (
-          <TabPlaceholder emoji="🐾" message={"보관함이 비어 있어요\n코스를 만들어 보세요"} />
+          <TabPlaceholder icon3D emoji="🐾" message={"보관함이 비어 있어요\n코스를 만들어 보세요"} />
         )}
       </div>
     </>

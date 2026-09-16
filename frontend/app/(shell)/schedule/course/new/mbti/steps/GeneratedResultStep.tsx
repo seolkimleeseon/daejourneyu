@@ -8,6 +8,7 @@ import { DragReorderList } from "@/components/course/DragReorderList";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { CourseShareCard } from "@/components/course/CourseShareCard";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { conditionSourceLabel, isUnverifiedCondition, NEEDS_CHECK_LABEL, nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import type { CourseTheme } from "@/lib/mbti";
 import type { Place, Transport } from "@/types";
@@ -48,8 +49,8 @@ export function GeneratedResultStep({
             <Tag tone="purple" className="cursor-default border border-line bg-card">
               {transport === "자차" ? "🚗" : "🚌"} {transport}
             </Tag>
-            <Tag tone="brand" className="cursor-default border border-line bg-card">
-              🐾 동반 가능
+            <Tag tone="brand" className="flex cursor-default items-center gap-1 border border-line bg-card">
+              <Emoji3D emoji="🐾" size={12} shadow={false} />동반 가능
             </Tag>
           </div>
         </div>
@@ -70,8 +71,9 @@ export function GeneratedResultStep({
 
         {days.map((day, dayIndex) => (
           <div key={dayIndex} className="mb-4 last:mb-0">
-            <div className="mb-2 px-1 text-xs font-bold text-ink-muted">
-              {days.length > 1 ? `📍 ${dayIndex + 1}일차 동선` : `📍 ${theme}형 동선`} · {day.length}곳
+            <div className="mb-2 flex items-center gap-1 px-1 text-xs font-bold text-ink-muted">
+              <Emoji3D emoji="📍" size={14} shadow={false} />
+              {days.length > 1 ? `${dayIndex + 1}일차 동선` : `${theme}형 동선`} · {day.length}곳
             </div>
             {day.length > 0 ? <CourseRouteMap places={day} /> : null}
             <div className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
@@ -111,8 +113,17 @@ export function GeneratedResultStep({
                               </Tag>
                             </>
                           ) : (
-                            <Tag tone={place.petFriendly ? "brand" : "coral"} className="cursor-default px-2 py-1 text-[10px]">
-                              {place.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
+                            <Tag
+                              tone={place.petFriendly ? "brand" : "coral"}
+                              className="flex cursor-default items-center gap-0.5 px-2 py-1 text-[10px]"
+                            >
+                              {place.petFriendly ? (
+                                <>
+                                  <Emoji3D emoji="🐾" size={10} shadow={false} />동반 가능
+                                </>
+                              ) : (
+                                "🚫 동반 불가"
+                              )}
                             </Tag>
                           )}
                         </div>

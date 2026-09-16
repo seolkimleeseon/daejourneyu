@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { cn } from "@/lib/cn";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
@@ -122,7 +123,10 @@ function PickablePlaceCard({
       </div>
       <div className="p-2">
         <div className="truncate text-xs font-bold text-ink">{place.name}</div>
-        <div className="mt-0.5 truncate text-[10px] text-ink-muted">📍 {place.district}</div>
+        <div className="mt-0.5 flex items-center gap-0.5 truncate text-[10px] text-ink-muted">
+          <Emoji3D emoji="📍" size={10} shadow={false} />
+          {place.district}
+        </div>
       </div>
     </button>
   );
@@ -264,8 +268,14 @@ export function PlacePickerSheet() {
         ))}
       </div>
       <div className="mb-3 flex gap-1 overflow-x-auto pb-0.5 no-scrollbar">
-        <Tag tone="neutral-ghost" active={district === "전체"} className="shrink-0" onClick={() => setDistrict("전체")}>
-          🧭 전체 구
+        <Tag
+          tone="neutral-ghost"
+          active={district === "전체"}
+          className="flex shrink-0 items-center gap-1"
+          onClick={() => setDistrict("전체")}
+        >
+          <Emoji3D emoji="🧭" size={12} shadow={false} />
+          전체 구
         </Tag>
         {DISTRICTS.map((gu) => (
           <Tag key={gu} tone="neutral-ghost" active={district === gu} className="shrink-0" onClick={() => setDistrict(gu)}>
@@ -292,8 +302,9 @@ export function PlacePickerSheet() {
         </div>
       </div>
       {sortMode === "거리순" && !coords ? (
-        <div className="mb-2 text-[10px] text-ink-muted">
-          {locationDenied ? "📍 위치 접근이 안 돼서 기본순으로 보여드려요" : "📍 위치 확인 중..."}
+        <div className="mb-2 flex items-center gap-0.5 text-[10px] text-ink-muted">
+          <Emoji3D emoji="📍" size={10} shadow={false} />
+          {locationDenied ? "위치 접근이 안 돼서 기본순으로 보여드려요" : "위치 확인 중..."}
         </div>
       ) : null}
 
@@ -304,7 +315,10 @@ export function PlacePickerSheet() {
           "실시간 장소를 불러오지 못했어요"
         ) : (
           <>
-            🐾 동반 인증 · {strict.length}곳
+            <span className="inline-flex items-center gap-0.5">
+              <Emoji3D emoji="🐾" size={10} shadow={false} />
+              동반 인증 · {strict.length}곳
+            </span>
             <br />
             지자체·정부기관이 반려동물 동반 가능 여부를 확인한 곳이에요
           </>
@@ -340,8 +354,9 @@ export function PlacePickerSheet() {
 
       {relaxed.length ? (
         <>
-          <div className="mb-2 text-[10px] font-semibold text-ink-muted">
-            📍 {district} 결과가 적어서 대전 다른 지역 장소도 같이 보여드려요
+          <div className="mb-2 flex items-center gap-0.5 text-[10px] font-semibold text-ink-muted">
+            <Emoji3D emoji="📍" size={10} shadow={false} />
+            {district} 결과가 적어서 대전 다른 지역 장소도 같이 보여드려요
           </div>
           <div className="mb-3 grid grid-cols-2 gap-2">
             {relaxed.map((place) => (

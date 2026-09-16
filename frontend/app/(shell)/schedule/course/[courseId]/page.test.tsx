@@ -126,9 +126,10 @@ describe("티켓", () => {
   });
 
   it("대표 이모지를 안 골랐으면 출처에 맞는 기본 이모지를 쓴다", () => {
-    setup();
+    const { container } = setup();
 
-    expect(screen.getByText("✨")).toBeTruthy();
+    // ✨는 Emoji3D 3D 렌더 대상이라 텍스트가 아니라 이미지로 나온다.
+    expect(container.querySelector('img[src*="sparkles_3d"]')).toBeTruthy();
   });
 
   it("공유하지 않은 코스엔 공유됨 표시를 달지 않는다", () => {
@@ -157,8 +158,8 @@ describe("티켓", () => {
       (el) => el.textContent
     );
     expect(dates).toEqual([
-      "📅 2026-09-20에 가기로 했어요 · 대전 0시 축제",
-      "📅 2026-10-03에 가기로 했어요",
+      "2026-09-20에 가기로 했어요 · 대전 0시 축제",
+      "2026-10-03에 가기로 했어요",
     ]);
   });
 });
@@ -167,7 +168,7 @@ describe("동선", () => {
   it("하루짜리면 일차 번호 없이 곳 수만 적는다", () => {
     setup();
 
-    expect(screen.getByText("📍 동선 · 2곳")).toBeTruthy();
+    expect(screen.getByText("동선 · 2곳")).toBeTruthy();
   });
 
   it("여러 날이면 일차마다 나누고 넘겨볼 점을 둔다", () => {
@@ -176,8 +177,8 @@ describe("동선", () => {
     });
     setup();
 
-    expect(screen.getByText("📍 1일차 동선 · 1곳")).toBeTruthy();
-    expect(screen.getByText("📍 2일차 동선 · 1곳")).toBeTruthy();
+    expect(screen.getByText("1일차 동선 · 1곳")).toBeTruthy();
+    expect(screen.getByText("2일차 동선 · 1곳")).toBeTruthy();
     expect(screen.getByRole("button", { name: "2일차 보기" })).toBeTruthy();
   });
 
@@ -192,7 +193,7 @@ describe("동선", () => {
     });
     setup();
 
-    expect(within(stopRow("갑천")).getByText("🐾 동반 가능")).toBeTruthy();
+    expect(within(stopRow("갑천")).getByText("동반 가능")).toBeTruthy();
     expect(within(stopRow("갑천")).getByText("식약처 인증")).toBeTruthy();
   });
 
@@ -217,7 +218,7 @@ describe("동선", () => {
 
     expect(within(stopRow("갑천")).getByText("카카오맵 검색 결과")).toBeTruthy();
     expect(within(stopRow("갑천")).getByText("🔍 동반 가능 여부 확인 필요")).toBeTruthy();
-    expect(within(stopRow("갑천")).queryByText("🐾 동반 가능")).toBeNull();
+    expect(within(stopRow("갑천")).queryByText("동반 가능")).toBeNull();
   });
 });
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CourseButton as Button } from "@/components/course/CourseButton";
 import { LoginModal } from "@/components/my/LoginModal";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 
 interface LoginRequiredGateProps {
   message?: string;
@@ -17,7 +18,7 @@ export function LoginRequiredGate({ message = "코스를 저장하고 관리하�
   if (compact) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-3.5">
-        <span className="shrink-0 text-xl">🐾</span>
+        <Emoji3D emoji="🐾" size={22} className="shrink-0" />
         <div className="min-w-0 flex-1 text-xs leading-relaxed text-ink-muted">{message}</div>
         <Button className="min-h-9 w-auto shrink-0 px-3 text-xs" onClick={() => setLoginOpen(true)}>
           로그인
@@ -29,7 +30,7 @@ export function LoginRequiredGate({ message = "코스를 저장하고 관리하�
 
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-      <div className="text-4xl">🐾</div>
+      <Emoji3D emoji="🐾" size={48} />
       <div className="text-sm font-bold text-ink">로그인이 필요해요</div>
       <div className="text-xs leading-relaxed text-ink-muted">{message}</div>
       <Button className="mt-2 w-auto px-6" onClick={() => setLoginOpen(true)}>

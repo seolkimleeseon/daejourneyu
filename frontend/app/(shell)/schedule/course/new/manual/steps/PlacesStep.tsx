@@ -3,6 +3,7 @@
 import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { conditionSourceLabel, isUnverifiedCondition, NEEDS_CHECK_LABEL, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -93,7 +94,7 @@ export function PlacesStep({
 
       {currentDayPlaces.length > 0 ? (
         <div className="mb-3 rounded-lg bg-accent-amber-light px-3 py-2.5 text-xs leading-relaxed text-accent-amber">
-          📍 {startValid ? (
+          <Emoji3D emoji="📍" size={14} shadow={false} /> {startValid ? (
             <>
               <b>{currentDayPlaces.find((p) => p.id === start)?.name}</b>에서 {dayLabel ? `${dayLabel} ` : ""}여행을
               시작해요
@@ -150,9 +151,15 @@ export function PlacesStep({
                     ) : (
                       <Tag
                         tone={place.petFriendly ? "brand" : "coral"}
-                        className="cursor-default px-2 py-0.5 text-[10px]"
+                        className="flex cursor-default items-center gap-0.5 px-2 py-0.5 text-[10px]"
                       >
-                        {place.petFriendly ? "🐾 동반 가능" : "🚫 동반 불가"}
+                        {place.petFriendly ? (
+                          <>
+                            <Emoji3D emoji="🐾" size={10} shadow={false} />동반 가능
+                          </>
+                        ) : (
+                          "🚫 동반 불가"
+                        )}
                       </Tag>
                     )}
                   </div>
@@ -176,7 +183,7 @@ export function PlacesStep({
         </div>
       ) : (
         <div className="mb-3 rounded-xl border border-dashed border-line-strong px-5 py-8 text-center">
-          <div className="text-3xl">📍</div>
+          <Emoji3D emoji="📍" size={36} className="mx-auto" />
           <div className="mt-2 text-xs font-bold text-ink">{dayLabel ? `${dayLabel}가` : "담은 곳이"} 비어 있어요</div>
           <div className="mt-1 text-[11px] text-ink-muted">아래 버튼으로 가고 싶은 곳을 담아보세요</div>
         </div>

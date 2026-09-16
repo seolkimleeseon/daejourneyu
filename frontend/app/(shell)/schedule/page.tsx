@@ -151,7 +151,7 @@ function ScheduleTabContent() {
                   ) : null}
                 </>
               ) : (
-                <TabPlaceholder emoji="🐾" message={"보관함이 비어 있어요\n첫 코스를 만들어보세요"} />
+                <TabPlaceholder icon3D emoji="🐾" message={"보관함이 비어 있어요\n첫 코스를 만들어보세요"} />
               )}
             </>
           )}

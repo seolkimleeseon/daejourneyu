@@ -2,6 +2,7 @@
 
 import { CourseButton as Button } from "@/components/course/CourseButton";
 import { Tag } from "@/components/ui/Tag";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { nightsLabel } from "@/lib/courseFormat";
 import type { CourseTheme } from "@/lib/mbti";
 
@@ -53,7 +54,7 @@ export function NightsStep({ theme, nights, onChangeNights, onNext }: NightsStep
         </div>
       </div>
       <div className="mt-3 rounded-lg bg-surface p-4 text-xs leading-relaxed text-ink-muted">
-        📅 출발 날짜는 지금 안 정해도 돼요
+        <Emoji3D emoji="📅" size={14} shadow={false} /> 출발 날짜는 지금 안 정해도 돼요
         <br />
         저장 후 [일정을 추가하기]에서 고르면 돼요
       </div>

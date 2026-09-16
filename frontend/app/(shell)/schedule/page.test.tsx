@@ -188,7 +188,7 @@ describe("보관함 미리보기", () => {
     });
     setup();
 
-    expect(screen.getByText("📅 등록된 일정 1개 · 추가하기 ›")).toBeTruthy();
+    expect(screen.getByText("등록된 일정 1개 · 추가하기 ›")).toBeTruthy();
   });
 
   it("카드와 일정 추가 줄이 서로 다른 곳으로 보낸다", async () => {
