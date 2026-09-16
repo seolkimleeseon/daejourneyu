@@ -13,7 +13,7 @@ import { usePetStore } from "@/stores/usePetStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { findActiveTrip } from "@/lib/schedule";
-import { toCrowdPlace, type CrowdPlace } from "@/lib/crowd";
+import { toTickerPlace, type TickerPlace } from "@/lib/placeTicker";
 import { mockArticles } from "@/mocks";
 
 /** Fisher-Yates — 예정된 여행이 없을 때 보여줄 반려동반 여행지를 매번 다른 순서로 섞는다. */
@@ -42,7 +42,7 @@ export default function HomePage() {
   );
 
   // 7일 이내 예정되었거나 진행 중인 여행이 있으면 그 코스의 장소로, 없으면 문체부 반려동물
-  // 동반가능 시설 현황(source=petacp) 중에서 랜덤하게 골라 혼잡도 티커를 채운다.
+  // 동반가능 시설 현황(source=petacp) 중에서 랜덤하게 골라 장소별 날씨 티커를 채운다.
   const { data: travelPlaces = [], isPending: travelPlacesLoading } = usePlaces({ source: "petacp" });
 
   const latestArticle = useMemo(
@@ -50,16 +50,17 @@ export default function HomePage() {
     []
   );
 
-  const crowdPlaces = useMemo<CrowdPlace[]>(() => {
+  const tickerPlaces = useMemo<TickerPlace[]>(() => {
     if (activeTrip) {
+      // CourseStop에는 좌표가 없어 날씨 배지는 비워두고 이름/카테고리만 보여준다.
       return activeTrip.stops.map((stop) => ({ id: stop.placeId, name: stop.name, category: stop.category }));
     }
     return shuffle(travelPlaces.filter((place) => place.petFriendly))
       .slice(0, 6)
-      .map(toCrowdPlace);
+      .map(toTickerPlace);
   }, [activeTrip, travelPlaces]);
 
-  const crowdLoading = !activeTrip && travelPlacesLoading;
+  const tickerLoading = !activeTrip && travelPlacesLoading;
 
   return (
     <>
@@ -90,8 +91,8 @@ export default function HomePage() {
           pet={activePet}
           isLoggedIn={isLoggedIn}
           upcomingTrip={activeTrip}
-          crowdPlaces={crowdPlaces}
-          crowdLoading={crowdLoading}
+          tickerPlaces={tickerPlaces}
+          tickerLoading={tickerLoading}
         />
 
         {latestArticle ? (
@@ -137,12 +138,13 @@ export default function HomePage() {
         <div className="mb-2 px-1 text-xs font-bold text-ink-muted">축제 캘린더</div>
         <div className="flex flex-col gap-2.5">
           <HomeFeatureCard
-            emoji="🎆"
+            emoji=""
             eyebrow="DAEJEON FESTIVAL"
             titleLines={["축제", "캘린더"]}
             subtitle="반려동물과 함께 갈 수 있는 축제를 확인해보세요"
             ctaLabel="축제 일정 보기"
             gradientClass="bg-gradient-to-br from-accent-purple to-accent-navy"
+            backgroundImageSrc="/icons/3d/bg_festival_card.png"
             onClick={() => router.push("/home/festival")}
           />
         </div>

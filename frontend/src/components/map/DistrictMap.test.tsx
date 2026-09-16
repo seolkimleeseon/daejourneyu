@@ -10,45 +10,71 @@ function setup() {
   return { ...view, onSelect, user: userEvent.setup() };
 }
 
+/** 지도 위 구별 히트스팟 버튼(접근성 라벨 "OO구 선택")만 골라낸다 — 아래 확인 버튼과 섞이지 않게. */
+function hotspotButton(district: string) {
+  return screen.getByRole("button", { name: `${district} 선택` });
+}
+
 describe("DistrictMap", () => {
   it("서비스 범위인 5개 구를 모두 둔다", () => {
     setup();
 
-    expect(screen.getAllByRole("button")).toHaveLength(5);
-    DISTRICTS.forEach((district) => expect(screen.getByText(district)).toBeTruthy());
+    DISTRICTS.forEach((district) => expect(hotspotButton(district)).toBeTruthy());
   });
 
-  it("구를 누르면 그 이름을 올려보낸다", async () => {
+  it("아무 구도 안 골랐을 때도 확인 버튼은 미리 자리를 잡고 있다 — 다만 눌러도 아무 일도 없다", async () => {
     const { user, onSelect } = setup();
 
-    await user.click(screen.getByText("유성구"));
+    const button = screen.getByRole("button", { name: "구를 선택해 주세요" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+
+    await user.click(button);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("구를 누른 것만으로는 이동하지 않는다 — 골랐다는 걸 보여준 뒤 확인 버튼을 또 눌러야 한다", async () => {
+    const { user, onSelect } = setup();
+
+    await user.click(hotspotButton("유성구"));
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "유성구 둘러보기" })).toBeTruthy();
+  });
+
+  it("고른 뒤 확인 버튼을 누르면 그 구 이름을 올려보낸다", async () => {
+    const { user, onSelect } = setup();
+
+    await user.click(hotspotButton("유성구"));
+    await user.click(screen.getByRole("button", { name: "유성구 둘러보기" }));
 
     expect(onSelect).toHaveBeenCalledWith("유성구");
   });
 
-  it("구마다 다른 색을 써서 지도처럼 구분된다", () => {
-    const { container } = setup();
+  it("다른 구를 고르면 확인 버튼도 새로 고른 구를 따라간다", async () => {
+    const { user } = setup();
 
-    const tones = Array.from(container.querySelectorAll("button")).map(
-      (button) => button.className.match(/bg-[\w-]+/)?.[0]
-    );
-    expect(new Set(tones).size).toBe(5);
+    await user.click(hotspotButton("유성구"));
+    await user.click(hotspotButton("동구"));
+
+    expect(screen.getByRole("button", { name: "동구 둘러보기" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "유성구 둘러보기" })).toBeNull();
   });
 
-  it("실좌표 대신 구의 상대 위치를 배치로 본뜬다", () => {
+  it("구마다 다른 이미지를 써서 지도처럼 구분된다", () => {
     const { container } = setup();
 
-    // 유성·대덕이 위 두 줄, 서·중·동이 아래 한 줄.
-    const areas = (container.firstElementChild as HTMLElement).style.gridTemplateAreas;
-    expect(areas).toContain("seo jung dong dong");
+    const srcs = Array.from(container.querySelectorAll<HTMLImageElement>("img")).map((img) => img.src);
+    // 평면 지도 1장 + 구별 팝업 이미지 5장 = 6장 전부 서로 다른 파일이어야 한다.
+    expect(new Set(srcs).size).toBe(6);
   });
 
-  it("구마다 제자리를 차지한다 — 겹치면 지도 모양이 깨진다", () => {
-    const { container } = setup();
+  it("구마다 제자리를 차지한다 — 히트스팟이 겹치면 지도 모양이 깨진다", () => {
+    setup();
 
-    const placed = Array.from(container.querySelectorAll("button")).map(
-      (button) => (button as HTMLElement).style.gridArea
-    );
-    expect(new Set(placed).size).toBe(5);
+    const positions = DISTRICTS.map((district) => {
+      const button = hotspotButton(district);
+      return `${button.style.left},${button.style.top}`;
+    });
+    expect(new Set(positions).size).toBe(DISTRICTS.length);
   });
 });

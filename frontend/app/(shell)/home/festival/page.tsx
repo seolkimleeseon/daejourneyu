@@ -5,6 +5,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { Card } from "@/components/ui/Card";
 import { Tag } from "@/components/ui/Tag";
 import { FestivalLinks } from "@/components/home/FestivalLinks";
+import { PawMark } from "@/components/shell/PawMark";
 import { useFestivals } from "@/hooks/useFestivals";
 import type { FestivalEvent } from "@/types";
 import { cn } from "@/lib/cn";
@@ -149,9 +150,7 @@ export default function HomeFestivalPage() {
         <div className="grid grid-cols-7 gap-1">
           {cells.map((cell, i) => {
             if (!cell) return <div key={`empty-${i}`} />;
-            const dayFestivals = festivals.filter((f) => isFestivalOnDate(f, cell.date));
-            const hasPetFriendly = dayFestivals.some((f) => f.petFriendly);
-            const hasOther = dayFestivals.some((f) => !f.petFriendly);
+            const hasFestival = festivals.some((f) => isFestivalOnDate(f, cell.date));
             const isToday = cell.date === todayYmd;
             const isSelected = cell.date === selectedDate;
             return (
@@ -166,24 +165,14 @@ export default function HomeFestivalPage() {
                 )}
               >
                 <span>{cell.day}</span>
-                {hasPetFriendly || hasOther ? (
-                  <span className="flex gap-0.5">
-                    {hasPetFriendly ? <span className="h-1 w-1 rounded-full bg-brand" /> : null}
-                    {hasOther ? <span className="h-1 w-1 rounded-full bg-accent-amber" /> : null}
-                  </span>
-                ) : null}
+                {hasFestival ? <PawMark size={18} circled="inverted" /> : null}
               </button>
             );
           })}
         </div>
 
-        <div className="mt-2 flex gap-3 text-[10px] text-ink-muted">
-          <span className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 반려동반 축제
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-amber" /> 일반 축제
-          </span>
+        <div className="mt-2 flex items-center gap-1 text-[10px] text-ink-muted">
+          <PawMark size={16} circled="inverted" /> 축제 있는 날
         </div>
 
         <div className="mb-1 mt-5 px-1 text-xs font-bold text-ink-muted">{selectedDate} 일정</div>

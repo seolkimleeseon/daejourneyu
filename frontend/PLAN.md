@@ -159,7 +159,7 @@ frontend/
 │  ├─ components/
 │  │  ├─ shell/        AppShell, TopBar, BottomNav, Splash
 │  │  ├─ ui/            Button, Card, Tag, BottomSheet, Toast, Modal, ProgressSteps
-│  │  ├─ place/          PlaceCard, PlaceDetailHeader, PetBanner, CrowdTicker, MapPins, RouteMap
+│  │  ├─ place/          PlaceCard, PlaceDetailHeader, PetBanner, PlaceWeatherTicker, MapPins, RouteMap
 │  │  ├─ course/          CourseCard, DayTabs, RouteList, ChecklistItem, CourseStepBar
 │  │  ├─ mbti/             QuestionCard, TraitChip, ThemeBar
 │  │  └─ feed/              PostCard, ArticleCard

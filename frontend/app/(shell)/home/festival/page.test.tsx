@@ -35,9 +35,9 @@ function dayCell(day: string): HTMLElement {
   return screen.getAllByRole("button").find((button) => button.textContent === day)!;
 }
 
-/** 그 날 칸에 찍힌 점의 색 — 민트는 반려동반, 노랑은 일반 축제. */
-function dotClasses(day: string): string[] {
-  return Array.from(dayCell(day).querySelectorAll(".rounded-full")).map((el) => el.className);
+/** 그 날 칸에 축제 표시(발바닥 마크)가 찍혔는지 — 동반 가능 여부와 무관하게 있으면 하나만 찍는다. */
+function hasFestivalMark(day: string): boolean {
+  return dayCell(day).querySelector("svg") !== null;
 }
 
 beforeEach(() => {
@@ -59,32 +59,29 @@ describe("달력", () => {
     expect(screen.getByText("2026-09-14 일정")).toBeTruthy();
   });
 
-  it("축제가 있는 날에 점을 찍는다", () => {
+  it("축제가 있는 날에 발바닥 마크를 찍는다", () => {
     setup();
 
-    expect(dotClasses("14")).toHaveLength(1);
-    expect(dotClasses("15")).toHaveLength(0);
+    expect(hasFestivalMark("14")).toBe(true);
+    expect(hasFestivalMark("15")).toBe(false);
   });
 
-  it("반려동반 축제와 일반 축제를 다른 색 점으로 나눈다", () => {
+  it("동반 가능 여부와 무관하게 축제 유무만 본다 — 섞여 있어도 마크는 하나만 찍는다", () => {
     giveFestivals([
       makeFestival({ id: "f1", date: "2026-09-14", petFriendly: true }),
       makeFestival({ id: "f2", date: "2026-09-14", petFriendly: false, petFriendlyUnknown: true }),
     ]);
     setup();
 
-    const dots = dotClasses("14");
-    expect(dots).toHaveLength(2);
-    expect(dots.some((cls) => cls.includes("bg-brand"))).toBe(true);
-    expect(dots.some((cls) => cls.includes("bg-accent-amber"))).toBe(true);
+    expect(dayCell("14").querySelectorAll("svg")).toHaveLength(1);
   });
 
   it("여러 날에 걸친 축제는 그 사이 날에도 표시한다", () => {
     giveFestivals([makeFestival({ date: "2026-09-14", endDate: "2026-09-16" })]);
     setup();
 
-    expect(dotClasses("15")).toHaveLength(1);
-    expect(dotClasses("17")).toHaveLength(0);
+    expect(hasFestivalMark("15")).toBe(true);
+    expect(hasFestivalMark("17")).toBe(false);
   });
 
   it("날짜를 누르면 그 날 일정으로 바꾼다", async () => {

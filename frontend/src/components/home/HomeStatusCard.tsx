@@ -3,9 +3,9 @@
 import { useState } from "react";
 import type { Pet } from "@/types";
 import type { ActiveTrip } from "@/lib/schedule";
-import type { CrowdPlace } from "@/lib/crowd";
+import type { TickerPlace } from "@/lib/placeTicker";
 import { cn } from "@/lib/cn";
-import { CrowdTicker } from "./CrowdTicker";
+import { PlaceWeatherTicker } from "./PlaceWeatherTicker";
 import { useWeather } from "@/hooks/useWeather";
 import { formatWeatherSummary, pickCurrentForecast } from "@/lib/weather";
 
@@ -13,22 +13,22 @@ interface HomeStatusCardProps {
   pet: Pet | null;
   isLoggedIn: boolean;
   upcomingTrip: ActiveTrip | null;
-  crowdPlaces: CrowdPlace[];
+  tickerPlaces: TickerPlace[];
   /** 장소 목록을 아직 불러오는 중인지 — 티커에 빈칸 대신 안내 문구를 보이기 위해 내려준다. */
-  crowdLoading?: boolean;
+  tickerLoading?: boolean;
 }
 
 /**
  * 탑승권(보딩패스) 느낌의 홈 상태 카드.
  * 상단 모노 라벨 스트립 + 인사말/날씨 + 점선 절취선(양 끝을 페이지 배경색 원으로 "펀치홀"처럼
- * 도려내어 티켓 느낌을 냄) + 혼잡도 티커, 순서로 구성된다.
+ * 도려내어 티켓 느낌을 냄) + 장소별 날씨 티커, 순서로 구성된다.
  */
 export function HomeStatusCard({
   pet,
   isLoggedIn,
   upcomingTrip,
-  crowdPlaces,
-  crowdLoading = false,
+  tickerPlaces,
+  tickerLoading = false,
 }: HomeStatusCardProps) {
   const { data, isFetching, isError, refetch } = useWeather();
   const current = data ? pickCurrentForecast(data.forecast) : null;
@@ -97,7 +97,7 @@ export function HomeStatusCard({
       </div>
 
       <div className="px-4 py-2">
-        <CrowdTicker places={crowdPlaces} loading={crowdLoading} />
+        <PlaceWeatherTicker places={tickerPlaces} loading={tickerLoading} />
       </div>
     </div>
   );
