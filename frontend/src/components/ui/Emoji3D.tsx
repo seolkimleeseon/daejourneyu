@@ -1,10 +1,13 @@
-import Image from "next/image";
 import { cn } from "@/lib/cn";
 
 /**
  * 평면 이모지 대신 쓰는 3D 렌더 아이콘(토스류 서비스에서 쓰는 스타일).
  * 출처: Microsoft Fluent Emoji 3D(MIT) — `public/icons/3d/`에 내려받아 셀프 호스팅한다.
  * 여기 매핑에 없는 이모지는 원래 문자를 그대로 보여준다 — 커버리지를 넓힐 때 이 표에만 추가하면 된다.
+ *
+ * next/image 대신 일반 <img>를 쓴다 — 이 컴포넌트가 CourseShareCard·MBTI 결과처럼 html-to-image로
+ * 캡처되는 화면 안에서도 쓰이는데, next/image의 최적화 프록시(/_next/image?url=...)를 거친 이미지는
+ * 캡처 시점에 안 읽혀서 저장된 이미지에서 아이콘이 빈 칸으로 나왔다. 로컬 PNG라 최적화 이득도 없다.
  */
 const EMOJI_3D_MAP: Record<string, string> = {
   "✨": "/icons/3d/sparkles_3d.png",
@@ -91,7 +94,8 @@ export function Emoji3D({ emoji, size = 28, className, glowClassName, shadow = t
           style={{ width: size * 0.75, height: size * 0.75 }}
         />
       ) : null}
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt=""
         width={size}
