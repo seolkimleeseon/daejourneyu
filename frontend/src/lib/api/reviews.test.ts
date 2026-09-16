@@ -83,6 +83,13 @@ describe("createReviewApi", () => {
       createReviewApi({ placeId: "p", placeName: "n", tagCodes: [] })
     ).rejects.toThrow("후기를 등록하지 못했어요");
   });
+
+  it("사진이 너무 크면(413) 용량 문구로 던진다", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, 413));
+    await expect(
+      createReviewApi({ placeId: "p", placeName: "n", tagCodes: [] })
+    ).rejects.toThrow("사진 용량이 너무 커요");
+  });
 });
 
 describe("deleteReviewApi", () => {
