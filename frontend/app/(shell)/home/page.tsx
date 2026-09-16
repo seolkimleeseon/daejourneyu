@@ -138,12 +138,13 @@ export default function HomePage() {
         <div className="mb-2 px-1 text-xs font-bold text-ink-muted">축제 캘린더</div>
         <div className="flex flex-col gap-2.5">
           <HomeFeatureCard
-            emoji="🎆"
+            emoji=""
             eyebrow="DAEJEON FESTIVAL"
             titleLines={["축제", "캘린더"]}
             subtitle="반려동물과 함께 갈 수 있는 축제를 확인해보세요"
             ctaLabel="축제 일정 보기"
             gradientClass="bg-gradient-to-br from-accent-purple to-accent-navy"
+            backgroundImageSrc="/icons/3d/bg_festival_card.png"
             onClick={() => router.push("/home/festival")}
           />
         </div>
