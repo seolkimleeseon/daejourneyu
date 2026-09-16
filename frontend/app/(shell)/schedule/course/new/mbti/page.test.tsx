@@ -234,7 +234,7 @@ describe("코스 만들기", () => {
   it("결과에서 이어가면 기간 고르기로 넘어간다", async () => {
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
 
     expect(stepTitle()).toBe("산책형 코스");
     expect(screen.getByText("산책형 코스로 추천해드려요")).toBeTruthy();
@@ -242,7 +242,7 @@ describe("코스 만들기", () => {
 
   it("당일치기는 한 날에 3곳을 담는다", async () => {
     const { container, user } = setup();
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
 
     await user.click(screen.getByRole("button", { name: "다음" }));
 
@@ -251,7 +251,7 @@ describe("코스 만들기", () => {
 
   it("여러 날이면 날마다 다른 구를 배정한다 — 하루 동선이 대전 전역으로 흩어지지 않게", async () => {
     const { container, user } = setup();
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
     await user.click(screen.getByRole("button", { name: "1박 2일" }));
 
     await user.click(screen.getByRole("button", { name: "다음" }));
@@ -264,7 +264,7 @@ describe("코스 만들기", () => {
 
   it("테마가 맛집이 아니어도 날마다 맛집을 한 곳 넣는다 — 밥 먹을 곳은 있어야 한다", async () => {
     const { container, user } = setup();
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
     await user.click(screen.getByRole("button", { name: "2박 3일" }));
 
     await user.click(screen.getByRole("button", { name: "다음" }));
@@ -276,7 +276,7 @@ describe("코스 만들기", () => {
 
   it("같은 장소를 두 날에 겹쳐 넣지 않는다", async () => {
     const { container, user } = setup();
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
     await user.click(screen.getByRole("button", { name: "2박 3일" }));
 
     await user.click(screen.getByRole("button", { name: "다음" }));
@@ -292,7 +292,7 @@ describe("저장과 뒤로가기", () => {
   });
 
   async function generate(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
     await user.click(screen.getByRole("button", { name: "다음" }));
   }
 
@@ -345,7 +345,7 @@ describe("저장과 뒤로가기", () => {
     expect(nav.push).toHaveBeenCalledWith("/home");
   });
 
-  it("뒤로가기는 코스 → 기간 → 결과 → 소개로 한 단계씩 되돌린다", async () => {
+  it("뒤로가기는 코스 → 기간 → 결과까지 한 단계씩 되돌린다", async () => {
     const { user } = setup();
     await generate(user);
     const back = () => screen.getByRole("button", { name: "‹ 뒤로" });
@@ -355,9 +355,14 @@ describe("저장과 뒤로가기", () => {
 
     await user.click(back());
     expect(stepTitle()).toBe("테스트 결과");
+  });
 
-    await user.click(back());
-    expect(screen.getByRole("button", { name: "테스트 시작하기" })).toBeTruthy();
+  it("결과가 quick 지름길로 뜬 경우 뒤로가기는 인트로로 새지 않고 위저드를 나간다", async () => {
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "‹ 뒤로" }));
+
+    expect(nav.back).toHaveBeenCalledTimes(1);
   });
 
   it("소개 화면에서 뒤로가면 위저드를 나간다", async () => {
@@ -373,7 +378,7 @@ describe("저장과 뒤로가기", () => {
     const { container, user } = setup();
     expect(container.textContent).not.toContain("기간");
 
-    await user.click(screen.getByRole("button", { name: "이 성향으로 코스 만들기" }));
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
 
     expect(container.textContent).toContain("기간");
   });

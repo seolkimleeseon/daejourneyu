@@ -44,7 +44,14 @@ export function GeneratedResultStep({
           <div className="text-sm font-extrabold text-brand-700">오늘의 &lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
             <Tag tone="brand" className="cursor-default border border-line bg-card">
-              {nights > 0 ? "🌙" : "☀️"} {nightsLabel(nights)}
+              {nights > 0 ? (
+                <span className="inline-flex items-center gap-1">
+                  <Emoji3D emoji="🌙" size={14} shadow={false} className="shrink-0" />
+                  {nightsLabel(nights)}
+                </span>
+              ) : (
+                `☀️ ${nightsLabel(nights)}`
+              )}
             </Tag>
             <Tag tone="purple" className="cursor-default border border-line bg-card">
               {transport === "자차" ? "🚗" : "🚌"} {transport}

@@ -69,7 +69,7 @@ describe("완성 요약", () => {
   it("1박 이상이면 달로 바뀐다", () => {
     setup({ nights: 1, days: [[한밭수목원], [시립미술관]] });
 
-    expect(screen.getByText("🌙 1박 2일")).toBeTruthy();
+    expect(onScreen("1박 2일")).toHaveLength(1);
   });
 
   it("이동 수단도 함께 보여준다", () => {
