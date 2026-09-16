@@ -174,7 +174,11 @@ export function DistrictMap({ onSelect }: DistrictMapProps) {
   const maskRef = useRef<Uint8Array | null>(null);
   const rafRef = useRef<number | null>(null);
   const [ready, setReady] = useState(false);
+  // 마우스 hover는 커서 모양에만 쓰고, 튀어나오는 이미지 효과는 트리거하지 않는다.
   const [hovered, setHovered] = useState<DaejeonDistrict | null>(null);
+  // 키보드 포커스는 마우스 커서가 없어 다른 시각 피드백이 없으므로, 포커스 시에는 계속 튀어나오는
+  // 효과를 보여준다.
+  const [focused, setFocused] = useState<DaejeonDistrict | null>(null);
   const [selected, setSelected] = useState<DaejeonDistrict | null>(null);
 
   useEffect(() => {
@@ -210,15 +214,15 @@ export function DistrictMap({ onSelect }: DistrictMapProps) {
     return index === NONE ? null : REGIONS[index];
   };
 
-  // 지도 위에 포인터가 있을 땐 실시간 미리보기(hovered)를 우선 보여주고, 포인터가 지도를 벗어나면
-  // 방금 고른 구(selected)가 계속 튀어나온 채로 남아 있어야 아래 확인 버튼과 함께 또렷이 보인다.
-  const active = hovered ?? selected;
+  // 튀어나오는 효과는 키보드 포커스(focused) 또는 클릭으로 고른 구(selected)에서만 나타난다.
+  // 마우스 hover(hovered)는 커서 모양 힌트로만 쓰고 이미지 효과는 바꾸지 않는다.
+  const active = focused ?? selected;
 
   return (
     <Card className="flex flex-col items-center p-4">
       <div
         className="relative w-full aspect-square"
-        style={{ cursor: ready && active ? "pointer" : "default" }}
+        style={{ cursor: ready && (hovered ?? selected) ? "pointer" : "default" }}
         onPointerMove={(event) => {
           if (!ready) return;
           const { clientX, clientY, currentTarget } = event;
@@ -264,8 +268,8 @@ export function DistrictMap({ onSelect }: DistrictMapProps) {
             aria-label={`${region.district} 선택`}
             className="absolute h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ink"
             style={{ left: `${region.seed[0] * 100}%`, top: `${region.seed[1] * 100}%` }}
-            onFocus={() => setHovered(region.district)}
-            onBlur={() => setHovered((prev) => (prev === region.district ? null : prev))}
+            onFocus={() => setFocused(region.district)}
+            onBlur={() => setFocused((prev) => (prev === region.district ? null : prev))}
             onClick={() => setSelected(region.district)}
           />
         ))}
