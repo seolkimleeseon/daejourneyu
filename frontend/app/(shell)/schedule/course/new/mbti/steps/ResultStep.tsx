@@ -1,21 +1,14 @@
 "use client";
 
 import { useRef } from "react";
-import Image from "next/image";
 import { CourseButton } from "@/components/course/CourseButton";
 import { Button } from "@/components/ui/Button";
 import { TraitChip } from "@/components/mbti/TraitChip";
 import { ThemeBar } from "@/components/mbti/ThemeBar";
 import { TraitStatBar } from "@/components/mbti/TraitStatBar";
+import { MbtiCharacter } from "@/components/mbti/MbtiCharacter";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
-import {
-  MBTI_DECOR_COUNT,
-  resolveMbtiType,
-  structureAxisLabel,
-  structureAxisValue,
-  topTheme,
-  type CourseTheme,
-} from "@/lib/mbti";
+import { resolveMbtiType, structureAxisLabel, structureAxisValue, topTheme, type CourseTheme } from "@/lib/mbti";
 
 interface ResultStepProps {
   code: string;
@@ -27,7 +20,6 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
   const type = resolveMbtiType(code);
   const sortedThemes = (Object.entries(type.theme) as [CourseTheme, number][]).sort((a, b) => b[1] - a[1]);
   const captureRef = useRef<HTMLDivElement>(null);
-  const decorCount = MBTI_DECOR_COUNT[code] ?? 0;
 
   return (
     <div className="px-5 pb-6 pt-2">
@@ -38,24 +30,7 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
             <span>DAEJEONIYU</span>
           </div>
 
-          <div className="relative mx-auto my-2 h-28 w-28">
-            <div className="absolute inset-0 animate-float">
-              <Image src={`/icons/mbti-types/${code}.png`} alt={type.name} fill className="object-contain" priority />
-            </div>
-            {Array.from({ length: decorCount }, (_, i) => (
-              <div
-                key={i}
-                className={
-                  i === 0
-                    ? "absolute -right-3 -top-2 h-11 w-11 animate-float"
-                    : "absolute -left-3 -bottom-1 h-10 w-10 animate-twinkle"
-                }
-                style={{ animationDelay: `${i * 0.4}s` }}
-              >
-                <Image src={`/icons/mbti-types/decor/${code}-${i}.png`} alt="" fill className="object-contain" />
-              </div>
-            ))}
-          </div>
+          <MbtiCharacter code={code} name={type.name} size={112} />
 
           <div className="text-xl font-extrabold tracking-wide text-accent-purple">{code}</div>
           <div className="mb-1.5 text-sm font-bold text-ink">{type.name}</div>

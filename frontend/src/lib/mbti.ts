@@ -341,22 +341,22 @@ export const MBTI_TYPES: Record<string, MbtiTypeInfo> = Object.fromEntries(
  * 저장해뒀고, 결과 화면에서 캐릭터 옆 자리에 떠 있는 것처럼 배치하며 애니메이션을 준다.
  */
 export const MBTI_DECOR_COUNT: Record<string, number> = {
-  ENTJ: 0,
+  ENTJ: 2,
   ENTP: 2,
-  ENFJ: 1,
-  ENFP: 1,
+  ENFJ: 2,
+  ENFP: 2,
   ESTJ: 2,
-  ESTP: 1,
-  ESFJ: 0,
-  ESFP: 1,
-  INTJ: 1,
+  ESTP: 2,
+  ESFJ: 2,
+  ESFP: 2,
+  INTJ: 2,
   INTP: 2,
-  INFJ: 1,
-  INFP: 1,
-  ISTJ: 1,
-  ISTP: 1,
-  ISFJ: 1,
-  ISFP: 1,
+  INFJ: 2,
+  INFP: 2,
+  ISTJ: 2,
+  ISTP: 2,
+  ISFJ: 2,
+  ISFP: 2,
 };
 
 const DEFAULT_LETTER: Record<string, MbtiAxisLetter> = { EI: "I", SN: "S", TF: "F", JP: "P" };
