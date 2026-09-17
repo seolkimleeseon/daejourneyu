@@ -2,6 +2,7 @@ import { assertPublicDataApiKey } from "./publicData";
 import { geocodeAddress, supplementImagesByName } from "./kakaoLocal";
 import { mapWithConcurrency } from "./concurrency";
 import { cached } from "./cache";
+import { stableId } from "./stableId";
 
 /** 카카오 지오코딩 동시 요청 상한 — 레이트리밋(429) 방지. */
 const KAKAO_CONCURRENCY = 8;
@@ -79,11 +80,11 @@ export async function fetchDaejeonPetFacilities(): Promise<DaejeonPetFacility[]>
       .map((item) => ({ item, category: CATEGORY_BY_BUSINESS_TYPE[item.사업유형] }))
       .filter((entry): entry is { item: RawFacilityItem; category: PlaceCategory } => Boolean(entry.category));
 
-    const geocoded = await mapWithConcurrency(mappable, KAKAO_CONCURRENCY, async ({ item, category }, index) => {
+    const geocoded = await mapWithConcurrency(mappable, KAKAO_CONCURRENCY, async ({ item, category }) => {
       const point = await geocodeAddress(`대전 ${item.지역} ${item.주소}`).catch(() => null);
       if (!point) return null;
       return {
-        id: `petfac-${index}`,
+        id: stableId("petfac", item.업체명, item.주소),
         name: item.업체명,
         category,
         district: item.지역,

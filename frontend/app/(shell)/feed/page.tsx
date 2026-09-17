@@ -140,6 +140,20 @@ function FeedTabContent() {
     replaceQuery({ tab: next, sort: articleSort });
   };
 
+  /**
+   * "새 코스 자랑하기"가 예전엔 '내 글' 탭 안에만 있어서, 그 탭에 들어가 보기 전엔 글을 쓸 수
+   * 있다는 것 자체를 몰랐다는 피드백이 있었다 — '코스'·'아티클' 탭에서도 바로 쓸 수 있게 떠
+   * 있는 버튼을 하나 더 둔다('내 글' 탭은 이미 상단에 같은 버튼이 있어 중복이라 뺀다).
+   */
+  const handleWriteClick = () => {
+    if (!hydrated) return;
+    if (!isLoggedIn) {
+      setLoginOpen(true);
+      return;
+    }
+    router.push("/schedule/vault");
+  };
+
   return (
     <>
       <TopBar title="둘러보기" />
@@ -313,6 +327,18 @@ function FeedTabContent() {
           </div>
         ) : null}
       </div>
+
+      {segment !== "mine" ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[92px] z-20 mx-auto flex w-full max-w-[480px] justify-end px-4">
+          <button
+            type="button"
+            onClick={handleWriteClick}
+            className="pointer-events-auto flex h-12 items-center gap-1.5 rounded-full bg-gradient-to-br from-brand-500 to-brand px-4 text-sm font-extrabold text-white shadow-lg active:scale-95"
+          >
+            ✎ 코스 자랑하기
+          </button>
+        </div>
+      ) : null}
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>

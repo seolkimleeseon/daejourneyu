@@ -141,7 +141,9 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const cancelEditMode = () => setEditMode(false);
 
   const saveEditMode = () => {
-    if (draftLabel.trim().length === 0 || draftDays.every((day) => day.length === 0)) return;
+    // 하루라도 장소가 0곳이면 저장을 막는다 — 개별 삭제 버튼은 마지막 1곳을 못 지우게 막아두지만,
+    // 그 방어선과 별개로 저장 시점에도 한 번 더 확인한다.
+    if (draftLabel.trim().length === 0 || draftDays.some((day) => day.length === 0)) return;
     updateCourse(course.id, { label: draftLabel.trim(), emoji: draftEmoji, days: draftDays });
     setEditMode(false);
   };
@@ -365,8 +367,8 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             />
             {course.source !== "saved" && !course.shared ? (
               <Button
-                variant="text"
-                className="mt-1"
+                variant="secondary"
+                className="mt-2"
                 onClick={() => router.push(`/schedule/course/${course.id}/share`)}
               >
                 <Emoji3D emoji="🧭" size={16} shadow={false} />이 코스 둘러보기에 공유하기

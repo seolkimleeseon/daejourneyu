@@ -70,11 +70,27 @@ describe("달 그리드", () => {
   });
 
   it("일정이 있는 날에 점을 찍는다", () => {
-    useCourseStore.setState({ schedules: [makeSchedule({ id: "s1", date: "2026-09-20" })] });
+    useCourseStore.setState({
+      courses: [makeCourse({ id: "course-1", nights: 0 })],
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-20" })],
+    });
     render(<ScheduleCalendar />);
 
     expect(dayCell("20").querySelector(".rounded-full")).toBeTruthy();
     expect(dayCell("21").querySelector(".rounded-full")).toBeNull();
+  });
+
+  it("여러 박이면 기간 내내 점을 찍는다 — 2박3일이 하루짜리처럼 보이지 않게", () => {
+    useCourseStore.setState({
+      courses: [makeCourse({ id: "course-1", nights: 2 })],
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-20" })],
+    });
+    render(<ScheduleCalendar />);
+
+    expect(dayCell("20").querySelector(".rounded-full")).toBeTruthy();
+    expect(dayCell("21").querySelector(".rounded-full")).toBeTruthy();
+    expect(dayCell("22").querySelector(".rounded-full")).toBeTruthy();
+    expect(dayCell("23").querySelector(".rounded-full")).toBeNull();
   });
 
   it("날짜를 누르면 그 날 일정으로 바꾼다", async () => {

@@ -176,6 +176,24 @@ describe("둘러보기 — 코스 탭", () => {
 
     expect(lastCourseOptions()).toMatchObject({ sort: "recent" });
   });
+
+  it("'내 글' 탭에 들어가지 않아도 글쓰기로 바로 갈 수 있는 버튼을 둔다", async () => {
+    useAuthStore.setState({ isLoggedIn: true });
+    render(<FeedPage />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "✎ 코스 자랑하기" }));
+
+    expect(nav.push).toHaveBeenCalledWith("/schedule/vault");
+  });
+
+  it("비로그인이면 글쓰기 버튼을 눌러도 로그인 모달부터 띄운다", async () => {
+    render(<FeedPage />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "✎ 코스 자랑하기" }));
+
+    expect(nav.push).not.toHaveBeenCalledWith("/schedule/vault");
+    expect(loginModalOpen()).toBe(true);
+  });
 });
 
 describe("둘러보기 — 탭 전환", () => {

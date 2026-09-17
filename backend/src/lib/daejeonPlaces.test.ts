@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stableId } from "./stableId";
 
 /*
  * 대전시 openapi2022 계열 다섯 데이터셋을 각각 우리 장소 모양으로 옮기는 파일이다.
@@ -53,7 +54,7 @@ describe("모범음식점", () => {
     const [first] = await fetchDaejeonExemplaryRestaurants();
 
     expect(first).toEqual({
-      id: "restaurant-0",
+      id: stableId("restaurant", "대전국밥", "대전광역시 중구 대종로 1"),
       name: "대전국밥",
       category: "맛집",
       district: "중구",

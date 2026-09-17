@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stableId } from "./stableId";
 
 /*
  * 원본엔 좌표가 없어 주소를 카카오 지오코딩으로 태우는 소스다 — 지오코딩과 사진 보충은
@@ -67,7 +68,7 @@ describe("시설 정보로 바꾸기", () => {
 
     await expect(fetchDaejeonPetFacilities()).resolves.toEqual([
       {
-        id: "petfac-0",
+        id: stableId("petfac", "댕댕카페", "온천북로 1"),
         name: "댕댕카페",
         category: "맛집",
         district: "유성구",

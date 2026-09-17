@@ -3,6 +3,9 @@
 import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
+import { useCourseStore } from "@/stores/useCourseStore";
+import { useToastStore } from "@/stores/useToastStore";
+import { consumePendingCourseSave } from "@/lib/pendingCourseSave";
 
 /**
  * 앱 최초 마운트 시 /api/auth/me로 세션을 복구하고, 로그인 상태에 맞춰 반려동물 목록을 맞춘다.
@@ -35,6 +38,13 @@ export function AuthHydrator() {
   useEffect(() => {
     if (isLoggedIn) {
       void hydratePets();
+      // 로그인 게이트에 걸려 미뤄뒀던 코스 저장이 있으면 지금 대신 마무리한다(직접 짓기·MBTI
+      // 위저드에서 비로그인 상태로 저장을 누른 경우 — pendingCourseSave.ts 참고).
+      const pending = consumePendingCourseSave();
+      if (pending) {
+        useCourseStore.getState().addCourse(pending);
+        useToastStore.getState().show("로그인 후 이어서 보관함에 저장했어요 🐾");
+      }
     } else if (previousLoggedIn.current) {
       clearPets();
     }
