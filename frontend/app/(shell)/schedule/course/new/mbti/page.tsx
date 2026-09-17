@@ -47,18 +47,32 @@ function getSourceTier(place: SourcePlace): number {
 }
 
 const byQuality = (a: SourcePlace, b: SourcePlace) =>
-  getSourceTier(a) - getSourceTier(b) || Number(b.petFriendly) - Number(a.petFriendly) || a.name.localeCompare(b.name);
+  getSourceTier(a) - getSourceTier(b) || Number(b.petFriendly) - Number(a.petFriendly);
+
+/** Fisher–Yates. 배열을 무작위로 섞어 새 배열을 반환한다(원본은 건드리지 않는다). */
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 /**
  * 후보군(pool)에서 테마 카테고리를 2번 뽑을 때 다른 카테고리를 1번씩 라운드로빈으로 섞어
  * count개를 채운다 — 테마 색은 유지하되 한 카테고리로 도배되지 않게 한다. 카테고리 안에서는
- * 신뢰도 높은(정제된) 소스를 우선한다.
+ * 신뢰도 높은(정제된) 소스를 우선하되, 같은 신뢰도 안에서는 무작위로 섞는다 — 안 그러면 이름
+ * 가나다순으로 매번 똑같은 장소만 뽑혀 같은 테마·같은 지역이면 코스가 항상 똑같이 나왔다.
  */
 function pickBalancedByCategory(theme: CourseTheme, pool: SourcePlace[], count: number): SourcePlace[] {
   const buckets = new Map<PlaceCategory, SourcePlace[]>(
-    ALL_CATEGORIES.map((category) => [category, pool.filter((place) => place.category === category).sort(byQuality)])
+    ALL_CATEGORIES.map((category) => [
+      category,
+      shuffle(pool.filter((place) => place.category === category)).sort(byQuality),
+    ])
   );
-  const otherCategories = ALL_CATEGORIES.filter((category) => category !== theme);
+  const otherCategories = shuffle(ALL_CATEGORIES.filter((category) => category !== theme));
 
   const result: SourcePlace[] = [];
   let otherIndex = 0;
@@ -93,7 +107,7 @@ function pickBalancedByCategory(theme: CourseTheme, pool: SourcePlace[], count: 
  * 맛집(식약처 인증 등 sourceTier 1 우선)을 한 곳 무조건 먼저 담고 시작한다.
  */
 function pickGuaranteedRestaurant(pool: SourcePlace[]): SourcePlace | null {
-  const restaurants = pool.filter((place) => place.category === "맛집").sort(byQuality);
+  const restaurants = shuffle(pool.filter((place) => place.category === "맛집")).sort(byQuality);
   return restaurants[0] ?? null;
 }
 
@@ -108,11 +122,13 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePl
   const daysCount = nights + 1;
   const perDay = daysCount === 1 ? 3 : 2;
 
-  const districtRichness = ALL_DISTRICTS.map((district) => ({
-    district,
-    themeCount: source.filter((place) => place.district === district && place.category === theme).length,
-    totalCount: source.filter((place) => place.district === district).length,
-  })).sort((a, b) => b.themeCount - a.themeCount || b.totalCount - a.totalCount);
+  const districtRichness = shuffle(ALL_DISTRICTS)
+    .map((district) => ({
+      district,
+      themeCount: source.filter((place) => place.district === district && place.category === theme).length,
+      totalCount: source.filter((place) => place.district === district).length,
+    }))
+    .sort((a, b) => b.themeCount - a.themeCount || b.totalCount - a.totalCount);
 
   const assignedDistricts = Array.from(
     { length: daysCount },
