@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
+import { asyncHandler } from "../lib/asyncHandler";
 
 type Transport = "자차" | "대중교통";
 type CourseSource = "ai" | "manual" | "saved";
@@ -103,6 +104,26 @@ function isValidDays(days: unknown): days is CourseStop[][] {
   return Array.isArray(days) && days.length > 0 && days.every((day) => Array.isArray(day) && day.every(isValidStop));
 }
 
+/**
+ * 요청 body의 stop 객체를 Prisma CourseStop 컬럼만 남기고 정리한다. 프론트 CourseStop 타입은
+ * placeUrl(카카오 검색 원본 링크) 같은, 이 테이블엔 없는 필드도 들고 있을 수 있는데, 그걸
+ * `{ ...stop, order }`로 그대로 create에 넘기면 Prisma가 알 수 없는 필드로 예외를 던진다 —
+ * 이 라우터가 asyncHandler로 감싸여 있지 않던 예전엔 그 예외가 그대로 프로세스를 죽여서
+ * 코스 저장 자체가 서버 전체를 502로 만들었다(2026-09-10 placeUrl 도입 이후 계속 있던 문제).
+ */
+function toStopData(stop: CourseStop, order: number) {
+  return {
+    placeId: stop.placeId,
+    name: stop.name,
+    category: stop.category,
+    district: stop.district,
+    condition: stop.condition,
+    petFriendly: stop.petFriendly,
+    imageUrl: stop.imageUrl ?? null,
+    order,
+  };
+}
+
 function validateCourseInput(body: unknown): body is Omit<Course, "id"> {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
@@ -133,151 +154,175 @@ const router = Router();
 router.use(requireAuth);
 
 // GET /api/courses — 내 코스 보관함 전체 목록(로그인한 사용자 소유만)
-router.get("/", async (req, res) => {
-  const rows = await prisma.course.findMany({
-    where: { userId: req.userId! },
-    orderBy: { createdAt: "asc" },
-    include: courseWithRelations,
-  });
-  res.json(rows.map(toCourse));
-});
+router.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const rows = await prisma.course.findMany({
+      where: { userId: req.userId! },
+      orderBy: { createdAt: "asc" },
+      include: courseWithRelations,
+    });
+    res.json(rows.map(toCourse));
+  })
+);
 
 // GET /api/courses/schedules — 내 코스들에 등록된 일정 전체(홈 D-day 카드·캘린더 세그가 씀).
 // ":id" 라우트보다 먼저 등록해야 "schedules"가 :id로 잡아먹히지 않는다.
-router.get("/schedules", async (req, res) => {
-  const rows = await prisma.courseSchedule.findMany({
-    where: { course: { userId: req.userId! } },
-    include: scheduleWithRelations,
-  });
-  res.json(rows.map(toCourseSchedule));
-});
+router.get(
+  "/schedules",
+  asyncHandler(async (req, res) => {
+    const rows = await prisma.courseSchedule.findMany({
+      where: { course: { userId: req.userId! } },
+      include: scheduleWithRelations,
+    });
+    res.json(rows.map(toCourseSchedule));
+  })
+);
 
 // GET /api/courses/:id — 코스 상세. 다른 사람 코스면 존재 여부도 노출하지 않고 404로 통일한다.
-router.get("/:id", async (req, res) => {
-  const row = await prisma.course.findUnique({
-    where: { id: req.params.id },
-    include: courseWithRelations,
-  });
-  if (!row || row.userId !== req.userId) {
-    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
-  }
-  res.json(toCourse(row));
-});
+router.get(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const row = await prisma.course.findUnique({
+      where: { id: req.params.id },
+      include: courseWithRelations,
+    });
+    if (!row || row.userId !== req.userId) {
+      return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+    }
+    res.json(toCourse(row));
+  })
+);
 
 // POST /api/courses — 코스 위저드(MBTI/직접 짓기)에서 만든 코스를 저장
-router.post("/", async (req, res) => {
-  if (!validateCourseInput(req.body)) {
-    return res.status(400).json({ error: "코스 형식이 올바르지 않아요" });
-  }
-  const input = req.body;
-
-  const created = await prisma.course.create({
-    data: {
-      label: input.label,
-      emoji: input.emoji ?? null,
-      nights: input.nights,
-      transport: input.transport,
-      source: input.source,
-      shared: input.shared,
-      userId: req.userId!,
-      days: {
-        create: input.days.map((stops, dayIndex) => ({
-          dayIndex,
-          stops: { create: stops.map((stop, order) => ({ ...stop, order })) },
-        })),
-      },
-    },
-    include: courseWithRelations,
-  });
-
-  res.status(201).json(toCourse(created));
-});
-
-// PATCH /api/courses/:id — 코스 상세에서 이름·대표 이모지·동선(순서/삭제)을 수정. 소유자만 가능.
-router.patch("/:id", async (req, res) => {
-  const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-  if (!existing || existing.userId !== req.userId) {
-    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
-  }
-
-  if (!validateCourseUpdateInput(req.body)) {
-    return res.status(400).json({ error: "코스 수정 형식이 올바르지 않아요" });
-  }
-  const input = req.body;
-
-  const updated = await prisma.$transaction(async (tx) => {
-    if (input.days) {
-      // 일차별 동선을 통째로 교체한다 — CourseDay 삭제 시 CourseStop은 cascade로 함께 지워진다.
-      await tx.courseDay.deleteMany({ where: { courseId: req.params.id } });
+router.post(
+  "/",
+  asyncHandler(async (req, res) => {
+    if (!validateCourseInput(req.body)) {
+      return res.status(400).json({ error: "코스 형식이 올바르지 않아요" });
     }
-    return tx.course.update({
-      where: { id: req.params.id },
+    const input = req.body;
+
+    const created = await prisma.course.create({
       data: {
-        ...(input.label !== undefined ? { label: input.label } : {}),
-        ...(input.emoji !== undefined ? { emoji: input.emoji } : {}),
-        ...(input.days
-          ? {
-              days: {
-                create: input.days.map((stops, dayIndex) => ({
-                  dayIndex,
-                  stops: { create: stops.map((stop, order) => ({ ...stop, order })) },
-                })),
-              },
-            }
-          : {}),
+        label: input.label,
+        emoji: input.emoji ?? null,
+        nights: input.nights,
+        transport: input.transport,
+        source: input.source,
+        shared: input.shared,
+        userId: req.userId!,
+        days: {
+          create: input.days.map((stops, dayIndex) => ({
+            dayIndex,
+            stops: { create: stops.map((stop, order) => toStopData(stop, order)) },
+          })),
+        },
       },
       include: courseWithRelations,
     });
-  });
 
-  res.json(toCourse(updated));
-});
+    res.status(201).json(toCourse(created));
+  })
+);
+
+// PATCH /api/courses/:id — 코스 상세에서 이름·대표 이모지·동선(순서/삭제)을 수정. 소유자만 가능.
+router.patch(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
+    if (!existing || existing.userId !== req.userId) {
+      return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+    }
+
+    if (!validateCourseUpdateInput(req.body)) {
+      return res.status(400).json({ error: "코스 수정 형식이 올바르지 않아요" });
+    }
+    const input = req.body;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (input.days) {
+        // 일차별 동선을 통째로 교체한다 — CourseDay 삭제 시 CourseStop은 cascade로 함께 지워진다.
+        await tx.courseDay.deleteMany({ where: { courseId: req.params.id } });
+      }
+      return tx.course.update({
+        where: { id: req.params.id },
+        data: {
+          ...(input.label !== undefined ? { label: input.label } : {}),
+          ...(input.emoji !== undefined ? { emoji: input.emoji } : {}),
+          ...(input.days
+            ? {
+                days: {
+                  create: input.days.map((stops, dayIndex) => ({
+                    dayIndex,
+                    stops: { create: stops.map((stop, order) => toStopData(stop, order)) },
+                  })),
+                },
+              }
+            : {}),
+        },
+        include: courseWithRelations,
+      });
+    });
+
+    res.json(toCourse(updated));
+  })
+);
 
 // DELETE /api/courses/:id — 보관함에서 코스 삭제. 소유자만 가능.
-router.delete("/:id", async (req, res) => {
-  const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-  if (!existing || existing.userId !== req.userId) {
-    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
-  }
+router.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
+    if (!existing || existing.userId !== req.userId) {
+      return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+    }
 
-  await prisma.course.delete({ where: { id: req.params.id } });
-  res.status(204).send();
-});
+    await prisma.course.delete({ where: { id: req.params.id } });
+    res.status(204).send();
+  })
+);
 
 // POST /api/courses/:id/schedule — 코스에 날짜를 붙여 "내 일정"에 새로 등록한다.
 // 코스 1개가 여러 날짜에 등록될 수 있어(schema.prisma CourseSchedule은 1:N) 매번 새로 만든다 —
 // 날짜를 바꾸려면 기존 일정을 지우고 새로 등록한다(DELETE /schedule/:scheduleId).
-router.post("/:id/schedule", async (req, res) => {
-  const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-  if (!existing || existing.userId !== req.userId) {
-    return res.status(404).json({ error: "코스를 찾을 수 없어요" });
-  }
+router.post(
+  "/:id/schedule",
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
+    if (!existing || existing.userId !== req.userId) {
+      return res.status(404).json({ error: "코스를 찾을 수 없어요" });
+    }
 
-  const date = (req.body as Record<string, unknown> | null)?.date;
-  if (typeof date !== "string" || !DATE_RE.test(date)) {
-    return res.status(400).json({ error: "날짜는 YYYY-MM-DD 형식이어야 해요" });
-  }
+    const date = (req.body as Record<string, unknown> | null)?.date;
+    if (typeof date !== "string" || !DATE_RE.test(date)) {
+      return res.status(400).json({ error: "날짜는 YYYY-MM-DD 형식이어야 해요" });
+    }
 
-  const schedule = await prisma.courseSchedule.create({
-    data: { courseId: req.params.id, date },
-    include: scheduleWithRelations,
-  });
+    const schedule = await prisma.courseSchedule.create({
+      data: { courseId: req.params.id, date },
+      include: scheduleWithRelations,
+    });
 
-  res.json(toCourseSchedule(schedule));
-});
+    res.json(toCourseSchedule(schedule));
+  })
+);
 
 // DELETE /api/courses/schedule/:scheduleId — 등록된 일정 하나를 취소한다(일정 id 기준).
-router.delete("/schedule/:scheduleId", async (req, res) => {
-  const existing = await prisma.courseSchedule.findUnique({
-    where: { id: req.params.scheduleId },
-    include: { course: true },
-  });
-  if (!existing || existing.course.userId !== req.userId) {
-    return res.status(404).json({ error: "일정을 찾을 수 없어요" });
-  }
+router.delete(
+  "/schedule/:scheduleId",
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.courseSchedule.findUnique({
+      where: { id: req.params.scheduleId },
+      include: { course: true },
+    });
+    if (!existing || existing.course.userId !== req.userId) {
+      return res.status(404).json({ error: "일정을 찾을 수 없어요" });
+    }
 
-  await prisma.courseSchedule.delete({ where: { id: req.params.scheduleId } });
-  res.status(204).send();
-});
+    await prisma.courseSchedule.delete({ where: { id: req.params.scheduleId } });
+    res.status(204).send();
+  })
+);
 
 export default router;
