@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { RARITY_LABEL, type Badge } from "@/lib/badges";
 import { cn } from "@/lib/cn";
 
@@ -54,11 +55,11 @@ export function BadgeDetailModal({ badge, onClose, onGo }: BadgeDetailModalProps
           보여줘야 하기 때문이다. */}
       <div
         className={cn(
-          "mx-auto -mt-1 mb-1 flex h-16 w-16 items-center justify-center rounded-2xl text-3xl",
+          "mx-auto -mt-1 mb-1 flex h-16 w-16 items-center justify-center rounded-2xl",
           shown.got ? "bg-brand-100" : "bg-surface opacity-40 grayscale"
         )}
       >
-        {masked ? "❔" : shown.emoji}
+        <Emoji3D emoji={masked ? "❔" : shown.emoji} size={40} />
       </div>
 
       <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-ink-muted">
@@ -104,7 +105,10 @@ export function BadgeDetailModal({ badge, onClose, onGo }: BadgeDetailModalProps
 
       {/* 단계형만 "마지막 단계"라는 말이 성립한다 — 단계가 없는 뱃지엔 다음 단계가 애초에 없다. */}
       {maxed && shown.got && shown.maxLevel > 1 ? (
-        <p className="text-[11px] font-bold text-brand-700">마지막 단계까지 다 모았어요 🎉</p>
+        <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-brand-700">
+          마지막 단계까지 다 모았어요
+          <Emoji3D emoji="🎉" size={14} shadow={false} />
+        </p>
       ) : null}
 
       {/* 조건만 알려주고 끝내면 거기서 끊긴다 — 갈 곳이 있는 뱃지는 그 화면으로 보내준다. */}

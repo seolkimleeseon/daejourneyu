@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BadgeGrid } from "@/components/my/BadgeGrid";
 import type { BadgeId } from "@/lib/badges";
 import { makeBadge } from "@/test/fixtures";
+import { icon3D } from "@/test/icon3d";
 
 const IDS: BadgeId[] = [
   "dj-full-round",
@@ -104,7 +105,8 @@ describe("BadgeGrid", () => {
     render(<BadgeGrid badges={[hiddenGot]} onSelectBadge={vi.fn()} onOpenAll={vi.fn()} />);
 
     expect(screen.getByText("야행성 산책러")).toBeTruthy();
-    expect(screen.getByText("🎉 뱃지를 모두 모았어요!")).toBeTruthy();
+    expect(screen.getByText("뱃지를 모두 모았어요!")).toBeTruthy();
+    expect(icon3D("party_popper_3d.png")).toBeTruthy();
   });
 
   it("헤더와 타일 사이에 남은 거리 줄을 끼우고, 전체 보기를 누르면 알린다", async () => {

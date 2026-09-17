@@ -1,6 +1,7 @@
 "use client";
 
 import type { Pet } from "@/types";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 
 interface PetPassportCardProps {
   pet: Pet | null;
@@ -29,8 +30,8 @@ export function PetPassportCard({ pet, isLoggedIn, loading, onClick }: PetPasspo
       </div>
 
       <div className="flex items-center gap-3.5 px-4 py-4">
-        <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-xl border-2 border-brand-300 bg-brand-100 text-3xl">
-          {pet?.emoji ?? "🐾"}
+        <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-xl border-2 border-brand-300 bg-brand-100">
+          <Emoji3D emoji={pet?.emoji ?? "🐾"} size={38} />
         </div>
 
         {loading ? (

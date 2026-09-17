@@ -29,6 +29,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
       open={open}
       onClose={onClose}
       emoji="🐾"
+      icon3D
       title="로그인이 필요해요"
       description="로그인하면 반려동물 여권과 내 활동을 볼 수 있어요."
       widthClass="w-[300px]"
