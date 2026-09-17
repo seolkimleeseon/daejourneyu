@@ -192,9 +192,17 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
         ))}
       </div>
 
+      {/*
+        다박 일정 막대(barSegments)가 grid-row/grid-column을 명시해서 날짜 칸 위에 겹쳐 그려지는데,
+        날짜 칸들을 auto-flow(암묵적 배치)에 맡겨두면 브라우저가 명시적으로 배치된 막대 때문에
+        칸 배치 순서를 헷갈려서 뒤쪽 날짜들이 엉뚱한 칸으로 밀리는 문제가 있었다 — 칸도 전부
+        같은 (행, 열)을 명시해서 막대와 완전히 독립적으로 배치되게 한다.
+      */}
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
-          if (!cell) return <div key={`empty-${i}`} />;
+          if (!cell) return null;
+          const row = Math.floor(i / 7) + 1;
+          const col = (i % 7) + 1;
           const hasDot = dotDates.has(cell.date);
           const isToday = cell.date === todayYmd;
           const isSelected = cell.date === selectedDate;
@@ -203,6 +211,7 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
               key={cell.date}
               type="button"
               onClick={() => setSelectedDate(cell.date)}
+              style={{ gridRow: row, gridColumn: col }}
               className={cn(
                 "relative flex aspect-square flex-col items-center justify-start rounded-lg border pt-1 text-[10px] text-ink",
                 isSelected && "border-brand-400 bg-brand-100",
