@@ -101,24 +101,74 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
   const selectedSchedules = schedules.filter((schedule) => schedule.date === selectedDate);
 
-  /**
-   * 당일치기(0박)는 점 하나로, 1박 이상은 시작일부터 박수만큼 이어지는 기간 내내 칸 배경을
-   * 은은하게 칠해서 표시한다 — 점만 여러 날 찍어두면 "이 날들이 한 여행으로 이어진다"는 게 안
-   * 읽혔고, 칸 사이 간격을 넘나드는 연결선은 얇고 어색해 보여서 배경 톤으로 바꿨다.
-   */
-  const { rangeDates, dotDates } = useMemo(() => {
-    const rangeDates = new Set<string>();
-    const dotDates = new Set<string>();
+  /** 날짜 → 달 그리드에서의 (행, 열). 다박 일정의 이어진 막대를 그 위치에 정확히 겹쳐 그리는 데 쓴다. */
+  const datePosition = useMemo(() => {
+    const map = new Map<string, { row: number; col: number }>();
+    cells.forEach((cell, i) => {
+      if (cell) map.set(cell.date, { row: Math.floor(i / 7), col: i % 7 });
+    });
+    return map;
+  }, [cells]);
+
+  /** 당일치기(0박)는 점 하나로 표시한다. */
+  const dotDates = useMemo(() => {
+    const set = new Set<string>();
     schedules.forEach((schedule) => {
       const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
-      if (nights === 0) {
-        dotDates.add(schedule.date);
-        return;
-      }
-      for (let offset = 0; offset <= nights; offset++) rangeDates.add(addDays(schedule.date, offset));
+      if (nights === 0) set.add(schedule.date);
     });
-    return { rangeDates, dotDates };
+    return set;
   }, [schedules, courses]);
+
+  /**
+   * 1박 이상은 시작일부터 박수만큼 이어지는 기간 전체를 날짜 칸 위에 정확히 겹친 막대로 잇는다.
+   * 점을 여러 날 찍거나 칸 배경만 칠하면 "이 날들이 한 여행으로 이어진다"는 게 잘 안 읽혀서,
+   * 구글 캘린더처럼 달력 그리드 위에 그대로 겹치는 막대를 그린다 — CSS grid의 명시적
+   * grid-column 배치를 쓰면 칸 사이 간격(gap)까지 자동으로 막대에 포함돼 이어져 보이므로,
+   * margin을 억지로 당겨 붙이는 트릭이 필요 없다. 한 주를 넘어가는 일정은 주(행)마다 막대를
+   * 끊어서 그리고, 실제 여행의 시작/끝인 쪽 끄트머리만 둥글게 만든다.
+   */
+  const barSegments = useMemo(() => {
+    type Point = { row: number; col: number; isFirst: boolean; isLast: boolean };
+    const segments: { key: string; row: number; colStart: number; colEnd: number; roundLeft: boolean; roundRight: boolean }[] = [];
+
+    schedules.forEach((schedule) => {
+      const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
+      if (nights === 0) return;
+
+      const points: Point[] = [];
+      for (let offset = 0; offset <= nights; offset++) {
+        const pos = datePosition.get(addDays(schedule.date, offset));
+        if (pos) points.push({ ...pos, isFirst: offset === 0, isLast: offset === nights });
+      }
+
+      let run: Point[] = [];
+      const flushRun = () => {
+        if (run.length === 0) return;
+        const first = run[0];
+        const last = run[run.length - 1];
+        segments.push({
+          key: `${schedule.id}-${first.row}`,
+          row: first.row,
+          colStart: first.col,
+          colEnd: last.col,
+          roundLeft: first.isFirst,
+          roundRight: last.isLast,
+        });
+        run = [];
+      };
+
+      points.forEach((point, i) => {
+        const prev = points[i - 1];
+        const continuesRow = prev && prev.row === point.row && prev.col === point.col - 1;
+        if (!continuesRow) flushRun();
+        run.push(point);
+      });
+      flushRun();
+    });
+
+    return segments;
+  }, [schedules, courses, datePosition]);
 
   return (
     <div className="px-4 pb-6 pt-4">
@@ -145,7 +195,6 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`empty-${i}`} />;
-          const inRange = rangeDates.has(cell.date);
           const hasDot = dotDates.has(cell.date);
           const isToday = cell.date === todayYmd;
           const isSelected = cell.date === selectedDate;
@@ -155,14 +204,9 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
               type="button"
               onClick={() => setSelectedDate(cell.date)}
               className={cn(
-                "relative flex aspect-square flex-col items-center justify-start rounded-lg border pt-1 text-[10px]",
-                isSelected
-                  ? "border-brand-400 bg-brand-100 text-ink"
-                  : isToday
-                    ? "border-brand text-ink"
-                    : inRange
-                      ? "border-brand-200 bg-brand-50 font-semibold text-brand-700"
-                      : "border-line text-ink"
+                "relative flex aspect-square flex-col items-center justify-start rounded-lg border pt-1 text-[10px] text-ink",
+                isSelected && "border-brand-400 bg-brand-100",
+                isToday && !isSelected && "border-brand"
               )}
             >
               <span>{cell.day}</span>
@@ -170,6 +214,18 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
             </button>
           );
         })}
+        {barSegments.map((segment) => (
+          <div
+            key={segment.key}
+            aria-hidden
+            className={cn(
+              "pointer-events-none mb-1 h-2 self-end bg-brand",
+              segment.roundLeft && "rounded-l-full",
+              segment.roundRight && "rounded-r-full"
+            )}
+            style={{ gridRow: segment.row + 1, gridColumn: `${segment.colStart + 1} / ${segment.colEnd + 2}` }}
+          />
+        ))}
       </div>
 
       <div className="mt-2 flex items-center gap-3 text-[10px] text-ink-muted">
@@ -177,7 +233,7 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
           <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 당일치기
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-md border border-brand-200 bg-brand-50" /> 1박 이상
+          <span className="h-2 w-4 rounded-full bg-brand" /> 1박 이상
         </span>
       </div>
 

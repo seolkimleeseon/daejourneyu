@@ -33,6 +33,11 @@ function dayCell(day: string): HTMLElement {
   return screen.getAllByRole("button").find((button) => button.textContent === day)!;
 }
 
+/** 다박 일정이 달 그리드 위에 겹쳐 그리는 막대(row/column으로 정확히 배치)들. */
+function barEls(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll('[aria-hidden="true"]'));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -80,17 +85,42 @@ describe("달 그리드", () => {
     expect(dayCell("21").querySelector(".rounded-full")).toBeNull();
   });
 
-  it("여러 박이면 기간 내내 칸 배경을 칠해 이어진 것처럼 보이게 한다 — 2박3일이 하루짜리 점처럼 보이지 않게", () => {
+  it("여러 박이면 겹쳐 그린 막대로 날짜 칸들을 이어붙인다 — 2박3일이 하루짜리 점처럼 보이지 않게", () => {
     useCourseStore.setState({
       courses: [makeCourse({ id: "course-1", nights: 2 })],
+      // 2026-09-20(일)~22(화) — 한 주 안에 다 들어간다.
       schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-20" })],
     });
-    render(<ScheduleCalendar />);
+    const { container } = render(<ScheduleCalendar />);
 
-    expect(dayCell("20").className).toContain("bg-brand-50");
-    expect(dayCell("21").className).toContain("bg-brand-50");
-    expect(dayCell("22").className).toContain("bg-brand-50");
-    expect(dayCell("23").className).not.toContain("bg-brand-50");
+    const segments = barEls(container);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].style.gridColumn).toBe("1 / 4");
+    expect(segments[0].className).toContain("rounded-l-full");
+    expect(segments[0].className).toContain("rounded-r-full");
+  });
+
+  it("주를 넘어가는 일정은 주마다 막대를 끊어 그리고, 실제 시작·끝 쪽 끄트머리만 둥글게 한다", () => {
+    useCourseStore.setState({
+      courses: [makeCourse({ id: "course-1", nights: 2 })],
+      // 2026-09-26(토)~27(일)~28(월) — 주 경계를 넘어간다.
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-26" })],
+    });
+    const { container } = render(<ScheduleCalendar />);
+
+    const segments = barEls(container).sort(
+      (a, b) => Number(a.style.gridRow) - Number(b.style.gridRow)
+    );
+    expect(segments).toHaveLength(2);
+
+    const [firstWeekSegment, secondWeekSegment] = segments;
+    expect(firstWeekSegment.style.gridColumn).toBe("7 / 8"); // 토요일 한 칸
+    expect(firstWeekSegment.className).toContain("rounded-l-full");
+    expect(firstWeekSegment.className).not.toContain("rounded-r-full");
+
+    expect(secondWeekSegment.style.gridColumn).toBe("1 / 3"); // 일~월
+    expect(secondWeekSegment.className).not.toContain("rounded-l-full");
+    expect(secondWeekSegment.className).toContain("rounded-r-full");
   });
 
   it("날짜를 누르면 그 날 일정으로 바꾼다", async () => {
