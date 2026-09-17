@@ -54,7 +54,60 @@ const EMOJI_3D_MAP: Record<string, string> = {
   "🤝": "/icons/3d/handshake_3d.png",
   "⭐": "/icons/3d/star_3d.png",
   "🎈": "/icons/3d/balloon_3d.png",
+  // 둘러보기(FEED)
+  "🔒": "/icons/3d/locked_3d.png",
+  "📰": "/icons/3d/newspaper_3d.png",
+  "✍️": "/icons/3d/writing_hand_3d.png",
+  "🗑": "/icons/3d/wastebasket_3d.png",
+  "🔥": "/icons/3d/fire_3d.png",
+  "📥": "/icons/3d/inbox_tray_3d.png",
+  "❤️": "/icons/3d/red_heart_3d.png",
+  "🤍": "/icons/3d/white_heart_3d.png",
+  // 마이(MY) — 여권·반려동물
+  "👋": "/icons/3d/waving_hand_3d.png",
+  "🔔": "/icons/3d/bell_3d.png",
+  "🦮": "/icons/3d/guide_dog_3d.png",
+  "🐇": "/icons/3d/rabbit_3d.png",
+  // 마이(MY) — 뱃지
+  "❔": "/icons/3d/white_question_mark_3d.png",
+  "⛰️": "/icons/3d/mountain_3d.png",
+  "❄️": "/icons/3d/snowflake_3d.png",
+  "🌄": "/icons/3d/sunrise_over_mountains_3d.png",
+  "🌟": "/icons/3d/glowing_star_3d.png",
+  "🌧️": "/icons/3d/cloud_with_rain_3d.png",
+  "🌰": "/icons/3d/chestnut_3d.png",
+  "🌲": "/icons/3d/evergreen_tree_3d.png",
+  "🍁": "/icons/3d/maple_leaf_3d.png",
+  "🍚": "/icons/3d/cooked_rice_3d.png",
+  "🍽️": "/icons/3d/fork_and_knife_with_plate_3d.png",
+  "🎂": "/icons/3d/birthday_cake_3d.png",
+  "🎆": "/icons/3d/fireworks_3d.png",
+  "🎪": "/icons/3d/circus_tent_3d.png",
+  "🏞️": "/icons/3d/national_park_3d.png",
+  "🏡": "/icons/3d/house_with_garden_3d.png",
+  "🐢": "/icons/3d/turtle_3d.png",
+  "💚": "/icons/3d/green_heart_3d.png",
+  "💯": "/icons/3d/hundred_points_3d.png",
+  "📆": "/icons/3d/tear-off_calendar_3d.png",
+  "📸": "/icons/3d/camera_with_flash_3d.png",
+  "🚌": "/icons/3d/bus_3d.png",
+  "🚗": "/icons/3d/automobile_3d.png",
+  "🚩": "/icons/3d/triangular_flag_3d.png",
+  "🤸": "/icons/3d/person_cartwheeling_3d.png",
+  "🧬": "/icons/3d/dna_3d.png",
+  "🧳": "/icons/3d/luggage_3d.png",
 };
+
+/**
+ * 이모지 이성질체(U+FE0F 이형 선택자) 흡수용 조회 인덱스.
+ * 같은 그림인데 소스마다 "⛰️"처럼 붙어 있기도, "🗑"처럼 빠져 있기도 해서 — 키를 그대로 비교하면
+ * 한쪽만 3D로 바뀌고 다른 쪽은 평면 이모지로 남는다. 조회 전에 양쪽 모두 떼어내고 맞춘다.
+ */
+const stripVariationSelector = (emoji: string) => emoji.replace(/\uFE0F/g, "");
+
+const EMOJI_3D_INDEX: Record<string, string> = Object.fromEntries(
+  Object.entries(EMOJI_3D_MAP).map(([emoji, src]) => [stripVariationSelector(emoji), src])
+);
 
 interface Emoji3DProps {
   emoji: string;
@@ -70,7 +123,7 @@ interface Emoji3DProps {
 }
 
 export function Emoji3D({ emoji, size = 28, className, glowClassName, shadow = true }: Emoji3DProps) {
-  const src = EMOJI_3D_MAP[emoji];
+  const src = EMOJI_3D_INDEX[stripVariationSelector(emoji)];
 
   if (!src) {
     // 3D 렌더가 없는 이모지도 매핑된 아이콘과 같은 정사각 박스를 차지해야, 같은 자리에서

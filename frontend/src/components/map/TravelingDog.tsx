@@ -46,7 +46,7 @@ export function TravelingDog({ destination }: TravelingDogProps) {
           }}
         >
           <span className="animate-dog-bob flex">
-            <RunningDog className="text-ink" style={{ width: 62, height: 62 }} />
+            <RunningDog className="text-accent-gold" style={{ width: 62, height: 62 }} />
           </span>
         </span>
       </div>
@@ -58,7 +58,7 @@ export function TravelingDog({ destination }: TravelingDogProps) {
   );
 }
 
-/** 오른쪽(목적지)을 향해 달리는 강아지 옆모습. 단색 실루엣 + 민트 반다나 포인트. */
+/** 오른쪽(목적지)을 향해 달리는 강아지 옆모습. 단색 실루엣 + 민트 목줄 포인트. */
 function RunningDog({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg
@@ -95,12 +95,19 @@ function RunningDog({ className, style }: { className?: string; style?: React.CS
         <path d="M43 10c-3-4-7-3-9 1 2 3 6 4 10 2z" />
       </g>
 
-      {/* 반다나 — 서비스 브랜드 포인트 */}
-      <path d="M38 13l9 1-3 10-7-4z" fill="var(--color-brand)" />
+      {/* 목줄 */}
+      <path
+        d="M36 12Q33 18 43 24"
+        stroke="var(--color-brand)"
+        strokeWidth="4"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <circle cx="42.5" cy="25.5" r="1.6" fill="var(--color-steel-400)" />
       {/* 눈 */}
-      <circle cx="47" cy="15.5" r="1.5" fill="var(--color-card)" />
+      <circle cx="47" cy="15.5" r="1.5" fill="var(--color-ink)" />
       {/* 코 */}
-      <circle cx="58" cy="17.5" r="1.6" fill="var(--color-card)" opacity="0.55" />
+      <circle cx="58" cy="17.5" r="1.6" fill="var(--color-ink)" opacity="0.75" />
     </svg>
   );
 }

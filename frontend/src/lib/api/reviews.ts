@@ -31,6 +31,7 @@ export async function createReviewApi(input: ReviewCreateInput): Promise<Review>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+  if (res.status === 413) throw new Error("사진 용량이 너무 커요. 더 작은 사진으로 다시 시도해주세요");
   if (!res.ok) throw new Error("후기를 등록하지 못했어요");
   return res.json();
 }

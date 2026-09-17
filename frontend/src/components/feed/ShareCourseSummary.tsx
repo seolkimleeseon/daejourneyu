@@ -2,6 +2,7 @@
 
 import type { Course } from "@/types";
 import { Tag } from "@/components/ui/Tag";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { nightsLabel, resolveCourseEmoji, SOURCE_LABEL, SOURCE_TONE } from "@/lib/courseFormat";
 
 interface ShareCourseSummaryProps {
@@ -17,8 +18,8 @@ export function ShareCourseSummary({ course }: ShareCourseSummaryProps) {
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-brand-300 bg-brand-100/60 px-3.5 py-3">
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-card text-2xl">
-        {resolveCourseEmoji(course.emoji, course.source)}
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-card">
+        <Emoji3D emoji={resolveCourseEmoji(course.emoji, course.source)} size={28} />
       </span>
 
       <div className="min-w-0 flex-1">

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Badge } from "@/lib/badges";
 import { makeBadge } from "@/test/fixtures";
+import { icon3D } from "@/test/icon3d";
 import MyBadgesPage from "./page";
 
 const nav = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn() }));
@@ -133,9 +134,9 @@ describe("여행 뱃지 전체 목록", () => {
     render(<MyBadgesPage />);
 
     expect(screen.queryByText("야행성 산책러")).toBeNull();
-    expect(screen.queryByText("🌙")).toBeNull();
+    expect(icon3D("crescent_moon_3d.png")).toBeNull();
     expect(screen.getByText("???")).toBeTruthy();
-    expect(screen.getByText("❔")).toBeTruthy();
+    expect(icon3D("white_question_mark_3d.png")).toBeTruthy();
   });
 
   it("딴 히든 뱃지는 이름을 드러낸다", () => {

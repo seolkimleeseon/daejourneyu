@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { PetPassportCard } from "@/components/my/PetPassportCard";
 import { makePet } from "@/test/fixtures";
+import { icon3D } from "@/test/icon3d";
 
 describe("PetPassportCard", () => {
   it("세션 복구 전에는 로그인 여부를 단정하지 않고 불러오는 중으로 보여준다", () => {
@@ -22,7 +23,7 @@ describe("PetPassportCard", () => {
     render(<PetPassportCard pet={null} isLoggedIn onClick={vi.fn()} />);
 
     expect(screen.getByText("반려동물 미등록")).toBeTruthy();
-    expect(screen.getByText("🐾")).toBeTruthy();
+    expect(icon3D("paw_prints_3d.png")).toBeTruthy();
   });
 
   it("반려동물 정보를 여권 줄로 보여주고, MBTI가 없으면 미검사로 표시한다", () => {
@@ -33,7 +34,7 @@ describe("PetPassportCard", () => {
     expect(screen.getByText("말티즈")).toBeTruthy();
     expect(screen.getByText("3.2kg · 4살")).toBeTruthy();
     expect(screen.getByText("미검사")).toBeTruthy();
-    expect(screen.getByText("🐩")).toBeTruthy();
+    expect(icon3D("poodle_3d.png")).toBeTruthy();
 
     rerender(
       <PetPassportCard

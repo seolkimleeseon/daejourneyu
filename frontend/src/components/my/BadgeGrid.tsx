@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { Badge } from "@/lib/badges";
 import { remainingSteps } from "@/lib/badges";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { cn } from "@/lib/cn";
 
 /** 4열 그리드라 8개면 정확히 두 줄. 뱃지가 늘어도 마이탭이 세로로 길어지지 않게 여기서 자른다. */
@@ -91,8 +92,15 @@ export function BadgeGrid({ badges, petName, nearline, onSelectBadge, onOpenAll 
               badge.got ? "border-brand-300 bg-brand-100" : "border-dashed border-line-strong"
             )}
           >
-            <div className={cn("mb-1 text-[22px] leading-none", !badge.got && "opacity-40 grayscale")}>
-              {badge.hidden && !badge.got ? "❔" : badge.emoji}
+            {/* 미획득은 부모에 filter를 걸어 3D 아이콘까지 통째로 흐려진다 — 타일 색만으로
+                상태를 가르는 그리드 규칙이 아이콘에도 그대로 적용된다. */}
+            <div
+              className={cn(
+                "mb-1 flex justify-center",
+                !badge.got && "opacity-40 grayscale"
+              )}
+            >
+              <Emoji3D emoji={badge.hidden && !badge.got ? "❔" : badge.emoji} size={26} />
             </div>
             <div className={cn("text-[9px] font-extrabold", !badge.got && "text-ink-muted")}>
               {badge.hidden && !badge.got ? "???" : badge.name}
@@ -105,8 +113,9 @@ export function BadgeGrid({ badges, petName, nearline, onSelectBadge, onOpenAll 
       </div>
 
       {gotCount === badges.length ? (
-        <p className="mt-2.5 text-center text-[11px] font-bold text-brand-700">
-          🎉 뱃지를 모두 모았어요!
+        <p className="mt-2.5 flex items-center justify-center gap-1 text-[11px] font-bold text-brand-700">
+          <Emoji3D emoji="🎉" size={14} shadow={false} />
+          뱃지를 모두 모았어요!
         </p>
       ) : null}
     </div>

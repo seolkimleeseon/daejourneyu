@@ -98,7 +98,7 @@ describe("게시물 상세 — 내용", () => {
       `/place/${encodeURIComponent("한밭수목원")}`
     );
     expect(screen.getByText("서구 · 산책 · 전 견종")).toBeTruthy();
-    expect(screen.getByText("📥 5명이 담아감")).toBeTruthy();
+    expect(screen.getByText("5명이 담아감")).toBeTruthy();
   });
 
   it("같은 유형 표시는 남의 글에만 붙는다", () => {

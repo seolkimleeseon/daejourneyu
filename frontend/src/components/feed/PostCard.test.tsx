@@ -71,6 +71,6 @@ describe("PostCard", () => {
   it("하단 줄에 담긴 수를 보여준다", () => {
     render(<PostCard post={makePost({ saves: 12 })} />);
 
-    expect(screen.getByText("📥 12명이 담아감")).toBeTruthy();
+    expect(screen.getByText("12명이 담아감")).toBeTruthy();
   });
 });

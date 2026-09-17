@@ -43,7 +43,7 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} emoji="👋" title="로그아웃 할까요?" description="다시 로그인하면 정보가 그대로 남아있어요">
+    <Modal open={open} onClose={onClose} emoji="👋" icon3D title="로그아웃 할까요?" description="다시 로그인하면 정보가 그대로 남아있어요">
       <Button
         variant="primary"
         className="bg-accent-coral active:bg-accent-coral"

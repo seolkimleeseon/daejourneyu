@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { TopBar } from "@/components/shell/TopBar";
 import { Button } from "@/components/ui/Button";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { FeedEmptyState } from "@/components/feed/FeedEmptyState";
 import { ShareCourseSummary } from "@/components/feed/ShareCourseSummary";
 import { useMyPosts, useCreatePost } from "@/hooks/usePosts";
@@ -136,8 +137,9 @@ function CourseShareToFeedPageInner() {
         className="w-full resize-none rounded-lg border border-line bg-card p-3 text-sm text-ink outline-none focus:border-brand-400"
       />
 
-      <p className="mt-4 rounded-2xl bg-brand-100/60 px-3.5 py-3 text-xs leading-relaxed text-brand-700">
-        🐾 코스의 장소·동선·조건 뱃지는 자동으로 함께 올라가요
+      <p className="mt-4 flex items-center gap-1.5 rounded-2xl bg-brand-100/60 px-3.5 py-3 text-xs leading-relaxed text-brand-700">
+        <Emoji3D emoji="🐾" size={15} shadow={false} />
+        코스의 장소·동선·조건 뱃지는 자동으로 함께 올라가요
       </p>
 
       <Button

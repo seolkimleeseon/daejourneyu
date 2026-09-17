@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Article } from "@/types";
 import { Card } from "@/components/ui/Card";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { resolveArticleLike, formatFeedDate } from "@/lib/feed";
@@ -46,7 +47,10 @@ export function ArticleCard({ article, onRequireLogin }: ArticleCardProps) {
         prefetch={false}
         className="block px-3.5 pb-2 pt-3.5"
       >
-        <div className="text-sm font-bold text-ink">📰 {article.title}</div>
+        <div className="flex items-start gap-1.5 text-sm font-bold text-ink">
+          <Emoji3D emoji="📰" size={16} shadow={false} />
+          <span className="min-w-0 flex-1">{article.title}</span>
+        </div>
         <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">{article.summary}</p>
       </Link>
 
@@ -58,9 +62,13 @@ export function ArticleCard({ article, onRequireLogin }: ArticleCardProps) {
           type="button"
           onClick={handleLike}
           aria-pressed={liked}
-          className={cn("font-bold transition-colors", liked ? "text-accent-coral" : "text-ink-muted")}
+          className={cn(
+            "inline-flex items-center gap-1 font-bold transition-colors",
+            liked ? "text-accent-coral" : "text-ink-muted"
+          )}
         >
-          {liked ? "❤" : "♡"} {likes}
+          <Emoji3D emoji={liked ? "❤️" : "🤍"} size={12} shadow={false} />
+          {likes}
         </button>
       </div>
     </Card>

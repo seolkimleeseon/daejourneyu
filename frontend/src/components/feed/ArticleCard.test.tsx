@@ -5,6 +5,7 @@ import { ArticleCard } from "@/components/feed/ArticleCard";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { makeArticle, makeUser } from "@/test/fixtures";
+import { icon3D } from "@/test/icon3d";
 
 beforeEach(() => {
   useFeedStore.setState({ overrides: {}, articleLikes: {} });
@@ -23,7 +24,8 @@ describe("ArticleCard", () => {
 
     const { container } = render(<ArticleCard article={article} />);
 
-    expect(screen.getByText("📰 산책로 모음")).toBeTruthy();
+    expect(screen.getByText("산책로 모음")).toBeTruthy();
+    expect(icon3D("newspaper_3d.png")).toBeTruthy();
     expect(screen.getByText("그늘 많은 곳")).toBeTruthy();
     expect(screen.getByText("8월 2일")).toBeTruthy();
     expect(screen.getByText(`조회 ${(1234).toLocaleString()}`)).toBeTruthy();
@@ -35,16 +37,18 @@ describe("ArticleCard", () => {
     render(<ArticleCard article={makeArticle({ id: "a1", likes: 5, liked: false })} />);
     const button = screen.getByRole("button");
 
-    expect(button.textContent).toBe("♡ 5");
+    expect(button.textContent).toBe("5");
+    expect(icon3D("white_heart_3d.png", button)).toBeTruthy();
     expect(button.getAttribute("aria-pressed")).toBe("false");
 
     await user.click(button);
-    expect(button.textContent).toBe("❤ 6");
+    expect(button.textContent).toBe("6");
+    expect(icon3D("red_heart_3d.png", button)).toBeTruthy();
     expect(button.getAttribute("aria-pressed")).toBe("true");
     expect(useFeedStore.getState().articleLikes).toEqual({ a1: true });
 
     await user.click(button);
-    expect(button.textContent).toBe("♡ 5");
+    expect(button.textContent).toBe("5");
   });
 
   it("비로그인 상태에서는 좋아요를 기록하지 않고 로그인부터 안내한다", async () => {

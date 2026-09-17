@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { useMyBadges } from "@/hooks/useMyBadges";
 import { groupBadgesByCategory, RARITY_LABEL, type Badge } from "@/lib/badges";
 import { cn } from "@/lib/cn";
@@ -92,11 +93,11 @@ function BadgeRow({ badge, onGo }: BadgeRowProps) {
       {/* 자물쇠로 갈아치우지 않는다 — 어떤 뱃지인지 보여야 해볼 만한 것으로 읽힌다. */}
       <span
         className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl",
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
           badge.got ? "bg-card" : "bg-surface opacity-40 grayscale"
         )}
       >
-        {masked ? "❔" : badge.emoji}
+        <Emoji3D emoji={masked ? "❔" : badge.emoji} size={26} />
       </span>
 
       <div className="min-w-0 flex-1">

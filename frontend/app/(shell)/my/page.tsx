@@ -115,19 +115,27 @@ export default function MyPage() {
           <div className="mb-1 px-1 text-xs font-bold text-ink-muted">내 활동</div>
           <MenuItem
             label="내가 쓴 후기"
+            icon="✍️"
             trailing={isLoggedIn ? `${myReviewCount}개 ›` : "›"}
             onClick={handleReviewsClick}
           />
           <MenuItem
             label="알림 설정 · 준비 중"
+            icon="🔔"
             trailing="›"
             onClick={() => showToast("알림 설정은 준비 중이에요")}
           />
           {!hydrated ? null : isLoggedIn ? (
-            <MenuItem label="로그아웃" tone="danger" onClick={() => setLogoutOpen(true)} />
+            <MenuItem
+              label="로그아웃"
+              icon="👋"
+              tone="danger"
+              onClick={() => setLogoutOpen(true)}
+            />
           ) : (
             <MenuItem
               label="로그인 / 회원가입"
+              icon="🐾"
               tone="brand"
               trailing="›"
               onClick={() => setLoginOpen(true)}

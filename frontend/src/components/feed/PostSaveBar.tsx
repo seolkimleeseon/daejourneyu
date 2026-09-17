@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { LoginModal } from "@/components/my/LoginModal";
 import { useToggleSave } from "@/hooks/usePosts";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -45,10 +46,16 @@ export function PostSaveBar({ postId, isMine, saves, saved, className }: PostSav
 
   return (
     <div className={cn("flex items-center gap-3.5 border-t border-line px-4 py-2.5", className)}>
-      <span className="text-[11px] font-bold text-accent-coral">📥 {saves}명이 담아감</span>
+      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent-coral">
+        <Emoji3D emoji="📥" size={14} shadow={false} />
+        {saves}명이 담아감
+      </span>
 
       {isMine ? (
-        <span className="ml-auto text-[11px] font-bold text-brand-700">🐾 내 코스</span>
+        <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-brand-700">
+          <Emoji3D emoji="🐾" size={14} shadow={false} />
+          내 코스
+        </span>
       ) : (
         <button
           type="button"
