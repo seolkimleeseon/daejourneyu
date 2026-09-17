@@ -102,12 +102,12 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const selectedSchedules = schedules.filter((schedule) => schedule.date === selectedDate);
 
   /**
-   * 당일치기(0박)는 점 하나로, 1박 이상은 시작일부터 박수만큼 이어지는 기간 내내 선으로
-   * 표시한다 — 점만 여러 날 찍어두면 "이 날들이 한 여행으로 이어진다"는 게 안 읽혔다.
-   * 선은 각 날짜가 그 여행의 시작/끝/중간 중 어디인지(둥근 모서리를 어느 쪽에 줄지)까지 들고 있는다.
+   * 당일치기(0박)는 점 하나로, 1박 이상은 시작일부터 박수만큼 이어지는 기간 내내 칸 배경을
+   * 은은하게 칠해서 표시한다 — 점만 여러 날 찍어두면 "이 날들이 한 여행으로 이어진다"는 게 안
+   * 읽혔고, 칸 사이 간격을 넘나드는 연결선은 얇고 어색해 보여서 배경 톤으로 바꿨다.
    */
-  const { lineByDate, dotDates } = useMemo(() => {
-    const lineByDate = new Map<string, { isStart: boolean; isEnd: boolean }>();
+  const { rangeDates, dotDates } = useMemo(() => {
+    const rangeDates = new Set<string>();
     const dotDates = new Set<string>();
     schedules.forEach((schedule) => {
       const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
@@ -115,11 +115,9 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
         dotDates.add(schedule.date);
         return;
       }
-      for (let offset = 0; offset <= nights; offset++) {
-        lineByDate.set(addDays(schedule.date, offset), { isStart: offset === 0, isEnd: offset === nights });
-      }
+      for (let offset = 0; offset <= nights; offset++) rangeDates.add(addDays(schedule.date, offset));
     });
-    return { lineByDate, dotDates };
+    return { rangeDates, dotDates };
   }, [schedules, courses]);
 
   return (
@@ -147,7 +145,7 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`empty-${i}`} />;
-          const line = lineByDate.get(cell.date);
+          const inRange = rangeDates.has(cell.date);
           const hasDot = dotDates.has(cell.date);
           const isToday = cell.date === todayYmd;
           const isSelected = cell.date === selectedDate;
@@ -157,23 +155,18 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
               type="button"
               onClick={() => setSelectedDate(cell.date)}
               className={cn(
-                "relative flex aspect-square flex-col items-center justify-start rounded-lg border border-line pt-1 text-[10px] text-ink",
-                isSelected && "border-brand-400 bg-brand-100",
-                isToday && !isSelected && "border-brand"
+                "relative flex aspect-square flex-col items-center justify-start rounded-lg border pt-1 text-[10px]",
+                isSelected
+                  ? "border-brand-400 bg-brand-100 text-ink"
+                  : isToday
+                    ? "border-brand text-ink"
+                    : inRange
+                      ? "border-brand-200 bg-brand-50 font-semibold text-brand-700"
+                      : "border-line text-ink"
               )}
             >
               <span>{cell.day}</span>
-              {line ? (
-                <span
-                  className={cn(
-                    "absolute bottom-1.5 h-1.5 bg-brand",
-                    line.isStart ? "left-1 rounded-l-full" : "left-0 -ml-1",
-                    line.isEnd ? "right-1 rounded-r-full" : "right-0 -mr-1"
-                  )}
-                />
-              ) : hasDot ? (
-                <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-brand" />
-              ) : null}
+              {hasDot ? <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-brand" /> : null}
             </button>
           );
         })}
@@ -184,7 +177,7 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
           <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 당일치기
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-1.5 w-3 rounded-full bg-brand" /> 1박 이상
+          <span className="h-3 w-3 rounded-md border border-brand-200 bg-brand-50" /> 1박 이상
         </span>
       </div>
 
