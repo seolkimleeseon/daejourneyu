@@ -17,9 +17,9 @@ describe("HotPostCard", () => {
 
     const { container } = render(<HotPostCard post={post} />);
 
-    expect(screen.getByText("🔥 지금 가장 많이 담아갔어요")).toBeTruthy();
+    expect(screen.getByText("지금 가장 많이 담아갔어요")).toBeTruthy();
     expect(screen.getByText("대청호 한 바퀴")).toBeTruthy();
-    expect(screen.getByText("📥 42명이 담아감")).toBeTruthy();
+    expect(screen.getByText("42명이 담아감")).toBeTruthy();
     expect(container.textContent).toContain("두부네 · 3곳");
     expect(screen.getByText("8월 12일")).toBeTruthy();
     expect(container.querySelector("a")?.getAttribute("href")).toBe("/feed/post/hot-1");

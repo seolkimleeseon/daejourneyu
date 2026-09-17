@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { makeArticle, makeUser } from "@/test/fixtures";
+import { icon3D } from "@/test/icon3d";
 import ArticleDetailPage from "./page";
 
 const nav = vi.hoisted(() => ({ replace: vi.fn(), back: vi.fn(), push: vi.fn() }));
@@ -69,7 +70,9 @@ describe("아티클 상세", () => {
     expect(screen.getByRole("heading", { name: "대전 산책로 모음" })).toBeTruthy();
     expect(screen.getByText("그늘 많은 곳")).toBeTruthy();
     expect(screen.getByText(/첫 줄/).textContent).toBe("첫 줄\n둘째 줄");
-    expect(screen.getByText("📰 다른 아티클 더 보러갈래요").getAttribute("href")).toBe("/feed?tab=article");
+    expect(screen.getByText("다른 아티클 더 보러갈래요").closest("a")?.getAttribute("href")).toBe(
+      "/feed?tab=article"
+    );
   });
 
   it("도움돼요를 누르면 수가 바뀌고 목록과 같은 스토어에 기록된다", async () => {
@@ -77,10 +80,12 @@ describe("아티클 상세", () => {
     render(<ArticleDetailPage />);
     const button = screen.getByRole("button", { name: /도움돼요/ });
 
-    expect(button.textContent).toBe("🤍도움돼요 5");
+    expect(button.textContent).toBe("도움돼요 5");
+    expect(icon3D("white_heart_3d.png", button)).toBeTruthy();
     await user.click(button);
 
-    expect(button.textContent).toBe("❤️도움돼요 6");
+    expect(button.textContent).toBe("도움돼요 6");
+    expect(icon3D("red_heart_3d.png", button)).toBeTruthy();
     expect(useFeedStore.getState().articleLikes).toEqual({ a1: true });
   });
 
@@ -101,7 +106,9 @@ describe("아티클 상세", () => {
     useFeedStore.setState({ articleLikes: { a1: true } });
     render(<ArticleDetailPage />);
 
-    expect(screen.getByRole("button", { name: /도움돼요/ }).textContent).toBe("❤️도움돼요 6");
+    const button = screen.getByRole("button", { name: /도움돼요/ });
+    expect(button.textContent).toBe("도움돼요 6");
+    expect(icon3D("red_heart_3d.png", button)).toBeTruthy();
   });
 
   it("되돌아갈 기록이 있으면 뒤로 가고, 새 탭으로 열었으면 아티클 목록으로 보낸다", async () => {

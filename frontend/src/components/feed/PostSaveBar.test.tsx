@@ -34,13 +34,13 @@ describe("PostSaveBar", () => {
   it("담긴 수를 보여준다", () => {
     render(<PostSaveBar postId="p1" isMine={false} saves={7} saved={false} />);
 
-    expect(screen.getByText("📥 7명이 담아감")).toBeTruthy();
+    expect(screen.getByText("7명이 담아감")).toBeTruthy();
   });
 
   it("내 코스에는 담기 버튼 대신 '내 코스' 표시만 둔다", () => {
     render(<PostSaveBar postId="p1" isMine saves={7} saved={false} />);
 
-    expect(screen.getByText("🐾 내 코스")).toBeTruthy();
+    expect(screen.getByText("내 코스")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
   });
 

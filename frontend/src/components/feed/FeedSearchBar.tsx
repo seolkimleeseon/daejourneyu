@@ -1,5 +1,7 @@
 "use client";
 
+import { Emoji3D } from "@/components/ui/Emoji3D";
+
 interface FeedSearchBarProps {
   /** 입력창에 보이는 글자. 타이핑은 여기까지만 반영되고 목록은 건드리지 않는다. */
   value: string;
@@ -30,15 +32,22 @@ export function FeedSearchBar({ value, onChange, onSubmit }: FeedSearchBarProps)
         onSubmit(value);
       }}
     >
-      <input
-        type="search"
-        value={value}
-        onChange={(event) => handleChange(event.target.value)}
-        enterKeyHint="search"
-        placeholder="🔍 장소로 코스 검색 후 엔터 (예: 한빛탑)"
-        aria-label="장소로 코스 검색"
-        className="w-full rounded-xl border border-line-strong bg-card px-3.5 py-2.5 text-xs text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand-500"
-      />
+      {/* 돋보기는 placeholder 글자가 아니라 입력창 안에 얹은 3D 아이콘이다 — 문자로 두면
+          입력을 시작하는 순간 placeholder와 함께 사라져서, 검색창이라는 표시가 없어진다. */}
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2">
+          <Emoji3D emoji="🔍" size={15} shadow={false} />
+        </span>
+        <input
+          type="search"
+          value={value}
+          onChange={(event) => handleChange(event.target.value)}
+          enterKeyHint="search"
+          placeholder="장소로 코스 검색 후 엔터 (예: 한빛탑)"
+          aria-label="장소로 코스 검색"
+          className="w-full rounded-xl border border-line-strong bg-card py-2.5 pl-9 pr-3.5 text-xs text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand-500"
+        />
+      </div>
     </form>
   );
 }

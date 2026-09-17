@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { TopBar } from "@/components/shell/TopBar";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { LoginModal } from "@/components/my/LoginModal";
 import { useArticle } from "@/hooks/useArticles";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -99,7 +100,7 @@ export default function ArticleDetailPage() {
               : "border-line-strong bg-card text-ink-muted"
           )}
         >
-          <span className="text-sm">{liked ? "❤️" : "🤍"}</span>
+          <Emoji3D emoji={liked ? "❤️" : "🤍"} size={16} shadow={false} />
           도움돼요 {likes}
         </button>
 
@@ -110,7 +111,8 @@ export default function ArticleDetailPage() {
           replace
           className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-500 text-xs font-bold text-white shadow-sm"
         >
-          📰 다른 아티클 더 보러갈래요
+          <Emoji3D emoji="📰" size={16} shadow={false} />
+          다른 아티클 더 보러갈래요
         </Link>
       </article>
 

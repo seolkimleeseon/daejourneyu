@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { makeArticle, makePet, makePost, PET_TYPE_NAME } from "@/test/fixtures";
+import { icon3D } from "@/test/icon3d";
 import FeedPage from "./page";
 
 const nav = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn(), search: "" }));
@@ -69,8 +70,11 @@ function paragraph(text: string) {
   return screen.queryByText((_, element) => element?.tagName === "P" && element.textContent === text);
 }
 
+/** 아티클 카드 제목. 제목 줄은 "3D 아이콘 + 제목" 두 span이라 마지막 span이 제목이다. */
 function articleTitles(): string[] {
-  return screen.getAllByText(/^📰 /).map((element) => element.textContent ?? "");
+  return Array.from(
+    document.querySelectorAll('a[href^="/article/"] > div > span:last-child')
+  ).map((element) => element.textContent ?? "");
 }
 
 beforeEach(() => {
@@ -101,7 +105,7 @@ describe("둘러보기 — 코스 탭", () => {
   it("기본 탭은 코스이고 인기 배너·목록·전체 건수를 보여준다", () => {
     render(<FeedPage />);
 
-    expect(screen.getByText("🔥 지금 가장 많이 담아갔어요")).toBeTruthy();
+    expect(screen.getByText("지금 가장 많이 담아갔어요")).toBeTruthy();
     expect(screen.getByText("가장 많이 담긴 코스")).toBeTruthy();
     expect(screen.getByText("갑천 산책 코스")).toBeTruthy();
     expect(screen.getByText("대덕 맛집 코스")).toBeTruthy();
@@ -134,7 +138,7 @@ describe("둘러보기 — 코스 탭", () => {
 
     expect(lastCourseOptions()).toMatchObject({ keyword: "한빛탑" });
     expect(hooks.useHottestPost).toHaveBeenLastCalledWith(false);
-    expect(screen.queryByText("🔥 지금 가장 많이 담아갔어요")).toBeNull();
+    expect(screen.queryByText("지금 가장 많이 담아갔어요")).toBeNull();
     expect(screen.queryByText(/같은 유형 코스만/)).toBeNull();
     expect(screen.getByText("'한빛탑' 검색 결과가 없어요")).toBeTruthy();
   });
@@ -147,7 +151,8 @@ describe("둘러보기 — 코스 탭", () => {
     await user.type(screen.getByRole("searchbox", { name: "장소로 코스 검색" }), "한빛탑{Enter}");
 
     expect(screen.getByText("한빛탑 야경 코스")).toBeTruthy();
-    expect(paragraph("🔍 전체 코스에서 ‘한빛탑’ 검색 · 총 1개")).toBeTruthy();
+    expect(paragraph("전체 코스에서 ‘한빛탑’ 검색 · 총 1개")).toBeTruthy();
+    expect(icon3D("magnifying_glass_tilted_left_3d.png")).toBeTruthy();
   });
 
   it("같은 유형 필터를 켜면 목록 조건에 반영한다", async () => {
@@ -214,7 +219,7 @@ describe("둘러보기 — 탭 전환", () => {
     render(<FeedPage />);
 
     expect(screen.getByText("갑천 산책 코스")).toBeTruthy();
-    expect(screen.queryByText("✎ 새 코스 자랑하기")).toBeNull();
+    expect(screen.queryByText("새 코스 자랑하기")).toBeNull();
   });
 });
 
@@ -231,7 +236,7 @@ describe("둘러보기 — 아티클 탭", () => {
     const user = userEvent.setup();
     render(<FeedPage />);
 
-    expect(articleTitles()).toEqual(["📰 인기 최신 글", "📰 인기 옛날 글", "📰 좋아요 적은 글"]);
+    expect(articleTitles()).toEqual(["인기 최신 글", "인기 옛날 글", "좋아요 적은 글"]);
     expect(paragraph("총 3개")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "정렬 기준" }));
@@ -246,7 +251,7 @@ describe("둘러보기 — 아티클 탭", () => {
     const user = userEvent.setup();
     render(<FeedPage />);
 
-    expect(articleTitles()).toEqual(["📰 인기 최신 글", "📰 좋아요 적은 글", "📰 인기 옛날 글"]);
+    expect(articleTitles()).toEqual(["인기 최신 글", "좋아요 적은 글", "인기 옛날 글"]);
 
     await user.click(screen.getByRole("button", { name: "정렬 기준" }));
     await user.click(screen.getByRole("option", { name: "인기순" }));
@@ -306,7 +311,7 @@ describe("둘러보기 — 아티클 탭", () => {
     setArticles([makeArticle({ id: "a", title: "좋아요 글", likes: 3 })]);
     render(<FeedPage />);
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "♡ 3" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "3" }));
 
     expect(loginModalOpen()).toBe(true);
     expect(useFeedStore.getState().articleLikes).toEqual({});
@@ -322,7 +327,7 @@ describe("둘러보기 — 내 글 탭", () => {
   it("자랑하기 진입 링크를 두고, 글이 없으면 빈 상태를 보여준다", () => {
     render(<FeedPage />);
 
-    expect(screen.getByText("✎ 새 코스 자랑하기").closest("a")?.getAttribute("href")).toBe(
+    expect(screen.getByText("새 코스 자랑하기").closest("a")?.getAttribute("href")).toBe(
       "/schedule/vault"
     );
     expect(screen.getByText("아직 자랑한 코스가 없어요")).toBeTruthy();
@@ -335,6 +340,6 @@ describe("둘러보기 — 내 글 탭", () => {
 
     expect(screen.getByText("내가 올린 코스")).toBeTruthy();
     expect(paragraph("총 1개")).toBeTruthy();
-    expect(screen.getByText("🐾 내 코스")).toBeTruthy();
+    expect(screen.getByText("내 코스")).toBeTruthy();
   });
 });

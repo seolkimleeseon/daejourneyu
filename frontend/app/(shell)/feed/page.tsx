@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { FeedSegments, type FeedSegment } from "@/components/feed/FeedSegments";
 import { FeedSortSelect } from "@/components/feed/FeedSortSelect";
 import { FeedSearchBar } from "@/components/feed/FeedSearchBar";
@@ -174,13 +175,18 @@ function FeedTabContent() {
                     0건일 때는 아래 빈 상태 안내가 같은 말을 하므로 숫자는 접는다. */}
                 <div className="flex items-center gap-2 px-0.5">
                   {courseTotal > 0 ? (
-                    <p className="text-[11px] text-ink-muted">
+                    <p className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
                       {searching ? (
                         <>
-                          🔍 전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
+                          <Emoji3D emoji="🔍" size={12} shadow={false} />
+                          <span>
+                            전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
+                          </span>
                         </>
                       ) : null}
-                      총 <b className="text-ink">{courseTotal}</b>개
+                      <span>
+                        총 <b className="text-ink">{courseTotal}</b>개
+                      </span>
                     </p>
                   ) : null}
                   <FeedSortSelect
@@ -268,9 +274,10 @@ function FeedTabContent() {
             {/* 코스 작성 화면은 포팅 대상이 아니므로(PLAN.md §1) 보관함에서 공유할 코스를 고르게 한다. */}
             <Link
               href="/schedule/vault"
-              className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand text-sm font-extrabold text-white shadow-md"
+              className="flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-brand-500 to-brand text-sm font-extrabold text-white shadow-md"
             >
-              ✎ 새 코스 자랑하기
+              <Emoji3D emoji="✍️" size={18} shadow={false} />
+              새 코스 자랑하기
             </Link>
 
             {myPostsLoading ? (

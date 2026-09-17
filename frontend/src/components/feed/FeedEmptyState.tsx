@@ -1,3 +1,5 @@
+import { Emoji3D } from "@/components/ui/Emoji3D";
+
 interface FeedEmptyStateProps {
   emoji: string;
   title: string;
@@ -8,7 +10,9 @@ interface FeedEmptyStateProps {
 export function FeedEmptyState({ emoji, title, description }: FeedEmptyStateProps) {
   return (
     <div className="px-8 py-8 text-center">
-      <div className="text-[40px]">{emoji}</div>
+      <div className="flex justify-center">
+        <Emoji3D emoji={emoji} size={56} />
+      </div>
       <div className="mb-1.5 mt-3 text-sm font-bold text-ink">{title}</div>
       <div className="text-xs leading-relaxed text-ink-muted">{description}</div>
     </div>

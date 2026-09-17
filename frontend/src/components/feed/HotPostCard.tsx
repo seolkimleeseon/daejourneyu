@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { FeedPost } from "@/types";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { formatPostDate } from "@/lib/feed";
 
 interface HotPostCardProps {
@@ -23,13 +24,17 @@ export function HotPostCard({ post }: HotPostCardProps) {
       {/* 상단 브랜드 줄 — 브랜드 민트 단색. */}
       <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-brand" />
       <span className="inline-flex items-center gap-1 rounded-full bg-card px-2.5 py-1 text-[10px] font-bold text-accent-coral shadow-sm">
-        🔥 지금 가장 많이 담아갔어요
+        <Emoji3D emoji="🔥" size={13} shadow={false} />
+        지금 가장 많이 담아갔어요
       </span>
       <div className="mt-2 text-sm font-extrabold leading-snug text-ink">{post.caption}</div>
       <div className="mt-1 flex items-center gap-2 text-[10px] text-ink-muted">
         <span className="truncate">
           {post.authorName} · {post.stops.length}곳 ·{" "}
-          <span className="font-bold text-accent-coral">📥 {post.saves}명이 담아감</span>
+          <span className="inline-flex items-center gap-0.5 font-bold text-accent-coral">
+            <Emoji3D emoji="📥" size={12} shadow={false} />
+            {post.saves}명이 담아감
+          </span>
         </span>
         {/* 등록일은 줄 오른쪽 끝 — 담긴 수와 붙여 두면 어느 쪽 숫자인지 헷갈린다. */}
         <span className="ml-auto shrink-0">{formatPostDate(post.createdAt)}</span>

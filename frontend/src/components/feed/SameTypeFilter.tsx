@@ -1,5 +1,6 @@
 "use client";
 
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { cn } from "@/lib/cn";
 
 interface SameTypeFilterProps {
@@ -38,7 +39,11 @@ export function SameTypeFilter({ active, petTypeName, onToggle }: SameTypeFilter
             : "bg-brand-50 text-brand-700"
       )}
     >
-      <span aria-hidden>{usable ? (active ? "✓" : "○") : "🐾"}</span>
+      {usable ? (
+        <span aria-hidden>{active ? "✓" : "○"}</span>
+      ) : (
+        <Emoji3D emoji="🐾" size={15} shadow={false} />
+      )}
       {usable
         ? `우리 아이와 같은 유형 · ${petTypeName} 코스만 보기`
         : "MBTI를 검사하면 같은 유형 코스만 모아볼 수 있어요"}
