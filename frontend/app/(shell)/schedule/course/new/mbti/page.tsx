@@ -18,6 +18,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { ensureCategoryMinimum, type PickablePlace } from "@/lib/petTourMapper";
+import { nearestNeighborRoute } from "@/lib/nearestNeighborRoute";
 import { mockPlaces } from "@/mocks";
 import type { DaejeonDistrict, Place, PlaceCategory } from "@/types";
 
@@ -142,7 +143,9 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePl
       fallback.forEach((place) => usedIds.add(place.id));
     }
 
-    return picked;
+    // 뽑힌 순서 그대로면 A→C→B처럼 왔다 갔다 하는 동선이 나올 수 있어, 직접 짓기와 동일하게
+    // 최근접 이웃으로 다시 이어 붙인다.
+    return picked.length > 1 ? nearestNeighborRoute(picked) : picked;
   });
 }
 
@@ -159,7 +162,7 @@ function MbtiCourseWizard() {
   const searchParams = useSearchParams();
   const addCourse = useCourseStore((state) => state.addCourse);
   const showToast = useToastStore((state) => state.show);
-  const { data: apiPlaces } = usePickablePlaces();
+  const { data: apiPlaces, isLoading: placesLoading } = usePickablePlaces();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const activePet = usePetStore((state) => state.activePet());
   const saveMbti = usePetStore((state) => state.saveMbti);
@@ -230,7 +233,11 @@ function MbtiCourseWizard() {
   };
 
   const handleGenerate = () => {
-    const source = ensureCategoryMinimum(apiPlaces ?? [], mockPlaces, MIN_PER_CATEGORY);
+    // 동반 불가(petFriendly: false) 장소는 정렬에서 뒤로 밀릴 뿐 걸러지진 않아서, 후보가 적으면
+    // 반려동물 동반 여행 코스에 동반 불가 장소가 뽑힐 수 있었다 — 후보 단계에서 아예 제외한다.
+    const primary = (apiPlaces ?? []).filter((place) => place.petFriendly);
+    const fallback = mockPlaces.filter((place) => place.petFriendly);
+    const source = ensureCategoryMinimum(primary, fallback, MIN_PER_CATEGORY);
     setGeneratedDays(generateCourseDays(theme, nights, source));
     setPhase("generated");
   };
@@ -328,7 +335,13 @@ function MbtiCourseWizard() {
       ) : null}
 
       {phase === "nights" ? (
-        <NightsStep theme={theme} nights={nights} onChangeNights={setNights} onNext={handleGenerate} />
+        <NightsStep
+          theme={theme}
+          nights={nights}
+          onChangeNights={setNights}
+          onNext={handleGenerate}
+          placesLoading={placesLoading}
+        />
       ) : null}
 
       {phase === "generated" ? (

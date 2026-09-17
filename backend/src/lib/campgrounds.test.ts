@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stableId } from "./stableId";
 
 /*
  * 응답 스키마를 상상해 고정하지 않는다 — campgrounds.ts가 타입(RawCampgroundItem)으로 못박아 둔
@@ -68,7 +69,7 @@ describe("캠핑장 정보로 바꾸기", () => {
 
     await expect(fetchDaejeonCampgrounds()).resolves.toEqual([
       {
-        id: "camp-0",
+        id: stableId("camp", "대청호 오토캠핑장", "대전광역시 동구 대청호수로 1"),
         name: "대청호 오토캠핑장",
         district: "동구",
         address: "대전광역시 동구 대청호수로 1",

@@ -22,6 +22,7 @@ import { PET_ACP_FACILITIES } from "./petAcpFacilities";
 import { DAEJEON_DOG_PARKS } from "./daejeonDogParks";
 import { assertKakaoRestKey, fetchPlaceImage } from "./kakaoLocal";
 import { mapWithConcurrency } from "./concurrency";
+import { stableId } from "./stableId";
 
 export type PlaceCategory = "산책" | "놀이터" | "맛집" | "문화";
 const DISTRICTS = ["유성구", "중구", "동구", "대덕구", "서구"];
@@ -229,7 +230,7 @@ const PETACP_CATEGORY: Record<string, PlaceCategory> = {
 
 function loadPetAcpFacilities(): AggregatedPlace[] {
   const rows: AggregatedPlace[] = [];
-  PET_ACP_FACILITIES.forEach((entry, index) => {
+  PET_ACP_FACILITIES.forEach((entry) => {
     const category = PETACP_CATEGORY[entry.category];
     if (!category || !DISTRICTS.includes(entry.district) || !isFinitePoint(entry.lat, entry.lng)) return;
 
@@ -246,7 +247,7 @@ function loadPetAcpFacilities(): AggregatedPlace[] {
       : "문화체육관광부 반려동물 동반가능 시설 현황(2023) 조사 · 반려동물 동반 불가로 확인됨";
 
     rows.push({
-      id: `petacp-${index}`,
+      id: stableId("petacp", entry.name, entry.district),
       name: entry.name,
       category,
       district: entry.district,
