@@ -101,15 +101,25 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
   const selectedSchedules = schedules.filter((schedule) => schedule.date === selectedDate);
 
-  /** 등록된 날짜뿐 아니라 코스 박수만큼 이어지는 기간 전체에 점을 찍는다 —
-   * 2박3일 코스면 시작일부터 3일 내내 표시돼야 "며칠짜리인지" 한눈에 보인다. */
-  const coveredDates = useMemo(() => {
-    const set = new Set<string>();
+  /**
+   * 당일치기(0박)는 점 하나로, 1박 이상은 시작일부터 박수만큼 이어지는 기간 내내 선으로
+   * 표시한다 — 점만 여러 날 찍어두면 "이 날들이 한 여행으로 이어진다"는 게 안 읽혔다.
+   * 선은 각 날짜가 그 여행의 시작/끝/중간 중 어디인지(둥근 모서리를 어느 쪽에 줄지)까지 들고 있는다.
+   */
+  const { lineByDate, dotDates } = useMemo(() => {
+    const lineByDate = new Map<string, { isStart: boolean; isEnd: boolean }>();
+    const dotDates = new Set<string>();
     schedules.forEach((schedule) => {
       const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
-      for (let offset = 0; offset <= nights; offset++) set.add(addDays(schedule.date, offset));
+      if (nights === 0) {
+        dotDates.add(schedule.date);
+        return;
+      }
+      for (let offset = 0; offset <= nights; offset++) {
+        lineByDate.set(addDays(schedule.date, offset), { isStart: offset === 0, isEnd: offset === nights });
+      }
     });
-    return set;
+    return { lineByDate, dotDates };
   }, [schedules, courses]);
 
   return (
@@ -137,7 +147,8 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`empty-${i}`} />;
-          const hasSchedule = coveredDates.has(cell.date);
+          const line = lineByDate.get(cell.date);
+          const hasDot = dotDates.has(cell.date);
           const isToday = cell.date === todayYmd;
           const isSelected = cell.date === selectedDate;
           return (
@@ -146,20 +157,35 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
               type="button"
               onClick={() => setSelectedDate(cell.date)}
               className={cn(
-                "flex aspect-square flex-col items-center justify-start gap-1 rounded-lg border border-line pt-1 text-[10px] text-ink",
+                "relative flex aspect-square flex-col items-center justify-start rounded-lg border border-line pt-1 text-[10px] text-ink",
                 isSelected && "border-brand-400 bg-brand-100",
                 isToday && !isSelected && "border-brand"
               )}
             >
               <span>{cell.day}</span>
-              {hasSchedule ? <span className="h-1 w-1 rounded-full bg-brand" /> : null}
+              {line ? (
+                <span
+                  className={cn(
+                    "absolute bottom-1.5 h-1.5 bg-brand",
+                    line.isStart ? "left-1 rounded-l-full" : "left-0 -ml-1",
+                    line.isEnd ? "right-1 rounded-r-full" : "right-0 -mr-1"
+                  )}
+                />
+              ) : hasDot ? (
+                <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-brand" />
+              ) : null}
             </button>
           );
         })}
       </div>
 
-      <div className="mt-2 flex items-center gap-1.5 text-[10px] text-ink-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 예정된 일정
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-ink-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 당일치기
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-3 rounded-full bg-brand" /> 1박 이상
+        </span>
       </div>
 
       <div className="mb-1 mt-5 flex items-center justify-between px-1">
