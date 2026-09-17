@@ -262,6 +262,31 @@ describe("POST /api/courses", () => {
 
     expect(response.status).toBe(201);
   });
+
+  it("stop에 스키마에 없는 필드(placeUrl 등)가 섞여 와도 Prisma엔 알려진 컬럼만 넘긴다", async () => {
+    // 프론트 CourseStop엔 있지만 CourseStop 테이블엔 없는 placeUrl을 그대로 spread해 넘기면
+    // Prisma가 "알 수 없는 필드"로 예외를 던지고, asyncHandler가 없던 시절엔 그게 프로세스를
+    // 통째로 죽여 코스 저장 자체가 502로 이어졌다(실제 있었던 장애) — 재발 방지용 테스트.
+    prisma.course.create.mockResolvedValue(courseRow());
+
+    await request(app)
+      .post("/api/courses")
+      .set("Cookie", AS_USER_1)
+      .send({ ...VALID_INPUT, days: [[{ ...STOP, placeUrl: "https://place.map.kakao.com/1", extraField: "x" }]] });
+
+    const stopData = prisma.course.create.mock.lastCall?.[0].data.days.create[0].stops.create[0];
+    expect(stopData).not.toHaveProperty("placeUrl");
+    expect(stopData).not.toHaveProperty("extraField");
+    expect(stopData).toEqual({ ...STOP, imageUrl: null, order: 0 });
+  });
+
+  it("라우트 핸들러가 던진 예외는 프로세스를 죽이지 않고 500으로 응답한다", async () => {
+    prisma.course.create.mockRejectedValue(new Error("DB 오류"));
+
+    const response = await request(app).post("/api/courses").set("Cookie", AS_USER_1).send(VALID_INPUT);
+
+    expect(response.status).toBe(500);
+  });
 });
 
 describe("PATCH /api/courses/:id", () => {
