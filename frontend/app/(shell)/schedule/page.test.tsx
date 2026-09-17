@@ -16,6 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/hooks/useSyncCoursesFromApi", () => ({ useSyncCoursesFromApi: vi.fn() }));
+vi.mock("@/hooks/usePickablePlaces", () => ({ usePickablePlaces: vi.fn() }));
 
 /** 캘린더는 자체 테스트가 있다 — 이 탭이 언제 캘린더로 넘기는지만 본다. */
 vi.mock("@/components/course/ScheduleCalendar", () => ({
