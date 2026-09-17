@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSheetStore } from "@/stores/useSheetStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { consumePendingCourseSave } from "@/lib/pendingCourseSave";
 import { makePlace } from "@/test/fixtures";
 import type { Place } from "@/types";
 import ManualCourseWizardPage from "./page";
@@ -267,5 +268,15 @@ describe("저장", () => {
     expect(addCourse).not.toHaveBeenCalled();
     const overlay = screen.getByText("로그인이 필요해요").closest(".fixed");
     expect(overlay?.className).toContain("opacity-100");
+  });
+
+  it("비로그인이어도 담아둔 코스는 잃어버리지 않는다 — 로그인 화면으로 나가기 전에 맡겨둔다", async () => {
+    useAuthStore.setState({ isLoggedIn: false });
+    const { user } = setup();
+    await goToReview(user, [서쪽]);
+
+    await user.click(screen.getByRole("button", { name: "코스 저장하기" }));
+
+    expect(consumePendingCourseSave()).toMatchObject({ nights: 0, transport: "자차", source: "manual" });
   });
 });

@@ -3,10 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthHydrator } from "@/components/shell/AuthHydrator";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
+import { useCourseStore } from "@/stores/useCourseStore";
+import { useToastStore } from "@/stores/useToastStore";
+import { stashPendingCourseSave } from "@/lib/pendingCourseSave";
+import { makeStop } from "@/test/fixtures";
 
 const hydrateAuth = vi.fn().mockResolvedValue(undefined);
 const hydratePets = vi.fn().mockResolvedValue(undefined);
 const clearPets = vi.fn();
+const addCourse = vi.fn();
 
 /** 로그인 상태 전환을 스토어 쪽에서 일으킨다(실제로는 hydrate/login이 바꾼다). */
 function setLoggedIn(isLoggedIn: boolean) {
@@ -17,8 +22,11 @@ function setLoggedIn(isLoggedIn: boolean) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
   useAuthStore.setState({ isLoggedIn: false, user: null, hydrated: false, hydrate: hydrateAuth });
   usePetStore.setState({ pets: [], hydrated: false, hydrate: hydratePets, clear: clearPets });
+  useCourseStore.setState({ addCourse });
+  useToastStore.setState({ message: null, key: 0 });
 });
 
 describe("AuthHydrator", () => {
@@ -78,5 +86,45 @@ describe("AuthHydrator", () => {
     });
 
     expect(hydratePets).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("로그인 게이트에 걸려 미뤄둔 코스 저장", () => {
+  const pendingCourse = {
+    label: "미뤄둔 코스",
+    nights: 0,
+    transport: "자차" as const,
+    source: "manual" as const,
+    shared: false,
+    days: [[makeStop()]],
+  };
+
+  it("로그인되면 맡겨둔 코스를 대신 저장하고 알린다", () => {
+    stashPendingCourseSave(pendingCourse);
+    render(<AuthHydrator />);
+
+    setLoggedIn(true);
+
+    expect(addCourse).toHaveBeenCalledWith(pendingCourse);
+    expect(useToastStore.getState().message).toBe("로그인 후 이어서 보관함에 저장했어요 🐾");
+  });
+
+  it("한 번 저장하면 다시 로그인해도 또 저장하지 않는다", () => {
+    stashPendingCourseSave(pendingCourse);
+    render(<AuthHydrator />);
+    setLoggedIn(true);
+    setLoggedIn(false);
+
+    setLoggedIn(true);
+
+    expect(addCourse).toHaveBeenCalledTimes(1);
+  });
+
+  it("맡겨둔 게 없으면 아무것도 하지 않는다", () => {
+    render(<AuthHydrator />);
+
+    setLoggedIn(true);
+
+    expect(addCourse).not.toHaveBeenCalled();
   });
 });

@@ -19,8 +19,9 @@ import { usePetStore } from "@/stores/usePetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { ensureCategoryMinimum, type PickablePlace } from "@/lib/petTourMapper";
 import { nearestNeighborRoute } from "@/lib/nearestNeighborRoute";
+import { stashPendingCourseSave } from "@/lib/pendingCourseSave";
 import { mockPlaces } from "@/mocks";
-import type { DaejeonDistrict, Place, PlaceCategory } from "@/types";
+import type { Course, DaejeonDistrict, Place, PlaceCategory } from "@/types";
 
 type Phase = "intro" | "quiz" | "result" | "nights" | "generated";
 
@@ -250,8 +251,29 @@ function MbtiCourseWizard() {
     });
   };
 
+  const buildCoursePayload = (): Omit<Course, "id"> | null => {
+    const flat = generatedDays.flat();
+    if (flat.length < 2) return null;
+    return {
+      label: COURSE_TITLES[theme],
+      nights,
+      transport: DEFAULT_TRANSPORT,
+      source: "ai",
+      shared: false,
+      days: generatedDays.map((day) => day.map(placeToStop)),
+    };
+  };
+
   const handleSave = () => {
+    const payload = buildCoursePayload();
+    if (!payload) {
+      showToast("추천할 장소가 부족해요");
+      return;
+    }
     if (!isLoggedIn) {
+      // 로그인하러 나가면 이 위저드의 상태는 사라진다(카카오 로그인은 외부 사이트를 거쳐 페이지가
+      // 새로고침된다) — 지금 만든 코스를 맡겨두고 로그인 완료 후 AuthHydrator가 대신 저장한다.
+      stashPendingCourseSave(payload);
       setLoginOpen(true);
       return;
     }
@@ -259,19 +281,12 @@ function MbtiCourseWizard() {
   };
 
   const saveCourse = () => {
-    const flat = generatedDays.flat();
-    if (flat.length < 2) {
+    const payload = buildCoursePayload();
+    if (!payload) {
       showToast("추천할 장소가 부족해요");
       return;
     }
-    addCourse({
-      label: COURSE_TITLES[theme],
-      nights,
-      transport: DEFAULT_TRANSPORT,
-      source: "ai",
-      shared: false,
-      days: generatedDays.map((day) => day.map(placeToStop)),
-    });
+    addCourse(payload);
     showToast("보관함에 저장했어요 🐾 날짜는 나중에!");
     router.push("/schedule");
   };
