@@ -240,13 +240,17 @@ describe("코스 만들기", () => {
     expect(screen.getByText("산책형 코스로 추천해드려요")).toBeTruthy();
   });
 
-  it("당일치기는 한 날에 3곳을 담는다", async () => {
+  it("당일치기는 한 날에 3곳을, 테마 지역(유성구)에서, 맛집 하나를 껴서 담는다", async () => {
     const { container, user } = setup();
     await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
 
     await user.click(screen.getByRole("button", { name: "다음" }));
 
-    expect(generatedDays(container)).toEqual([["유성맛집1", "유성산책1", "유성산책2"]]);
+    const days = generatedDays(container);
+    expect(days).toHaveLength(1);
+    expect(days[0]).toHaveLength(3);
+    expect(days[0].every((name) => name.startsWith("유성"))).toBe(true);
+    expect(days[0].filter((name) => name.includes("맛집"))).toHaveLength(1);
   });
 
   it("여러 날이면 날마다 다른 구를 배정한다 — 하루 동선이 대전 전역으로 흩어지지 않게", async () => {
@@ -256,10 +260,35 @@ describe("코스 만들기", () => {
 
     await user.click(screen.getByRole("button", { name: "다음" }));
 
-    expect(generatedDays(container)).toEqual([
-      ["유성맛집1", "유성산책1"],
-      ["서구맛집1", "서구산책1"],
-    ]);
+    const days = generatedDays(container);
+    expect(days).toHaveLength(2);
+    expect(days[0]).toHaveLength(2);
+    expect(days[1]).toHaveLength(2);
+    expect(days[0].every((name) => name.startsWith("유성"))).toBe(true);
+    expect(days[1].every((name) => name.startsWith("서구"))).toBe(true);
+  });
+
+  it("생성할 때마다 뽑히는 장소가 달라질 수 있다 — 매번 똑같은 코스만 나오지 않게", async () => {
+    // 유성구 산책 후보가 3곳이라 당일치기(맛집 1 + 산책 2)에서 뽑을 수 있는 산책 조합이 3가지다 —
+    // 여러 번 생성해보면 적어도 한 번은 처음과 다른 조합이 나와야 한다(운 나쁘게 계속 같은 조합만
+    // 나올 확률은 사실상 0에 가깝다).
+    const { container, user } = setup();
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
+
+    const walkNamesAt = async () => {
+      await user.click(screen.getByRole("button", { name: "다음" }));
+      const names = generatedDays(container)[0].filter((name) => name.includes("산책")).sort();
+      await user.click(screen.getByRole("button", { name: "‹ 뒤로" }));
+      return names;
+    };
+
+    const first = await walkNamesAt();
+    const results = [first];
+    for (let i = 0; i < 15; i++) {
+      results.push(await walkNamesAt());
+    }
+
+    expect(results.some((names) => names.join(",") !== first.join(","))).toBe(true);
   });
 
   it("테마가 맛집이 아니어도 날마다 맛집을 한 곳 넣는다 — 밥 먹을 곳은 있어야 한다", async () => {
