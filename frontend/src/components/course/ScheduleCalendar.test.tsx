@@ -123,6 +123,22 @@ describe("달 그리드", () => {
     expect(secondWeekSegment.className).toContain("rounded-r-full");
   });
 
+  it("막대가 있어도 뒤쪽 날짜 칸이 엉뚱한 자리로 밀리지 않는다", () => {
+    // 명시적으로 배치된 막대(grid-row/grid-column)와 auto-flow에 맡긴 날짜 칸이 같은 grid 안에
+    // 섞이면, 막대보다 DOM상 뒤에 있고 아직 auto-flow가 지나가지 않은 칸들이 밀려나는 문제가
+    // 실제로 있었다 — 날짜 칸도 전부 명시적으로 배치해 고쳤다. 2026년 9월은 1일이 화요일이라
+    // 18일은 3번째 주(0-indexed 2행) · 금요일(0-indexed 5열)이어야 한다.
+    useCourseStore.setState({
+      courses: [makeCourse({ id: "course-1", nights: 2 })],
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-13" })],
+    });
+    render(<ScheduleCalendar />);
+
+    const cell18 = dayCell("18");
+    expect(cell18.style.gridRow).toBe("3");
+    expect(cell18.style.gridColumn).toBe("6");
+  });
+
   it("날짜를 누르면 그 날 일정으로 바꾼다", async () => {
     const user = userEvent.setup();
     render(<ScheduleCalendar />);
