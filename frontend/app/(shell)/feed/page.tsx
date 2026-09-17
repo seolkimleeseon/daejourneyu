@@ -36,7 +36,7 @@ const ARTICLE_SORT_OPTIONS: { value: ArticleSortMode; label: string }[] = [
  * 쓰는 이유는, 아티클이 목록의 끝(둘러보기 탭의 마지막 섹션)이라 스크롤이 계속 늘어나면
  * 페이지 바닥에 닿을 수가 없기 때문이다 — 더 볼지는 사용자가 정한다.
  */
-const ARTICLE_PAGE_SIZE = 4;
+const ARTICLE_PAGE_SIZE = 10;
 
 export default function FeedPage() {
   return (

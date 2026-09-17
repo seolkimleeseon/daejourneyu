@@ -267,30 +267,30 @@ describe("둘러보기 — 아티클 탭", () => {
     expect(hooks.useFeedPosts).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
   });
 
-  it("한 번에 4개까지만 펼치고, 더보기를 누르면 나머지를 이어 붙인다", async () => {
+  it("한 번에 10개까지만 펼치고, 더보기를 누르면 나머지를 이어 붙인다", async () => {
     nav.search = "tab=article";
     setArticles(
-      Array.from({ length: 6 }, (_, index) =>
+      Array.from({ length: 12 }, (_, index) =>
         makeArticle({ id: `a${index}`, title: `글 ${index}`, likes: 100 - index })
       )
     );
     const user = userEvent.setup();
     render(<FeedPage />);
 
-    expect(articleTitles()).toHaveLength(4);
+    expect(articleTitles()).toHaveLength(10);
     // 건수는 접힌 것과 무관하게 전체를 말한다 — 더 있다는 사실이 더보기 버튼의 근거가 된다.
-    expect(paragraph("총 6개")).toBeTruthy();
+    expect(paragraph("총 12개")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "아티클 더보기 (2개 남음)" }));
 
-    expect(articleTitles()).toHaveLength(6);
+    expect(articleTitles()).toHaveLength(12);
     expect(screen.queryByRole("button", { name: /아티클 더보기/ })).toBeNull();
   });
 
   it("정렬을 바꾸면 펼친 만큼을 처음으로 되돌린다 — 목록의 의미가 달라지기 때문", async () => {
     nav.search = "tab=article";
     setArticles(
-      Array.from({ length: 6 }, (_, index) =>
+      Array.from({ length: 12 }, (_, index) =>
         makeArticle({ id: `a${index}`, title: `글 ${index}`, likes: 100 - index })
       )
     );
@@ -298,12 +298,12 @@ describe("둘러보기 — 아티클 탭", () => {
     render(<FeedPage />);
 
     await user.click(screen.getByRole("button", { name: "아티클 더보기 (2개 남음)" }));
-    expect(articleTitles()).toHaveLength(6);
+    expect(articleTitles()).toHaveLength(12);
 
     await user.click(screen.getByRole("button", { name: "정렬 기준" }));
     await user.click(screen.getByRole("option", { name: "최신순" }));
 
-    expect(articleTitles()).toHaveLength(4);
+    expect(articleTitles()).toHaveLength(10);
   });
 
   it("비로그인 상태에서 좋아요를 누르면 로그인 모달로 보낸다", async () => {
