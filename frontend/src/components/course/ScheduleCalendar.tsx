@@ -34,6 +34,13 @@ function toYmd(year: number, month0: number, day: number) {
   return `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
 }
 
+/** YYYY-MM-DD에서 days만큼 지난 날짜(YYYY-MM-DD). 월 넘어가는 계산은 Date에 맡긴다. */
+function addDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const date = new Date(y, m - 1, d + days);
+  return toYmd(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 /**
  * 내 여정(SCHEDULE) 탭의 '캘린더' 세그. 홈의 축제 캘린더(app/(shell)/home/festival)와 달 그리드
  * 구조는 동일하지만, 표시 대상이 축제가 아니라 내가 코스에 등록한 일정(CourseSchedule)이다.
@@ -94,6 +101,17 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
   const selectedSchedules = schedules.filter((schedule) => schedule.date === selectedDate);
 
+  /** 등록된 날짜뿐 아니라 코스 박수만큼 이어지는 기간 전체에 점을 찍는다 —
+   * 2박3일 코스면 시작일부터 3일 내내 표시돼야 "며칠짜리인지" 한눈에 보인다. */
+  const coveredDates = useMemo(() => {
+    const set = new Set<string>();
+    schedules.forEach((schedule) => {
+      const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
+      for (let offset = 0; offset <= nights; offset++) set.add(addDays(schedule.date, offset));
+    });
+    return set;
+  }, [schedules, courses]);
+
   return (
     <div className="px-4 pb-6 pt-4">
       <div className="mb-2 flex items-center justify-between">
@@ -119,7 +137,7 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`empty-${i}`} />;
-          const hasSchedule = schedules.some((schedule) => schedule.date === cell.date);
+          const hasSchedule = coveredDates.has(cell.date);
           const isToday = cell.date === todayYmd;
           const isSelected = cell.date === selectedDate;
           return (

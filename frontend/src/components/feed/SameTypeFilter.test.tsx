@@ -3,17 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SameTypeFilter } from "@/components/feed/SameTypeFilter";
 
+const nav = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => nav }));
+
 describe("SameTypeFilter", () => {
-  it("기준 유형이 없으면 안내 문구와 함께 누를 수 없다", async () => {
+  it("기준 유형이 없으면 안내 문구를 보여주고, 누르면 MBTI 검사로 보낸다", async () => {
     const onToggle = vi.fn();
     render(<SameTypeFilter active={false} petTypeName={null} onToggle={onToggle} />);
     const button = screen.getByRole("button");
 
     expect(button.textContent).toContain("MBTI를 검사하면 같은 유형 코스만 모아볼 수 있어요");
-    expect((button as HTMLButtonElement).disabled).toBe(true);
 
     await userEvent.setup().click(button);
     expect(onToggle).not.toHaveBeenCalled();
+    expect(nav.push).toHaveBeenCalledWith("/schedule/course/new/mbti");
   });
 
   it("유형이 있으면 유형 이름을 보여주고 켜짐 상태를 알린다", async () => {

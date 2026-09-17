@@ -10,6 +10,8 @@ import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/cn";
 import { apiUrl } from "@/lib/api/authFetch";
+import { usePickablePlaces } from "@/hooks/usePickablePlaces";
+import { pickChatCandidates } from "@/lib/chatCandidates";
 import { mockPlaces } from "@/mocks";
 import type { Course, CourseStop } from "@/types";
 
@@ -38,7 +40,9 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     q: "이 앱은 뭐 하는 곳이야?",
     a: "대전 5개 구의 반려동물 동반 여행지를 소개하고, 그걸 묶어 여행 코스로 만들어주는 앱이에요 🐾",
-    keywords: ["뭐 하는", "뭐하는", "무슨 서비스", "무슨 앱", "서비스 설명", "앱 설명", "서비스 소개", "앱 소개", "설명해줘", "소개해줘", "뭐야"],
+    // "뭐야"는 "유성구 맛집 뭐야?"처럼 실제 장소 질문에도 걸려 FAQ로 가로채버려서 뺐다
+    // (장소 질문은 AI 코스 추천으로 흘러야 한다).
+    keywords: ["뭐 하는", "뭐하는", "무슨 서비스", "무슨 앱", "서비스 설명", "앱 설명", "서비스 소개", "앱 소개", "설명해줘", "소개해줘"],
   },
   {
     q: "코스는 어떻게 만들어?",
@@ -99,6 +103,7 @@ export default function ChatbotPage() {
   const showToast = useToastStore((state) => state.show);
   const addCourse = useCourseStore((state) => state.addCourse);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const { data: apiPlaces } = usePickablePlaces();
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [pendingCourse, setPendingCourse] = useState<CourseSuggestion | null>(null);
@@ -131,10 +136,14 @@ export default function ChatbotPage() {
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
+      // 실 장소 데이터가 아직 안 불러와졌으면(첫 진입 직후 등) 목데이터로라도 대체한다 —
+      // 매번 목데이터를 쓰던 예전과 달리 실데이터가 있으면 항상 그걸 우선한다.
+      const places = apiPlaces && apiPlaces.length > 0 ? apiPlaces : mockPlaces;
+      const candidatePlaces = pickChatCandidates(places, prompt);
       const res = await fetch(apiUrl("/api/ai/course-suggestion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces: mockPlaces }),
+        body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces }),
         signal: controller.signal,
       });
       // 코스 추천 요청이어도 AI가 판단해서 잡담/설명이면 chat으로, 실제 코스 요청이면 course로 답한다
