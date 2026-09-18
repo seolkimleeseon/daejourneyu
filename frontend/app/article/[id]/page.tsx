@@ -7,13 +7,31 @@ import { TopBar } from "@/components/shell/TopBar";
 import { Emoji3D } from "@/components/ui/Emoji3D";
 import { LoginModal } from "@/components/my/LoginModal";
 import { useArticle } from "@/hooks/useArticles";
+import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
-import { resolveArticleLike } from "@/lib/feed";
+import { parseArticleBody, resolveArticleLike } from "@/lib/feed";
 import { cn } from "@/lib/cn";
 
 /** 둘러보기의 아티클 목록. 탭이 주소에 들어 있어서 돌아가면 '코스'가 아니라 '아티클' 탭이 열린다. */
 const ARTICLE_LIST_HREF = "/feed?tab=article";
+
+/** 로드에 실패하면 자리만 조용히 접는다 — 사진 여러 장 중 하나가 깨져도 본문 전체가 어색해지지 않게. */
+function ArticleImage({ src, className }: { src: string; className: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className={className}
+    />
+  );
+}
 
 /** articleDetail — 둘러보기 '아티클' 세그와 홈 탭이 함께 쓰는 공용 라우트. */
 export default function ArticleDetailPage() {
@@ -21,6 +39,7 @@ export default function ArticleDetailPage() {
   const articleId = params.id;
   const router = useRouter();
   const { data: article, isLoading } = useArticle(articleId);
+  const { data: places = [] } = usePlaces();
   const override = useFeedStore((state) => state.articleLikes[articleId]);
   const toggleArticleLike = useFeedStore((state) => state.toggleArticleLike);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
@@ -63,6 +82,8 @@ export default function ArticleDetailPage() {
   }
 
   const { liked, likes } = resolveArticleLike(article, override);
+  const bodyBlocks = parseArticleBody(article.body);
+  const inlineImages = article.images ?? [];
 
   /** 좋아요는 "누가" 눌렀는지가 있어야 의미가 있는 값이라 로그인 사용자만 누를 수 있다. */
   const handleLike = () => {
@@ -78,17 +99,74 @@ export default function ArticleDetailPage() {
     <>
       <TopBar title="아티클" showBack onBack={handleBack} />
       <article className="px-4 pb-8 pt-3">
-        <div className="text-[10px] text-ink-muted">
-          {article.date} · 조회 {article.views.toLocaleString()}
+        <div className="border-b border-line pb-4">
+          <div className="text-[10px] text-ink-muted">
+            {article.date} · 조회 {article.views.toLocaleString()}
+          </div>
+          <h1 className="mt-1.5 text-xl font-extrabold leading-snug tracking-tight text-ink">
+            {article.title}
+          </h1>
+          <p className="mt-2 text-xs leading-relaxed text-ink-muted">{article.summary}</p>
         </div>
-        <h1 className="mt-1.5 text-lg font-extrabold leading-snug tracking-tight text-ink">
-          {article.title}
-        </h1>
-        <p className="mt-1.5 text-xs text-ink-muted">{article.summary}</p>
 
-        <div className="mt-4 whitespace-pre-line text-[13px] leading-relaxed text-ink">
-          {article.body}
+        {article.imageUrl ? (
+          <ArticleImage src={article.imageUrl} className="mt-4 h-48 w-full rounded-xl object-cover" />
+        ) : null}
+
+        <div className="mt-2 text-[13px] leading-relaxed text-ink">
+          {(() => {
+            let nextImageIndex = 0;
+            return bodyBlocks.map((block, i) => {
+              if (block.type === "heading") {
+                const image = inlineImages[nextImageIndex];
+                nextImageIndex += 1;
+                return (
+                  <div key={i}>
+                    <h2 className="mb-2 mt-6 border-l-[3px] border-brand-500 pl-2 text-[15px] font-extrabold text-brand-700">
+                      {block.text}
+                    </h2>
+                    {image ? (
+                      <ArticleImage src={image} className="mb-3 h-40 w-full rounded-xl object-cover" />
+                    ) : null}
+                  </div>
+                );
+              }
+              return (
+                <p key={i} className="mb-3 whitespace-pre-line">
+                  {block.text}
+                </p>
+              );
+            });
+          })()}
         </div>
+
+        {article.places && article.places.length > 0 ? (
+          <div className="mt-6 border-t border-line pt-4">
+            <div className="mb-2 text-xs font-bold text-ink-muted">이 아티클에 나온 장소</div>
+            <div className="flex flex-col gap-2">
+              {article.places.map((name) => {
+                const place = places.find((p) => p.name === name);
+                return (
+                  <Link
+                    key={name}
+                    href={`/place/${encodeURIComponent(name)}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-line bg-card px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-bold text-ink">{name}</div>
+                      {place ? (
+                        <div className="mt-0.5 truncate text-[10px] text-ink-muted">
+                          {place.district} · {place.condition}
+                        </div>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 text-[11px] font-bold text-brand-700">상세보기 ›</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <button
           type="button"

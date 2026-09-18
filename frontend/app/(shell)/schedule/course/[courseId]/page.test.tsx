@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSheetStore } from "@/stores/useSheetStore";
@@ -41,8 +42,13 @@ const course = makeCourse({
 });
 
 function setup(courseId = "c1") {
-  const view = render(<CourseDetailPage params={{ courseId }} />);
-  return { ...view, user: userEvent.setup() };
+  const queryClient = new QueryClient();
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <CourseDetailPage params={{ courseId }} />
+    </QueryClientProvider>
+  );
+  return { ...view, user: userEvent.setup(), queryClient };
 }
 
 /** 동선 목록의 한 줄. */
@@ -71,7 +77,7 @@ function ticketLabel(): string {
   return document.querySelector(".text-base.font-extrabold.tracking-tight")?.textContent ?? "";
 }
 
-const editButton = () => screen.getByRole("button", { name: /코스 편집하기/ });
+const editButton = () => screen.getByRole("button", { name: /코스.*편집/ });
 
 async function enterEdit(user: ReturnType<typeof userEvent.setup>) {
   await user.click(editButton());
@@ -79,6 +85,7 @@ async function enterEdit(user: ReturnType<typeof userEvent.setup>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  updateCourse.mockResolvedValue(undefined);
   HTMLElement.prototype.scrollTo = vi.fn();
   useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: null });
   useSheetStore.setState({ isOpen: false, title: "", selected: [], onDone: null });
@@ -248,16 +255,16 @@ describe("다음 행동", () => {
   it("잡아둔 날짜가 없으면 일정을 붙이러 보낸다", async () => {
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: /일정을 추가하기/ }));
+    await user.click(screen.getByRole("button", { name: /일정 추가하기/ }));
 
     expect(nav.push).toHaveBeenCalledWith("/schedule/course/c1/schedule");
   });
 
-  it("이미 날짜가 있으면 문구를 편집으로 바꾼다", () => {
+  it("이미 날짜가 있으면 문구를 관리로 바꾼다", () => {
     useCourseStore.setState({ schedules: [makeSchedule({ id: "s1", courseId: "c1" })] });
     setup();
 
-    expect(screen.getByRole("button", { name: /여행 계획 편집하기/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /일정 관리하기/ })).toBeTruthy();
   });
 
   it("공유 문구에 기간과 곳 수를 담는다", () => {
@@ -322,6 +329,18 @@ describe("편집", () => {
       label: "가을 산책",
       emoji: "🌸",
       days: [[갑천, 댕댕카페]],
+    });
+  });
+
+  it("저장이 끝나면 코스 목록 캐시를 무효화한다 — 안 그러면 보관함에서 새로고침 전까지 옛 값이 보인다", async () => {
+    const { user, queryClient } = setup();
+    queryClient.setQueryData(["courses"], [course]);
+    await enterEdit(user);
+
+    await user.click(screen.getByRole("button", { name: /저장하기/ }));
+
+    await vi.waitFor(() => {
+      expect(queryClient.getQueryState(["courses"])?.isInvalidated).toBe(true);
     });
   });
 

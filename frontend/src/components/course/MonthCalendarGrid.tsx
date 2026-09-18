@@ -13,11 +13,23 @@ function toYmd(year: number, month0: number, day: number) {
   return `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
 }
 
+/** YYYY-MM-DD에서 days만큼 지난 날짜(YYYY-MM-DD). 월 넘어가는 계산은 Date에 맡긴다. */
+function addDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const date = new Date(y, m - 1, d + days);
+  return toYmd(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 interface MonthCalendarGridProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
-  /** 점으로 표시할 날짜 집합(예: 이미 일정이 있는 날) — 없으면 점 표시 안 함. */
+  /** 선택한 날짜가 며칠 묵는 일정인지 — 0보다 크면 selectedDate부터 그만큼의 날짜를 한꺼번에
+   * "선택됨"으로 표시한다(다박 일정은 시작일 하루만 골라도 실제로는 여러 날을 쓰기 때문). */
+  nights?: number;
+  /** 초록 점으로 표시할 날짜 집합(예: 이미 있는 당일치기 일정) — 없으면 점 표시 안 함. */
   markedDates?: Set<string>;
+  /** 주황 짧은 선으로 표시할 날짜 집합(예: 이미 있는 1박 이상 일정이 걸쳐 있는 날) */
+  lineDates?: Set<string>;
 }
 
 /**
@@ -25,10 +37,22 @@ interface MonthCalendarGridProps {
  * 목록"까지 같이 보여주는 화면 전용이라 여기선 순수하게 "날짜 하나 고르기"만 떼어냈다.
  * 일정 등록 화면(course/[courseId]/schedule)이 `<input type="date">` 대신 이걸 쓴다.
  */
-export function MonthCalendarGrid({ selectedDate, onSelectDate, markedDates }: MonthCalendarGridProps) {
+export function MonthCalendarGrid({
+  selectedDate,
+  onSelectDate,
+  nights = 0,
+  markedDates,
+  lineDates,
+}: MonthCalendarGridProps) {
   const selected = new Date(selectedDate);
   const [year, setYear] = useState(selected.getFullYear());
   const [month0, setMonth0] = useState(selected.getMonth());
+
+  const selectedRange = useMemo(() => {
+    const set = new Set<string>();
+    for (let offset = 0; offset <= nights; offset++) set.add(addDays(selectedDate, offset));
+    return set;
+  }, [selectedDate, nights]);
 
   const cells = useMemo(() => {
     const firstWeekday = new Date(year, month0, 1).getDay();
@@ -81,8 +105,10 @@ export function MonthCalendarGrid({ selectedDate, onSelectDate, markedDates }: M
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`empty-${i}`} />;
-          const isSelected = cell.date === selectedDate;
+          const isSelected = selectedRange.has(cell.date);
           const isToday = cell.date === todayYmd;
+          const hasDot = markedDates?.has(cell.date);
+          const hasLine = !hasDot && lineDates?.has(cell.date);
           return (
             <button
               key={cell.date}
@@ -95,7 +121,8 @@ export function MonthCalendarGrid({ selectedDate, onSelectDate, markedDates }: M
               )}
             >
               <span>{cell.day}</span>
-              {markedDates?.has(cell.date) ? <span className="h-1 w-1 rounded-full bg-brand" /> : null}
+              {hasDot ? <span className="h-1 w-1 rounded-full bg-brand" /> : null}
+              {hasLine ? <span className="h-[3px] w-2.5 rounded-full bg-accent-coral" /> : null}
             </button>
           );
         })}

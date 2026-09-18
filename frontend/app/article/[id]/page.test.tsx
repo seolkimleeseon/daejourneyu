@@ -15,8 +15,9 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/article/a1",
 }));
 
-const hooks = vi.hoisted(() => ({ useArticle: vi.fn() }));
+const hooks = vi.hoisted(() => ({ useArticle: vi.fn(), usePlaces: vi.fn() }));
 vi.mock("@/hooks/useArticles", () => ({ useArticle: hooks.useArticle }));
+vi.mock("@/hooks/usePlaces", () => ({ usePlaces: hooks.usePlaces }));
 
 /** jsdom의 history.length는 1에서 시작한다. 되돌아갈 기록이 있는 상황은 값을 덮어써 흉내 낸다. */
 function setHistoryLength(length: number) {
@@ -40,6 +41,7 @@ beforeEach(() => {
     }),
     isLoading: false,
   });
+  hooks.usePlaces.mockReturnValue({ data: [], isLoading: false });
 });
 
 afterEach(() => {
@@ -73,6 +75,31 @@ describe("아티클 상세", () => {
     expect(screen.getByText("다른 아티클 더 보러갈래요").closest("a")?.getAttribute("href")).toBe(
       "/feed?tab=article"
     );
+  });
+
+  it("본문에 나온 장소가 있으면 목록으로 보여주고 상세로 연결한다", () => {
+    hooks.useArticle.mockReturnValue({
+      data: makeArticle({ id: "a1", places: ["성심당 본점", "존재하지 않는 곳"] }),
+      isLoading: false,
+    });
+    hooks.usePlaces.mockReturnValue({
+      data: [{ id: "place-7", name: "성심당 본점", district: "중구", condition: "포장만 가능" }],
+      isLoading: false,
+    });
+    render(<ArticleDetailPage />);
+
+    expect(screen.getByText("성심당 본점")).toBeTruthy();
+    expect(screen.getByText("중구 · 포장만 가능")).toBeTruthy();
+    expect(screen.getByText("성심당 본점").closest("a")?.getAttribute("href")).toBe(
+      `/place/${encodeURIComponent("성심당 본점")}`
+    );
+    // 목데이터에 없는 장소도 이름은 보여주되, 조건 문구 없이 링크만 살아있다.
+    expect(screen.getByText("존재하지 않는 곳")).toBeTruthy();
+  });
+
+  it("본문에 나온 장소가 없으면 목록 섹션을 그리지 않는다", () => {
+    render(<ArticleDetailPage />);
+    expect(screen.queryByText("이 아티클에 나온 장소")).toBeNull();
   });
 
   it("도움돼요를 누르면 수가 바뀌고 목록과 같은 스토어에 기록된다", async () => {

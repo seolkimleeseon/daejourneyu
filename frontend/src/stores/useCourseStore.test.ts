@@ -32,7 +32,7 @@ beforeEach(() => {
   api.createCourseApi.mockResolvedValue(serverCourse);
   api.updateCourseApi.mockResolvedValue(undefined);
   api.deleteCourseApi.mockResolvedValue(undefined);
-  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false });
+  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set() });
 });
 
 describe("setCourses", () => {
@@ -74,6 +74,22 @@ describe("setCourses", () => {
     useCourseStore.getState().setCourses([optimistic]);
 
     expect(useCourseStore.getState().courses).toHaveLength(1);
+  });
+
+  it("임시 id가 진짜 id로 바뀐 뒤에도, 그걸 반영 못한 낡은 서버 응답이 지우지 않는다", async () => {
+    // 저장 직후 코스 상세로 바로 들어가면: addCourse의 응답이 이미 와서 임시 id는 진짜 id로
+    // 바뀌었는데, useCourses()의 staleTime(30초) 동안 캐시된 낡은 GET 응답이 그 상세 화면에서
+    // 뒤늦게 setCourses를 부르는 경우가 있다 — 그 응답엔 방금 만든 코스가 아직 없다.
+    const created = useCourseStore.getState().addCourse(newCourseInput());
+    await vi.waitFor(() => {
+      expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual(["server-1"]);
+    });
+    void created;
+
+    // 새 코스가 생기기 전에 캐시된, 그 코스가 없는 낡은 서버 목록.
+    useCourseStore.getState().setCourses([]);
+
+    expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual(["server-1"]);
   });
 });
 

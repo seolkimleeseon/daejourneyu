@@ -6,6 +6,7 @@ import {
   formatPostDate,
   formatStopSummary,
   paginate,
+  parseArticleBody,
   resolveArticleLike,
   resolvePostInteraction,
   sortArticles,
@@ -56,6 +57,26 @@ describe("resolveArticleLike", () => {
   it("누르면 1 늘고, 이미 누른 걸 취소하면 1 줄어든다", () => {
     expect(resolveArticleLike({ likes: 3, liked: false }, true)).toEqual({ liked: true, likes: 4 });
     expect(resolveArticleLike({ likes: 3, liked: true }, false)).toEqual({ liked: false, likes: 2 });
+  });
+});
+
+describe("parseArticleBody", () => {
+  it("빈 줄로 문단을 가른다", () => {
+    expect(parseArticleBody("첫 문단\n\n둘째 문단")).toEqual([
+      { type: "paragraph", text: "첫 문단" },
+      { type: "paragraph", text: "둘째 문단" },
+    ]);
+  });
+
+  it("## 로 시작하는 줄은 소제목으로 인식한다", () => {
+    expect(parseArticleBody("## 소제목\n\n본문 내용")).toEqual([
+      { type: "heading", text: "소제목" },
+      { type: "paragraph", text: "본문 내용" },
+    ]);
+  });
+
+  it("빈 블록은 버린다", () => {
+    expect(parseArticleBody("첫 문단\n\n\n\n둘째 문단")).toHaveLength(2);
   });
 });
 
