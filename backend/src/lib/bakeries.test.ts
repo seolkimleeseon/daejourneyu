@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { bakeryBrandKey, bakeryNameKey, isPilgrimageBakery, pickBakerySample } from "./bakeries";
+import { describe, expect, it, vi } from "vitest";
+
+const api = vi.hoisted(() => ({ geocodeAddress: vi.fn(), fetchPublicDataJson: vi.fn() }));
+vi.mock("./kakaoLocal", () => ({ geocodeAddress: api.geocodeAddress }));
+vi.mock("./publicData", () => ({
+  assertPublicDataApiKey: () => "test-key",
+  fetchPublicDataJson: api.fetchPublicDataJson,
+}));
+
+import { bakeryBrandKey, bakeryNameKey, fetchBakeryCandidates, isPilgrimageBakery, pickBakerySample } from "./bakeries";
 
 describe("빵지순례 업소 필터", () => {
   it.each(["파리바게뜨 대전점", "파리바게트(유성점)", "뚜레쥬르대전점", "던킨도너츠", "브레댄코 자운대점", "호밀호두 대전월평점2", "동네 만두집"])(
@@ -31,4 +39,19 @@ it("시민 추천 빵집을 포함하면서 일반 빵집도 날짜별로 바꿔
   expect(first.some((name) => name.startsWith("동네빵집"))).toBe(true);
   expect(next.some((name) => name.startsWith("동네빵집"))).toBe(true);
   expect(first).not.toEqual(next);
+});
+
+it("서구 API 요청을 다른 구의 좌표 확인과 동시에 시작한다", async () => {
+  let finishGeocoding!: (point: { lat: number; lng: number }) => void;
+  api.geocodeAddress.mockReturnValue(new Promise((resolve) => { finishGeocoding = resolve; }));
+  api.fetchPublicDataJson.mockResolvedValue({ response: { header: { resultCode: "C00" }, body: { items: [] } } });
+
+  const result = fetchBakeryCandidates(undefined, 1);
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(api.geocodeAddress).toHaveBeenCalled();
+  expect(api.fetchPublicDataJson).toHaveBeenCalledTimes(1);
+
+  finishGeocoding({ lat: 36.35, lng: 127.38 });
+  expect((await result).length).toBeGreaterThan(0);
 });

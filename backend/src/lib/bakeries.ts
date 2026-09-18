@@ -101,6 +101,9 @@ export async function fetchBakeryCandidates(district?: string, batch = 0): Promi
   const selected = district && DISTRICTS.includes(district) ? [district] : DISTRICTS;
   const date = new Date().toISOString().slice(0, 10);
   return cached(`bakeries:${selected.join(",")}:${date}:${batch}`, 24 * 60 * 60 * 1000, async () => {
+    const seoguPlacesPromise = selected.includes("서구")
+      ? fetchSeoGuBakeries(Number(date.replace(/-/g, "")) + batch * CANDIDATES_PER_DISTRICT).catch(() => [])
+      : Promise.resolve([] as AggregatedPlace[]);
     const candidates = selected.filter((name) => name !== "서구").flatMap((name) => {
       const group = uniqueNames(source.filter((row) => row.district === name && isPilgrimageBakery(row.name)), (row) => row.name);
       if (!group.length) return [];
@@ -129,8 +132,7 @@ export async function fetchBakeryCandidates(district?: string, batch = 0): Promi
         sourceTier: 2,
       }];
     });
-    const seoguPlaces = selected.includes("서구")
-      ? await fetchSeoGuBakeries(Number(date.replace(/-/g, "")) + batch * CANDIDATES_PER_DISTRICT).catch(() => []) : [];
+    const seoguPlaces = await seoguPlacesPromise;
     return [...csvPlaces, ...seoguPlaces];
   });
 }
