@@ -62,4 +62,19 @@ describe("pickChatCandidates", () => {
 
     expect(result).toHaveLength(80);
   });
+
+  it("한 곳만 맞으면 그 장소를 보존하면서 코스에 필요한 두 번째 후보를 보충한다", () => {
+    const places = [makePlace({ id: "y", district: "유성구" }), makePlace({ id: "s", district: "서구" })];
+    expect(pickChatCandidates(places, "유성구 추천").map((place) => place.id)).toEqual(["y", "s"]);
+  });
+
+  it("후보 제한 안에서도 지역과 카테고리를 섞는다", () => {
+    const places = [
+      ...Array.from({ length: 8 }, (_, i) => makePlace({ id: `walk-${i}`, district: "서구", category: "산책" })),
+      ...Array.from({ length: 8 }, (_, i) => makePlace({ id: `food-${i}`, district: "유성구", category: "맛집" })),
+    ];
+    const result = pickChatCandidates(places, "추천해줘", 4);
+    expect(new Set(result.map((place) => place.category)).size).toBe(2);
+    expect(new Set(result.map((place) => place.district)).size).toBe(2);
+  });
 });

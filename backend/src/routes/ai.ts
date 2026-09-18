@@ -38,10 +38,11 @@ function validateRequest(body: unknown): body is SuggestionRequest {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
   if (typeof b.prompt !== "string" || b.prompt.trim().length === 0) return false;
-  if (typeof b.nights !== "number" || b.nights < 0) return false;
+  if (!Number.isInteger(b.nights) || (b.nights as number) < 0 || (b.nights as number) > 4) return false;
   if (!TRANSPORTS.includes(b.transport as Transport)) return false;
   if (!Array.isArray(b.candidatePlaces) || b.candidatePlaces.length === 0) return false;
-  return b.candidatePlaces.every(isValidCandidatePlace);
+  return b.candidatePlaces.length <= 80 && b.candidatePlaces.every(isValidCandidatePlace) &&
+    b.candidatePlaces.filter((place: CandidatePlace) => place.petFriendly).length >= 2;
 }
 
 interface ParsedSuggestion {
@@ -53,16 +54,23 @@ interface ParsedSuggestion {
 function sanitizeSuggestion(raw: unknown, validIds: Set<string>, dayCount: number): ParsedSuggestion | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
-  if (typeof r.label !== "string" || !Array.isArray(r.days)) return null;
+  if (typeof r.label !== "string" || !r.label.trim() || !Array.isArray(r.days) || r.days.length !== dayCount) return null;
 
-  const days = r.days
-    .filter((day): day is unknown[] => Array.isArray(day))
-    .map((day) => day.filter((id): id is string => typeof id === "string" && validIds.has(id)))
-    .filter((day) => day.length >= 2)
-    .slice(0, dayCount);
-
-  if (days.length === 0) return null;
-  return { label: r.label, days };
+  const used = new Set<string>();
+  const days: string[][] = [];
+  for (const rawDay of r.days) {
+    if (!Array.isArray(rawDay)) return null;
+    const day: string[] = [];
+    for (const id of rawDay) {
+      if (typeof id !== "string" || !validIds.has(id) || used.has(id)) continue;
+      used.add(id);
+      day.push(id);
+      if (day.length === 5) break;
+    }
+    if (day.length < 2) return null;
+    days.push(day);
+  }
+  return { label: r.label.trim(), days };
 }
 
 type ParsedResponse = { responseType: "chat"; message: string } | { responseType: "course"; suggestion: ParsedSuggestion };
@@ -98,7 +106,7 @@ router.post("/course-suggestion", async (req, res) => {
   }
   const { prompt, nights, transport, candidatePlaces } = req.body;
 
-  const placeIds = candidatePlaces.map((place) => place.id);
+  const placeIds = [...new Set(candidatePlaces.filter((place: CandidatePlace) => place.petFriendly).map((place: CandidatePlace) => place.id))];
   const validIds = new Set(placeIds);
   const dayCount = nights + 1;
 
@@ -135,7 +143,7 @@ router.post("/course-suggestion", async (req, res) => {
     required: ["responseType"],
   };
 
-  const placesDescription = candidatePlaces
+  const placesDescription = candidatePlaces.filter((place: CandidatePlace) => place.petFriendly)
     .map(
       (place) =>
         `- ${place.id}: ${place.name} (${place.district} · ${place.category} · ${place.petFriendly ? "동반가능" : "동반불가"} · ${place.condition})`
@@ -155,7 +163,8 @@ router.post("/course-suggestion", async (req, res) => {
           "반드시 responseType을 chat으로 하고 message에 짧고 친근하게 답해 — 이때는 절대 코스를 지어내지 마. " +
           "사용자가 실제로 갈 곳이나 코스를 원할 때만 responseType을 course로 하고, " +
           "아래 후보 장소 목록에 있는 id만 사용해서 하루 2~5곳씩 동선을 짜. " +
-          "목록에 없는 장소를 지어내면 안 돼. 같은 날엔 가까운 지역끼리 묶어서 동선이 자연스럽게 해줘.",
+          "목록에 없는 장소를 지어내면 안 돼. 여러 날에 같은 장소를 반복하지 말고, 같은 날엔 가까운 지역끼리 묶어서 동선이 자연스럽게 해줘. " +
+          "가능하면 산책·식사·체험을 섞되 사용자의 취향과 방문 조건을 먼저 지켜줘.",
         responseMimeType: "application/json",
         responseSchema,
       },

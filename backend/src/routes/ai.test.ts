@@ -33,6 +33,7 @@ const CANDIDATES = [
   place({ id: "p1", name: "한밭수목원" }),
   place({ id: "p2", name: "댕댕카페", category: "맛집" }),
   place({ id: "p3", name: "시립미술관", category: "문화" }),
+  place({ id: "p4", name: "유성공원" }),
 ];
 
 function body(overrides: Record<string, unknown> = {}) {
@@ -72,6 +73,8 @@ describe("들어오기 전에 막는 것", () => {
       body({ prompt: "" }),
       body({ prompt: "   " }),
       body({ nights: -1 }),
+      body({ nights: 1.5 }),
+      body({ nights: 5 }),
       body({ transport: "비행기" }),
       body({ candidatePlaces: [] }),
       body({ candidatePlaces: [{ id: "p1", name: "한밭수목원" }] }),
@@ -127,7 +130,7 @@ describe("코스로 답할 때", () => {
   });
 
   it("요청에 실려 온 박 수와 이동수단을 그대로 붙인다 — AI가 정하는 값이 아니다", async () => {
-    aiReplies({ responseType: "course", label: "1박 코스", days: [["p1", "p2"], ["p3", "p1"]] });
+    aiReplies({ responseType: "course", label: "1박 코스", days: [["p1", "p2"], ["p3", "p4"]] });
 
     const response = await post(body({ nights: 1, transport: "대중교통" }));
 
@@ -145,21 +148,34 @@ describe("AI 응답을 그대로 믿지 않는다", () => {
     expect(response.body.days[0].map((stop: { placeId: string }) => stop.placeId)).toEqual(["p1", "p2"]);
   });
 
-  it("지우고 나서 2곳이 안 되는 날은 통째로 버린다 — 한 곳짜리는 동선이 아니다", async () => {
-    aiReplies({ responseType: "course", label: "빈약한 코스", days: [["p1", "없는곳"], ["p1", "p2"]] });
+  it("하루가 빈약하면 박 수가 어긋나므로 코스를 거절한다", async () => {
+    aiReplies({ responseType: "course", label: "빈약한 코스", days: [["p1", "없는곳"], ["p3", "p4"]] });
 
     const response = await post(body({ nights: 1 }));
 
-    expect(response.body.days).toHaveLength(1);
-    expect(response.body.days[0].map((stop: { placeId: string }) => stop.placeId)).toEqual(["p1", "p2"]);
+    expect(response.status).toBe(502);
   });
 
-  it("요청한 일수보다 많이 오면 잘라낸다", async () => {
+  it("요청한 일수보다 많아도 코스를 거절한다", async () => {
     aiReplies({ responseType: "course", label: "넘치는 코스", days: [["p1", "p2"], ["p2", "p3"], ["p3", "p1"]] });
 
     const response = await post(body({ nights: 0 }));
 
-    expect(response.body.days).toHaveLength(1);
+    expect(response.status).toBe(502);
+  });
+
+  it("같은 장소를 여러 날에 중복 추천하지 않는다", async () => {
+    aiReplies({ responseType: "course", label: "중복 코스", days: [["p1", "p2"], ["p1", "p3"]] });
+    const response = await post(body({ nights: 1 }));
+    expect(response.status).toBe(502);
+  });
+
+  it("동반 불가 장소는 모델이 선택해도 제외한다", async () => {
+    aiReplies({ responseType: "course", label: "동반 코스", days: [["p1", "p2", "p4"]] });
+    const response = await post(body({ candidatePlaces: [
+      place({ id: "p1" }), place({ id: "p2", petFriendly: false }), place({ id: "p4" }),
+    ] }));
+    expect(response.body.days[0].map((stop: { placeId: string }) => stop.placeId)).toEqual(["p1", "p4"]);
   });
 
   it("쓸 만한 날이 하나도 안 남으면 코스를 만들지 않는다", async () => {
@@ -255,7 +271,7 @@ describe("AI에게 넘기는 것", () => {
     await post();
 
     const schema = genai.generateContent.mock.lastCall?.[0].config.responseSchema;
-    expect(schema.properties.days.items.items.enum).toEqual(["p1", "p2", "p3"]);
+    expect(schema.properties.days.items.items.enum).toEqual(["p1", "p2", "p3", "p4"]);
     expect(schema.properties.days.minItems).toBe("1");
     expect(schema.properties.days.maxItems).toBe("1");
   });

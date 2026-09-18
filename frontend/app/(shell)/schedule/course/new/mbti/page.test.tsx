@@ -268,6 +268,16 @@ describe("코스 만들기", () => {
     expect(days[1].every((name) => name.startsWith("서구"))).toBe(true);
   });
 
+  it("다른 코스를 요청하면 첫 지역과 동선을 바꾼다", async () => {
+    const { container, user } = setup();
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
+    await user.click(screen.getByRole("button", { name: "다음" }));
+
+    expect(generatedDays(container)[0].every((name) => name.startsWith("유성"))).toBe(true);
+    await user.click(screen.getByRole("button", { name: "다른 코스 추천받기" }));
+    expect(generatedDays(container)[0].every((name) => name.startsWith("서구"))).toBe(true);
+  });
+
   it("생성할 때마다 뽑히는 장소가 달라질 수 있다 — 매번 똑같은 코스만 나오지 않게", async () => {
     // 유성구 산책 후보가 3곳이라 당일치기(맛집 1 + 산책 2)에서 뽑을 수 있는 산책 조합이 3가지다 —
     // 여러 번 생성해보면 적어도 한 번은 처음과 다른 조합이 나와야 한다(운 나쁘게 계속 같은 조합만
@@ -333,7 +343,7 @@ describe("저장과 뒤로가기", () => {
 
     expect(addCourse).toHaveBeenCalledWith(
       expect.objectContaining({
-        label: "청량 힐링 산책 데이",
+        label: "유성구 청량 힐링 산책 데이",
         nights: 0,
         transport: "자차",
         source: "ai",

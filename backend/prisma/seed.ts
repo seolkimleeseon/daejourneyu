@@ -740,6 +740,42 @@ const posts: SeedPost[] = [
 ];
 
 /** 후기 태그 사전 — 자유 입력을 막는 대신 여기 등록된 것만 고를 수 있다(root CLAUDE.md 도메인 용어 §후기). */
+function extraPost(
+  id: string, userId: string, caption: string, text: string, tags: string[],
+  daysAgo: number, likes: number, saves: number, stops: SeedStop[], courseId?: string
+): SeedPost {
+  const user = users.find((item) => item.id === userId)!;
+  const pet = pets.find((item) => item.userId === userId)!;
+  return { id, userId, courseId, authorName: user.nickname, authorEmoji: pet.emoji,
+    petTypeName: pet.mbtiName, caption, text, tags, daysAgo, likes, saves, stops };
+}
+
+posts.push(
+  extraPost("post-21", "user-1", "수목원에서 짧게 산책한 날", "콩이가 좋아하는 평탄한 길만 골라 걸었어요. 목줄을 매고 사람이 많은 구간은 천천히 지나갔습니다.",
+    ["소형견 OK", "산책", "서구"], 2, 6, 2, [stop("place-1", "한밭수목원", "산책", "서구", "전 견종 · 목줄 필수")]),
+  extraPost("post-22", "user-2", "보리와 대청호 호숫길", "걷는 거리를 짧게 나눠 쉬어 갔어요. 전망이 좋아도 목줄과 물은 꼭 챙겨야 했습니다.",
+    ["대형견 OK", "산책", "동구"], 11, 25, 12, [stop("place-3", "대청호 오백리길", "산책", "동구", "전 견종 · 목줄 필수")]),
+  extraPost("post-23", "user-3", "몽이와 카페 두 곳 비교", "첫 카페는 자리가 편했고 베이커리는 간식을 고르기 좋았어요. 두 장소의 동반 규칙은 방문 전에 다시 확인했습니다.",
+    ["소형견 OK", "카페", "실내"], 6, 18, 9, [
+      stop("place-6", "대흥동 감성 카페", "맛집", "중구", "소형견만 가능"),
+      stop("place-5", "댕댕 베이커리", "맛집", "유성구", "실내 동반 가능"),
+    ], "course-4"),
+  extraPost("post-24", "user-4", "두부와 빵집 포장 동선", "한 명은 두부와 밖에서 기다리고 한 명은 빵을 포장했어요. 매장 내부 동반은 불가해요.",
+    ["동반 불가", "포장", "중구"], 3, 7, 5, [stop("place-7", "성심당 본점", "맛집", "중구", "매장 내 동반 불가 · 포장만", false)]),
+  extraPost("post-25", "user-5", "초코의 넓은 놀이터 탐방", "대형견 구역에서 신나게 뛰었어요. 한낮에는 그늘이 적어 짧게 놀고 물을 마셨습니다.",
+    ["대형견 OK", "놀이터", "그늘 주의"], 18, 44, 30, [stop("place-4", "유성 반려동물 놀이터", "놀이터", "유성구", "대형견 구역 분리")], "course-10"),
+  extraPost("post-26", "user-6", "산체와 조용한 숲길", "사람이 적은 시간에 장태산을 걸었어요. 긴 코스 대신 그늘진 길을 짧게 돌아봤습니다.",
+    ["산책", "조용한 곳", "서구"], 13, 11, 6, [stop("place-11", "장태산자연휴양림", "산책", "서구", "전 견종 · 목줄 필수 · 편백숲 산책로")]),
+  extraPost("post-27", "user-7", "마루와 간식만 사 온 오후", "실내 동반이 가능한 베이커리에서 잠시 쉬고 간식을 샀어요. 오래 머무는 일정 없이 한 곳만 다녀왔습니다.",
+    ["소형견 OK", "실내", "간식"], 0, 1, 0, [stop("place-5", "댕댕 베이커리", "맛집", "유성구", "실내 동반 가능")]),
+  extraPost("post-28", "user-8", "별이의 유성 야외 나들이", "족욕체험장에서는 실외 구역만 이용했어요. 별이가 지치기 전에 일정을 마쳤습니다.",
+    ["소형견 OK", "야외", "유성구"], 4, 9, 4, [stop("place-10", "유성온천 족욕체험장", "문화", "유성구", "실외 구역만 동반 가능")]),
+  extraPost("post-29", "user-1", "엑스포 야외 구역 사진 산책", "콩이와 야외 공간에서 사진을 찍었어요. 실내 시설은 반려견 동반 조건을 별도로 확인해야 합니다.",
+    ["산책", "사진", "유성구"], 24, 36, 18, [stop("place-9", "엑스포과학공원", "문화", "유성구", "야외만 동반 가능")]),
+  extraPost("post-30", "user-2", "비 온 다음 날 황톳길", "젖은 구간이 있어 보리와 걷는 속도를 늦췄어요. 돌아오는 길에는 발을 닦을 수건이 유용했습니다.",
+    ["대형견 OK", "산책", "우천 후"], 7, 15, 8, [stop("place-2", "계족산 황톳길", "산책", "대덕구", "전 견종 · 배변봉투 지참")]),
+);
+
 type SeedReviewTag = { code: string; label: string; category: string; sortOrder: number };
 
 const reviewTagOptions: SeedReviewTag[] = [
@@ -932,6 +968,23 @@ const reviews: SeedReview[] = [
     likesCount: 5,
   },
 ];
+
+reviews.push(
+  { id: "review-17", placeId: "place-1", placeName: "한밭수목원", authorId: "user-8", text: "별이가 한적한 길에서는 잘 걸었어요. 주말 오후에는 사람이 많아 짧게 둘러봤습니다.", tagCodes: ["GOOD_WALK", "NOISY"], likesCount: 2 },
+  { id: "review-18", placeId: "place-2", placeName: "계족산 황톳길", authorId: "user-6", text: "산체와 걷기 좋은 구간이 있었지만 비 온 다음 날은 미끄러운 곳이 있어 조심했습니다.", tagCodes: ["GOOD_WALK", "SLIPPERY_FLOOR"], likesCount: 4 },
+  { id: "review-19", placeId: "place-3", placeName: "대청호 오백리길", authorId: "user-2", text: "호수 전망이 좋고 보리와 천천히 걷기 편했어요. 길이 길어 물과 쉬는 시간을 넉넉히 잡았습니다.", tagCodes: ["GOOD_VIEW", "GOOD_WALK"], likesCount: 18 },
+  { id: "review-20", placeId: "place-4", placeName: "유성 반려동물 놀이터", authorId: "user-1", text: "콩이는 작은 개 구역에서 놀았어요. 구역이 나뉘어 있어 다른 크기의 반려견과 동선이 겹치지 않았습니다.", tagCodes: ["LARGE_DOG_ZONE", "GRASS_FIELD"], likesCount: 5 },
+  { id: "review-21", placeId: "place-5", placeName: "댕댕 베이커리", authorId: "user-3", text: "몽이와 실내에서 쉬면서 간식을 골랐어요. 직원이 반려견 동반 안내를 친절하게 해주셨습니다.", tagCodes: ["INDOOR_ALLOWED", "PET_MENU", "KIND_STAFF"], likesCount: 12 },
+  { id: "review-22", placeId: "place-5", placeName: "댕댕 베이커리", authorId: "user-4", text: "두부와 잠깐 들렀어요. 사람이 몰리는 시간에는 자리가 적을 수 있어요.", tagCodes: ["INDOOR_ALLOWED", "NOISY"], likesCount: 1 },
+  { id: "review-23", placeId: "place-6", placeName: "대흥동 감성 카페", authorId: "user-7", text: "마루와 편하게 앉아 쉴 수 있었어요. 소형견 동반 조건은 방문 전에 확인했습니다.", tagCodes: ["SMALL_DOG_ONLY", "COMFY_SEATING"], likesCount: 6 },
+  { id: "review-24", placeId: "place-7", placeName: "성심당 본점", authorId: "user-4", text: "두부와 함께 매장 안에 들어갈 수 없어 동행인이 포장을 맡았어요. 대기 줄이 길었습니다.", tagCodes: ["NOISY"], likesCount: 9 },
+  { id: "review-25", placeId: "place-9", placeName: "엑스포과학공원", authorId: "user-5", text: "초코와 야외 공간을 산책했어요. 사진 찍기 좋지만 실내 동반은 별도로 확인해야 합니다.", tagCodes: ["PHOTO_SPOT", "GOOD_WALK"], likesCount: 7 },
+  { id: "review-26", placeId: "place-10", placeName: "유성온천 족욕체험장", authorId: "user-3", text: "몽이와 실외 구역만 이용했습니다. 사람이 적은 시간에는 조용히 둘러보기 좋아요.", tagCodes: ["QUIET", "PHOTO_SPOT"], likesCount: 3 },
+  { id: "review-27", placeId: "place-11", placeName: "장태산자연휴양림", authorId: "user-6", text: "산체와 그늘진 길을 걸었어요. 주말에는 주차 공간을 찾는 데 시간이 걸렸습니다.", tagCodes: ["SHADY", "PARKING_HARD"], likesCount: 11 },
+  { id: "review-28", placeId: "place-11", placeName: "장태산자연휴양림", authorId: "user-1", text: "콩이와 짧은 산책로만 돌았어요. 사진 찍을 곳이 많고 숲 그늘도 넉넉했습니다.", tagCodes: ["SHADY", "PHOTO_SPOT"], likesCount: 4 },
+  { id: "review-29", placeId: "place-12", placeName: "대전오월드", authorId: "user-4", text: "두부와 야외 구역을 둘러봤어요. 입장 전에 동반 가능한 구역을 안내받는 편이 좋겠습니다.", tagCodes: ["GOOD_WALK", "PHOTO_SPOT"], likesCount: 8 },
+  { id: "review-30", placeId: "place-3", placeName: "대청호 오백리길", authorId: "user-5", text: "초코와 호숫길을 걸었어요. 넓은 길이 좋았지만 해가 강한 날에는 일찍 움직이는 편이 낫습니다.", tagCodes: ["GOOD_VIEW", "LACK_SHADE"], likesCount: 14 },
+);
 
 async function main() {
   for (const user of users) {

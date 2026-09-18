@@ -118,7 +118,7 @@ function pickGuaranteedRestaurant(pool: SourcePlace[]): SourcePlace | null {
  * 보장하고, 나머지는 `pickBalancedByCategory`로 테마 카테고리를 중심으로 다른 카테고리도
  * 섞는다. 배정된 구에 장소(특히 맛집)가 모자라면 이미 쓰지 않은 다른 구의 장소로 채운다.
  */
-function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePlace[]): SourcePlace[][] {
+function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePlace[], variation = 0): SourcePlace[][] {
   const daysCount = nights + 1;
   const perDay = daysCount === 1 ? 3 : 2;
 
@@ -130,9 +130,16 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePl
     }))
     .sort((a, b) => b.themeCount - a.themeCount || b.totalCount - a.totalCount);
 
+  // 재추천 시 첫 지역도 바꾼다. 장소 수가 부족한 구는 시작 지역 후보에서 제외한다.
+  const viableDistricts = districtRichness.filter(({ district }) => {
+    const places = source.filter((place) => place.district === district);
+    return places.length >= perDay && (theme === "맛집" || places.some((place) => place.category === "맛집"));
+  });
+  const districtOptions = viableDistricts.length > 0 ? viableDistricts : districtRichness.filter(({ totalCount }) => totalCount > 0);
+  if (districtOptions.length === 0) return Array.from({ length: daysCount }, () => []);
   const assignedDistricts = Array.from(
     { length: daysCount },
-    (_, i) => districtRichness[i % districtRichness.length].district
+    (_, i) => districtOptions[(i + variation) % districtOptions.length].district
   );
 
   const usedIds = new Set<string>();
@@ -202,6 +209,10 @@ function MbtiCourseWizard() {
   const [theme, setTheme] = useState<CourseTheme>("산책");
   const [nights, setNights] = useState(0);
   const [generatedDays, setGeneratedDays] = useState<Place[][]>([]);
+  const [generationIndex, setGenerationIndex] = useState(0);
+  const generatedTitle = generatedDays[0]?.[0]
+    ? `${generatedDays[0][0].district} ${COURSE_TITLES[theme]}`
+    : COURSE_TITLES[theme];
   const [loginOpen, setLoginOpen] = useState(false);
 
   const startQuiz = () => {
@@ -256,7 +267,19 @@ function MbtiCourseWizard() {
     const fallback = mockPlaces.filter((place) => place.petFriendly);
     const source = ensureCategoryMinimum(primary, fallback, MIN_PER_CATEGORY);
     setGeneratedDays(generateCourseDays(theme, nights, source));
+    setGenerationIndex(0);
     setPhase("generated");
+  };
+
+  const handleRegenerate = () => {
+    const source = ensureCategoryMinimum(
+      (apiPlaces ?? []).filter((place) => place.petFriendly),
+      mockPlaces.filter((place) => place.petFriendly),
+      MIN_PER_CATEGORY
+    );
+    const nextIndex = generationIndex + 1;
+    setGenerationIndex(nextIndex);
+    setGeneratedDays(generateCourseDays(theme, nights, source, nextIndex));
   };
 
   const handleReorderDay = (dayIndex: number, nextDay: Place[]) => {
@@ -269,9 +292,9 @@ function MbtiCourseWizard() {
 
   const buildCoursePayload = (): Omit<Course, "id"> | null => {
     const flat = generatedDays.flat();
-    if (flat.length < 2) return null;
+    if (generatedDays.length !== nights + 1 || generatedDays.some((day) => day.length < 2) || flat.length < 2) return null;
     return {
-      label: COURSE_TITLES[theme],
+      label: generatedTitle,
       nights,
       transport: DEFAULT_TRANSPORT,
       source: "ai",
@@ -381,8 +404,9 @@ function MbtiCourseWizard() {
           nights={nights}
           transport={DEFAULT_TRANSPORT}
           days={generatedDays}
-          courseTitle={COURSE_TITLES[theme]}
+          courseTitle={generatedTitle}
           onReorderDay={handleReorderDay}
+          onRegenerate={handleRegenerate}
           onSave={handleSave}
           onGoHome={() => router.push("/home")}
         />

@@ -20,6 +20,7 @@ interface GeneratedResultStepProps {
   days: Place[][];
   courseTitle: string;
   onReorderDay: (dayIndex: number, next: Place[]) => void;
+  onRegenerate: () => void;
   onSave: () => void;
   onGoHome: () => void;
 }
@@ -31,6 +32,7 @@ export function GeneratedResultStep({
   days,
   courseTitle,
   onReorderDay,
+  onRegenerate,
   onSave,
   onGoHome,
 }: GeneratedResultStepProps) {
@@ -41,7 +43,7 @@ export function GeneratedResultStep({
     <div className="px-5 pb-6 pt-1">
       <div className="rounded-2xl bg-surface p-2">
         <div className="mb-4 rounded-2xl bg-brand-100 p-4 text-center">
-          <div className="text-sm font-extrabold text-brand-700">오늘의 &lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
+          <div className="text-sm font-extrabold text-brand-700">&lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
             <Tag tone="brand" className="cursor-default border border-line bg-card">
               {nights > 0 ? (
@@ -62,7 +64,10 @@ export function GeneratedResultStep({
           </div>
         </div>
 
-        <div className="mb-2 flex items-center justify-end px-1">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <button type="button" onClick={onRegenerate} className="rounded-full border border-brand-300 bg-brand-100 px-3 py-1 text-[11px] font-bold text-brand-700">
+            다른 코스 추천받기
+          </button>
           <button
             type="button"
             onClick={() => setEditMode((prev) => !prev)}

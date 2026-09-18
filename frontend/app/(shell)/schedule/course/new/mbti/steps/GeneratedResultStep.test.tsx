@@ -26,7 +26,7 @@ const 한밭수목원 = makePlace({ id: "p1", name: "한밭수목원", district:
 const 댕댕카페 = makePlace({ id: "p2", name: "댕댕카페", district: "유성구", category: "맛집" });
 const 시립미술관 = makePlace({ id: "p3", name: "시립미술관", district: "서구", category: "문화" });
 
-const handlers = { onReorderDay: vi.fn(), onSave: vi.fn(), onGoHome: vi.fn() };
+const handlers = { onReorderDay: vi.fn(), onRegenerate: vi.fn(), onSave: vi.fn(), onGoHome: vi.fn() };
 
 function setup(props: Partial<React.ComponentProps<typeof GeneratedResultStep>> = {}) {
   const view = render(
