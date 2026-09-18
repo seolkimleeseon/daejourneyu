@@ -8,6 +8,7 @@ import type { PlaceCategory } from "@/types";
 
 interface StopThumbnailProps {
   category: PlaceCategory;
+  placeId?: string;
   imageUrl?: string | null;
   /** 동선 순번 뱃지(오른쪽 아래). 생략하면 표시하지 않는다. */
   badge?: number;
@@ -16,7 +17,7 @@ interface StopThumbnailProps {
 }
 
 /** 동선 리스트의 장소 대표 이미지 — 사진이 있으면 사진, 없으면 카테고리별 색상 원에 이모지로 대체한다. */
-export function StopThumbnail({ category, imageUrl, badge, size = 52, className }: StopThumbnailProps) {
+export function StopThumbnail({ category, placeId, imageUrl, badge, size = 52, className }: StopThumbnailProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const tone = CATEGORY_TONE[category];
   const showImage = !!imageUrl && !imageFailed;
@@ -39,7 +40,7 @@ export function StopThumbnail({ category, imageUrl, badge, size = 52, className 
           />
         ) : (
           <div className={cn("flex h-full w-full items-center justify-center", tone.bg)}>
-            <Emoji3D emoji={CATEGORY_EMOJI[category] ?? "📍"} size={Math.round(size * 0.6)} />
+            <Emoji3D emoji={placeId?.startsWith("bakery-") ? "🥐" : CATEGORY_EMOJI[category] ?? "📍"} size={Math.round(size * 0.6)} />
           </div>
         )}
       </div>

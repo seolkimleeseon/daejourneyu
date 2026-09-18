@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
 
 describe("StopThumbnail", () => {
+  it("uses a croissant icon for bakery places while keeping the restaurant icon", () => {
+    const bakery = render(<StopThumbnail category="맛집" placeId="bakery-junggu-123" />);
+    expect(bakery.container.querySelector('img[src="/icons/3d/croissant_3d.png"]')).not.toBeNull();
+    bakery.unmount();
+
+    const restaurant = render(<StopThumbnail category="맛집" placeId="restaurant-123" />);
+    expect(restaurant.container.querySelector('img[src="/icons/3d/meat_on_bone_3d.png"]')).not.toBeNull();
+  });
+
   it("사진이 있으면 사진을 보여준다", () => {
     const { container } = render(
       <StopThumbnail category="산책" imageUrl="https://img/place.jpg" />

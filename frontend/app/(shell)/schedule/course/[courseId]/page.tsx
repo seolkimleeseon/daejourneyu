@@ -514,7 +514,7 @@ function DayStops({
                 ⠿
               </button>
             ) : null}
-            <StopThumbnail category={stop.category} imageUrl={stop.imageUrl} badge={stopIndex + 1} />
+            <StopThumbnail category={stop.category} placeId={stop.placeId} imageUrl={stop.imageUrl} badge={stopIndex + 1} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-ink">{stop.name}</div>
               <div className="mt-0.5 text-xs text-ink-muted">
