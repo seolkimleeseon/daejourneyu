@@ -3,14 +3,18 @@ import type { Course, CourseSchedule } from "@/types";
 import { mockCourses } from "@/mocks";
 import { createCourseApi, deleteCourseApi, updateCourseApi, type CourseUpdateInput } from "@/lib/api/courses";
 import { createScheduleApi, deleteScheduleApi } from "@/lib/api/schedule";
+import { useToastStore } from "@/stores/useToastStore";
 
 /** addCourse가 서버 응답을 받기 전 임시로 붙이는 id 접두사.
  * ⚠ mockCourses의 id("course-1", "course-2")와 겹치면 안 된다 — 겹치면 임시 id로 오인해
  * 서버 응답이 와도 실제 id로 안 바뀌는 버그가 생긴다. */
 const OPTIMISTIC_ID_PREFIX = "optimistic-";
+let nextOptimisticId = 0;
 
 interface CourseState {
   courses: Course[];
+  /** 저장 중 사용한 임시 URL을 서버가 발급한 코스 ID로 연결한다. */
+  courseIdAliases: Record<string, string>;
   /** addCourse로 막 만든 코스를 setCourses가 지우지 않게 보호하는 id 집합. 임시 id일 때만 지켜주면
    * 부족하다 — createCourseApi 응답이 빨리 와서 임시 id가 진짜 id로 바뀐 뒤에도, useCourses()의
    * staleTime(30초) 안에 있던 오래된 GET 응답이 뒤늦게 setCourses를 호출하면 그 진짜 id 코스가
@@ -40,6 +44,7 @@ interface CourseState {
 // SchedulePage 진입 시 GET /api/courses 결과로 setCourses해 서버 상태와 맞춘다.
 export const useCourseStore = create<CourseState>((set, get) => ({
   courses: mockCourses,
+  courseIdAliases: {},
   hasSynced: false,
   pendingNewCourseIds: new Set<string>(),
   // 서버 목록으로 완전히 덮어쓰되, 아직 createCourseApi 응답을 못 받아 실제 id로 바뀌지 않은
@@ -64,7 +69,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       };
     }),
   addCourse: (course) => {
-    const tempId = `${OPTIMISTIC_ID_PREFIX}${Date.now()}`;
+    const tempId = `${OPTIMISTIC_ID_PREFIX}${Date.now()}-${++nextOptimisticId}`;
     const newCourse: Course = { ...course, id: tempId };
     set((state) => ({
       courses: [...state.courses, newCourse],
@@ -78,15 +83,28 @@ export const useCourseStore = create<CourseState>((set, get) => ({
         set((state) => {
           const pendingNewCourseIds = new Set(state.pendingNewCourseIds);
           pendingNewCourseIds.delete(tempId);
-          pendingNewCourseIds.add(serverCourse.id);
+          const alreadyListed = state.courses.some((item) => item.id === serverCourse.id);
+          if (!alreadyListed) pendingNewCourseIds.add(serverCourse.id);
           return {
             pendingNewCourseIds,
-            courses: state.courses.map((c) => (c.id === tempId ? serverCourse : c)),
+            courseIdAliases: { ...state.courseIdAliases, [tempId]: serverCourse.id },
+            courses: alreadyListed
+              ? state.courses.filter((item) => item.id !== tempId)
+              : state.courses.map((item) => (item.id === tempId ? serverCourse : item)),
           };
         });
       })
       .catch((error) => {
         console.error("코스를 백엔드에 저장하지 못했어요:", error);
+        set((state) => {
+          const pendingNewCourseIds = new Set(state.pendingNewCourseIds);
+          pendingNewCourseIds.delete(tempId);
+          return {
+            pendingNewCourseIds,
+            courses: state.courses.filter((item) => item.id !== tempId),
+          };
+        });
+        useToastStore.getState().show("코스를 저장하지 못했어요. 다시 시도해주세요.");
       });
     return newCourse;
   },

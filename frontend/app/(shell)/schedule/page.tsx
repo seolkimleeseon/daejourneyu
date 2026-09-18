@@ -12,7 +12,6 @@ import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
-import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { resolveMbtiType } from "@/lib/mbti";
 
 type ScheduleSegment = "내 코스" | "캘린더";
@@ -41,10 +40,6 @@ function ScheduleTabContent() {
   // 검사 결과는 반려동물에 저장돼 있다(PUT /api/pets/:id/mbti).
   const savedMbtiCode = usePetStore((state) => state.activePet()?.mbti?.code ?? null);
   useSyncCoursesFromApi();
-  // MBTI/직접 짓기 위저드에 들어가면 그제서야 실 장소 데이터(/api/places, 실시간 집계라 느릴 수
-  // 있음)를 불러오기 시작해 생성 버튼을 누를 때 오래 기다리는 것처럼 느껴졌다 — 이 탭에 들어온
-  // 순간부터 미리 불러와 두면(staleTime 30분) 위저드에 들어갈 즈음엔 이미 캐시돼 있을 가능성이 높다.
-  usePickablePlaces();
 
   const courses = [...storeCourses].reverse();
   const preview = courses.slice(0, VAULT_PREVIEW_COUNT);
