@@ -1,5 +1,6 @@
 import type { DaejeonDistrict, Place, PlaceCategory } from "@/types";
 import type { PickablePlace } from "./petTourMapper";
+import { sortPlacesByQuality } from "./placeQuality";
 
 type CandidateSource = Place | PickablePlace;
 
@@ -26,22 +27,58 @@ function getSourceTier(place: CandidateSource): number {
  * 짐작 결과가 너무 좁으면(오탈자·특이한 질문) 필터 없는 전체 후보로 되돌아간다.
  */
 export function pickChatCandidates(places: CandidateSource[], prompt: string, cap = MAX_CANDIDATES): CandidateSource[] {
-  const petFriendly = places.filter((place) => place.petFriendly);
+  const bakeryIntent = /빵지순례|빵집|베이커리|제과점/.test(prompt);
+  const petFriendly = places.filter((place) => place.petFriendly || (bakeryIntent && place.id.startsWith("bakery-")));
 
   const matchedDistricts = DISTRICTS.filter((district) => prompt.includes(district));
   const matchedCategories = (Object.keys(CATEGORY_KEYWORDS) as PlaceCategory[]).filter((category) =>
     CATEGORY_KEYWORDS[category].some((keyword) => prompt.includes(keyword))
   );
+  const asksForCourse = /코스|여행|일정|동선|루트/.test(prompt);
 
   let filtered = petFriendly;
   if (matchedDistricts.length > 0) {
     filtered = filtered.filter((place) => matchedDistricts.includes(place.district));
   }
-  if (matchedCategories.length > 0) {
+  if (matchedCategories.length > 0 && !asksForCourse) {
     filtered = filtered.filter((place) => matchedCategories.includes(place.category));
   }
 
-  const pool = filtered.length >= 5 ? filtered : petFriendly;
-  const sorted = [...pool].sort((a, b) => getSourceTier(a) - getSourceTier(b));
-  return sorted.slice(0, cap);
+  // 일치하는 장소가 적더라도 사용자가 지정한 구·종류를 우선한다.
+  // 두 조건을 함께 만족하는 곳이 없으면 구, 종류, 전체 순서로 범위를 넓힌다.
+  const districtPool = matchedDistricts.length > 0
+    ? petFriendly.filter((place) => matchedDistricts.includes(place.district)) : [];
+  const categoryPool = matchedCategories.length > 0
+    ? petFriendly.filter((place) => matchedCategories.includes(place.category)) : [];
+  const preferred = filtered.length > 0 ? filtered : districtPool.length > 0 ? districtPool : categoryPool.length > 0 ? categoryPool : petFriendly;
+  const pool = preferred.length >= 2 ? preferred : [
+    ...preferred,
+    ...petFriendly.filter((place) => !preferred.some((match) => match.id === place.id)),
+  ];
+  const preferredIds = new Set(preferred.map((place) => place.id));
+
+  // API 배열의 앞부분만 잘라내면 한 지역·종류가 후보를 독식한다. 품질 등급별로
+  // 지역과 종류를 번갈아 뽑아 제한된 후보 안에도 여러 선택지를 남긴다.
+  const buckets = new Map<string, CandidateSource[]>();
+  for (const place of sortPlacesByQuality(pool)) {
+    const key = `${preferredIds.has(place.id) ? 0 : 1}:${getSourceTier(place)}:${place.district}:${place.category}`;
+    const bucket = buckets.get(key) ?? [];
+    bucket.push(place);
+    buckets.set(key, bucket);
+  }
+  const result: CandidateSource[] = [];
+  const keys = [...buckets.keys()].sort();
+  while (result.length < cap) {
+    let added = false;
+    for (const key of keys) {
+      const place = buckets.get(key)?.shift();
+      if (place) {
+        result.push(place);
+        added = true;
+      }
+      if (result.length >= cap) break;
+    }
+    if (!added) break;
+  }
+  return result;
 }

@@ -3,6 +3,14 @@ import { pickChatCandidates } from "./chatCandidates";
 import { makePlace } from "@/test/fixtures";
 
 describe("pickChatCandidates", () => {
+  it("빵지순례 요청에서만 동반 여부 미확인 빵집을 후보에 넣는다", () => {
+    const places = [
+      makePlace({ id: "walk", category: "산책" }),
+      makePlace({ id: "bakery-1", name: "동네빵집", category: "맛집", petFriendly: false }),
+    ];
+    expect(pickChatCandidates(places, "빵지순례 코스").map((place) => place.id)).toContain("bakery-1");
+    expect(pickChatCandidates(places, "산책 코스").map((place) => place.id)).not.toContain("bakery-1");
+  });
   it("동반 불가 장소는 애초에 후보에서 뺀다", () => {
     const places = [
       makePlace({ id: "a", petFriendly: true }),
@@ -61,5 +69,39 @@ describe("pickChatCandidates", () => {
     const result = pickChatCandidates(places, "아무 데나 추천해줘", 80);
 
     expect(result).toHaveLength(80);
+  });
+
+  it("산책 코스 요청에는 식사와 다른 활동 후보도 남긴다", () => {
+    const places = [
+      makePlace({ id: "walk", category: "산책" }),
+      makePlace({ id: "food", category: "맛집" }),
+      makePlace({ id: "play", category: "놀이터" }),
+      makePlace({ id: "culture", category: "문화" }),
+    ];
+    const categories = pickChatCandidates(places, "산책 코스 추천해줘").map((place) => place.category);
+    expect(new Set(categories)).toEqual(new Set(["산책", "맛집", "놀이터", "문화"]));
+  });
+
+  it("한 곳만 맞으면 그 장소를 보존하면서 코스에 필요한 두 번째 후보를 보충한다", () => {
+    const places = [makePlace({ id: "y", district: "유성구" }), makePlace({ id: "s", district: "서구" })];
+    expect(pickChatCandidates(places, "유성구 추천").map((place) => place.id)).toEqual(["y", "s"]);
+  });
+
+  it("후보 제한 안에서도 지역과 카테고리를 섞는다", () => {
+    const places = [
+      ...Array.from({ length: 8 }, (_, i) => makePlace({ id: `walk-${i}`, district: "서구", category: "산책" })),
+      ...Array.from({ length: 8 }, (_, i) => makePlace({ id: `food-${i}`, district: "유성구", category: "맛집" })),
+    ];
+    const result = pickChatCandidates(places, "추천해줘", 4);
+    expect(new Set(result.map((place) => place.category)).size).toBe(2);
+    expect(new Set(result.map((place) => place.district)).size).toBe(2);
+  });
+
+  it("맛집 후보가 많으면 등록 근거와 사진이 있는 장소를 먼저 전달한다", () => {
+    const places = [
+      { ...makePlace({ id: "raw", category: "맛집" }), sourceTier: 2 },
+      { ...makePlace({ id: "foodsafety-1", category: "맛집" }), sourceTier: 1, source: "foodsafety", imageUrl: "https://img/test.jpg" },
+    ];
+    expect(pickChatCandidates(places, "맛집 추천해줘", 1).map((place) => place.id)).toEqual(["foodsafety-1"]);
   });
 });

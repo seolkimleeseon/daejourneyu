@@ -7,6 +7,7 @@ import type { Place, PlaceCategory } from "@/types";
 export interface PickablePlace extends Place {
   imageUrl: string | null;
   sourceTier?: number;
+  source?: string;
   /** 카카오 검색 결과에만 있는 원본 페이지 링크. */
   placeUrl?: string | null;
 }

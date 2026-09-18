@@ -75,7 +75,7 @@ describe("불러오는 상태", () => {
     const { container } = setup();
 
     expect(container.textContent).toContain("실시간 장소를 불러오지 못했어요");
-    expect(container.textContent).not.toContain("동반 인증 · 0곳");
+    expect(container.textContent).not.toContain("공공데이터 장소 · 0곳");
   });
 
   it("시트가 닫혀 있으면 목록도 카카오도 부르지 않는다", () => {
@@ -92,7 +92,7 @@ describe("걸러 보기", () => {
     const { container } = setup();
 
     expect(gridNames(container)[0]).toEqual(["한밭수목원", "댕댕카페", "시립미술관"]);
-    expect(container.textContent).toContain("동반 인증 · 3곳");
+    expect(container.textContent).toContain("공공데이터 장소 · 3곳");
   });
 
   it("이름으로 검색한다", async () => {
@@ -167,49 +167,22 @@ describe("정렬", () => {
     expect(gridNames(container)[0]).toEqual(["사진있음", "사진없음"]);
   });
 
-  it("이름순을 고르면 가나다로 다시 세운다", async () => {
-    givePlaces([미인증, 카카오, 인증]);
+  it("맛집 목록에서는 식약처 동반 등록 장소를 일반 공공데이터보다 앞세운다", async () => {
+    givePlaces([
+      makePickable({ id: "raw", name: "원시맛집", category: "맛집", sourceTier: 2 }),
+      makePickable({ id: "foodsafety-1", name: "등록맛집", category: "맛집", sourceTier: 1, source: "foodsafety" }),
+    ]);
     const { container, user } = setup();
-
-    await user.click(screen.getByRole("button", { name: "이름순" }));
-
-    expect(gridNames(container)[0]).toEqual(["가장장소", "나중장소", "다중장소"]);
+    await user.click(screen.getByRole("button", { name: "🍔 맛집" }));
+    expect(gridNames(container)[0]).toEqual(["등록맛집", "원시맛집"]);
   });
 
-  it("거리순은 가까운 곳부터 세운다", async () => {
-    givePlaces([
-      makePickable({ id: "far", name: "먼곳", lat: 37.5, lng: 127.0 }),
-      makePickable({ id: "near", name: "가까운곳", lat: 36.36, lng: 127.38 }),
-    ]);
-    Object.defineProperty(navigator, "geolocation", {
-      value: {
-        getCurrentPosition: (ok: PositionCallback) =>
-          ok({ coords: { latitude: 36.36, longitude: 127.38 } } as GeolocationPosition),
-      },
-      configurable: true,
-    });
-    const { container, user } = setup();
-
-    await user.click(screen.getByRole("button", { name: "거리순" }));
-
-    expect(gridNames(container)[0]).toEqual(["가까운곳", "먼곳"]);
-  });
-
-  it("위치를 못 받으면 기본순으로 되돌리고 그 사실을 알린다", async () => {
-    givePlaces([
-      makePickable({ id: "far", name: "먼곳", lat: 37.5, lng: 127.0 }),
-      makePickable({ id: "near", name: "가까운곳", lat: 36.36, lng: 127.38 }),
-    ]);
-    Object.defineProperty(navigator, "geolocation", {
-      value: { getCurrentPosition: (_ok: PositionCallback, fail: () => void) => fail() },
-      configurable: true,
-    });
-    const { container, user } = setup();
-
-    await user.click(screen.getByRole("button", { name: "거리순" }));
-
-    expect(container.textContent).toContain("위치 접근이 안 돼서 기본순으로 보여드려요");
-    expect(gridNames(container)[0]).toEqual(["먼곳", "가까운곳"]);
+  it("정렬 버튼 없이 추천순으로 보여준다", () => {
+    givePlaces([미인증, 인증]);
+    const { container } = setup();
+    expect(gridNames(container)[0]).toEqual(["가장장소", "나중장소"]);
+    expect(screen.queryByRole("button", { name: "거리순" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "이름순" })).toBeNull();
   });
 });
 
@@ -241,7 +214,7 @@ describe("더 보기", () => {
     const { container, user } = setup();
     await user.click(screen.getByRole("button", { name: /더 보기/ }));
 
-    await user.click(screen.getByRole("button", { name: "이름순" }));
+    await user.click(screen.getByRole("button", { name: "서구" }));
 
     expect(gridNames(container)[0]).toHaveLength(20);
   });
@@ -424,6 +397,13 @@ describe("카드 표시", () => {
     setup();
 
     expect(screen.getByText("🚫 동반 불가")).toBeTruthy();
+  });
+
+  it("카카오 검색 장소는 동반 불가로 단정하지 않고 확인 필요로 표시한다", () => {
+    giveKakao([makePickable({ id: "kakao-1", name: "새카페", petFriendly: false })]);
+    const { container } = setup();
+    expect(container.textContent).toContain("동반 확인 필요");
+    expect(container.textContent).not.toContain("🚫 동반 불가");
   });
 
   it("사진이 깨지면 깨진 아이콘 대신 카테고리 이모지로 조용히 바꾼다", () => {
