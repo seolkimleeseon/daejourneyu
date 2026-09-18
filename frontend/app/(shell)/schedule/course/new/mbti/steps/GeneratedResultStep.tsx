@@ -117,7 +117,7 @@ export function GeneratedResultStep({
                         ⠿
                       </button>
                     ) : null}
-                    <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
+                    <StopThumbnail category={place.category} placeId={place.id} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-bold text-ink">{place.name}</div>
                       <div className="mt-0.5 text-xs text-ink-muted">
