@@ -3,6 +3,14 @@ import { pickChatCandidates } from "./chatCandidates";
 import { makePlace } from "@/test/fixtures";
 
 describe("pickChatCandidates", () => {
+  it("빵지순례 요청에서만 동반 여부 미확인 빵집을 후보에 넣는다", () => {
+    const places = [
+      makePlace({ id: "walk", category: "산책" }),
+      makePlace({ id: "bakery-1", name: "동네빵집", category: "맛집", petFriendly: false }),
+    ];
+    expect(pickChatCandidates(places, "빵지순례 코스").map((place) => place.id)).toContain("bakery-1");
+    expect(pickChatCandidates(places, "산책 코스").map((place) => place.id)).not.toContain("bakery-1");
+  });
   it("동반 불가 장소는 애초에 후보에서 뺀다", () => {
     const places = [
       makePlace({ id: "a", petFriendly: true }),

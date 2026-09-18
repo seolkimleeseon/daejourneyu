@@ -109,6 +109,17 @@ describe("잡담으로 답할 때", () => {
 });
 
 describe("코스로 답할 때", () => {
+  it("빵지순례에서 미확인 빵집 조건을 유지하고 일반 요청에서는 제외한다", async () => {
+    const bakery = place({ id: "bakery-test", name: "동네빵집", category: "맛집", petFriendly: false,
+      condition: "빵집 · 반려동물 동반 가능 여부는 방문 전 매장에 확인해주세요" });
+    aiReplies({ responseType: "course", label: "빵지순례", days: [["p1", "bakery-test"]] });
+    const response = await post(body({ prompt: "빵지순례 코스", candidatePlaces: [...CANDIDATES, bakery] }));
+    expect(response.status).toBe(200);
+    expect(response.body.days[0][1]).toMatchObject({ placeId: "bakery-test", petFriendly: false });
+    expect(response.body.days[0][1].condition).toContain("확인해주세요");
+    const ordinary = await post(body({ prompt: "산책 코스", candidatePlaces: [...CANDIDATES, bakery] }));
+    expect(ordinary.status).toBe(502);
+  });
   it("id만 받은 동선을 장소 정보로 펼쳐 돌려준다 — 프론트가 이름·조건을 바로 쓴다", async () => {
     const response = await post();
 

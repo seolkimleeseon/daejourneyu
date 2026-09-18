@@ -93,6 +93,11 @@ function validateRequest(body: unknown): body is SuggestionRequest {
     b.candidatePlaces.filter((place: CandidatePlace) => place.petFriendly).length >= 2;
 }
 
+function isAllowedForPrompt(place: CandidatePlace, prompt: string): boolean {
+  return place.petFriendly || (/빵지순례|빵집|베이커리|제과점/.test(prompt) &&
+    place.id.startsWith("bakery-") && place.condition.includes("동반 가능 여부는 방문 전 매장에 확인해주세요"));
+}
+
 interface ParsedSuggestion {
   label: string;
   days: string[][];
@@ -154,7 +159,7 @@ router.post("/course-suggestion", async (req, res) => {
   }
   const { prompt, nights, transport, candidatePlaces } = req.body;
 
-  const placeIds = [...new Set(candidatePlaces.filter((place: CandidatePlace) => place.petFriendly).map((place: CandidatePlace) => place.id))];
+  const placeIds = [...new Set(candidatePlaces.filter((place: CandidatePlace) => isAllowedForPrompt(place, prompt)).map((place: CandidatePlace) => place.id))];
   const validIds = new Set(placeIds);
   const dayCount = nights + 1;
 
@@ -191,10 +196,10 @@ router.post("/course-suggestion", async (req, res) => {
     required: ["responseType"],
   };
 
-  const placesDescription = candidatePlaces.filter((place: CandidatePlace) => place.petFriendly)
+  const placesDescription = candidatePlaces.filter((place: CandidatePlace) => isAllowedForPrompt(place, prompt))
     .map(
       (place) =>
-        `- ${place.id}: ${place.name} (${place.district} · ${place.category} · 동반가능 · ${place.condition}${place.lat === undefined ? "" : ` · ${place.lat},${place.lng}`})`
+        `- ${place.id}: ${place.name} (${place.district} · ${place.category} · ${place.petFriendly ? "동반가능" : "동반 여부 미확인"} · ${place.condition}${place.lat === undefined ? "" : ` · ${place.lat},${place.lng}`})`
     )
     .join("\n");
 
@@ -215,6 +220,7 @@ router.post("/course-suggestion", async (req, res) => {
           "하루 이동은 직선거리 합계 16km 이내, 한 구간은 10km 이내로 묶어. " +
           "산책 코스나 문화 코스처럼 테마가 있어도 산책·놀이터·맛집·문화를 가능한 범위에서 섞고, 매일 식사할 곳을 포함해. " +
           "사용자가 명시적으로 한 종류의 장소만 요청한 경우에는 그 요청을 우선해. " +
+          "빵지순례 요청이면 bakery- id인 빵집 2~3곳을 가까운 산책 장소와 함께 고르고, 빵집의 반려동물 동반 여부는 반드시 확인 필요하다고 안내해. " +
           "사용자의 취향과 방문 조건을 먼저 지켜줘.",
         responseMimeType: "application/json",
         responseSchema,

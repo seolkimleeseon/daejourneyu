@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { apiUrl } from "@/lib/api/authFetch";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { pickChatCandidates } from "@/lib/chatCandidates";
+import type { PickablePlace } from "@/lib/petTourMapper";
 import { mockPlaces } from "@/mocks";
 import type { Course, CourseStop } from "@/types";
 
@@ -133,12 +134,23 @@ export default function ChatbotPage() {
     // 응답이 너무 오래 걸리면(기본 fetch는 브라우저 기본 타임아웃까지 무한정 기다린다) 안내
     // 메시지로 대신 끊는다 — 사용자가 "생각하는 중..." 애니메이션만 하염없이 보는 걸 막는다.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), /빵지순례|빵집|베이커리|제과점/.test(prompt) ? 45000 : 15000);
 
     try {
       // 실 장소 데이터가 아직 안 불러와졌으면(첫 진입 직후 등) 목데이터로라도 대체한다 —
       // 매번 목데이터를 쓰던 예전과 달리 실데이터가 있으면 항상 그걸 우선한다.
-      const places = apiPlaces && apiPlaces.length > 0 ? apiPlaces : mockPlaces;
+      let places: (PickablePlace | (typeof mockPlaces)[number])[] = apiPlaces && apiPlaces.length > 0 ? apiPlaces : mockPlaces;
+      if (/빵지순례|빵집|베이커리|제과점/.test(prompt)) {
+        const district = ["대덕구", "동구", "유성구", "중구", "서구"].find((name) => prompt.includes(name));
+        const query = district ? `?district=${encodeURIComponent(district)}` : "";
+        const bakeryRes = await fetch(apiUrl(`/api/places/bakeries${query}`), { signal: controller.signal });
+        const bakeries = bakeryRes.ok ? (await bakeryRes.json()) as PickablePlace[] : [];
+        if (bakeries.length === 0) {
+          replacePending(pendingId, { text: "빵집 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요" });
+          return;
+        }
+        places = [...places, ...bakeries];
+      }
       const candidatePlaces = pickChatCandidates(places, prompt);
       const res = await fetch(apiUrl("/api/ai/course-suggestion"), {
         method: "POST",
@@ -250,17 +262,19 @@ export default function ChatbotPage() {
                     <button
                       key={stop.placeId}
                       type="button"
-                      onClick={() => router.push(`/place/${encodeURIComponent(stop.name)}`)}
+                      onClick={() => {
+                        if (!stop.placeId.startsWith("bakery-")) router.push(`/place/${encodeURIComponent(stop.name)}`);
+                      }}
                       className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-2 text-left"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-xs font-bold text-ink">{stop.name}</div>
                         <div className="mt-0.5 truncate text-[10px] text-ink-muted">
-                          {stop.district} · {stop.category}
+                          {stop.district} · {stop.category}{stop.placeId.startsWith("bakery-") ? " · 동반 가능 여부 확인 필요" : ""}
                         </div>
                       </div>
                       <span className="shrink-0 text-xs">
-                        {stop.petFriendly ? <Emoji3D emoji="🐾" size={16} shadow={false} /> : "🚫"}
+                        {stop.placeId.startsWith("bakery-") ? "확인 필요" : stop.petFriendly ? <Emoji3D emoji="🐾" size={16} shadow={false} /> : "🚫"}
                       </span>
                     </button>
                   ))}

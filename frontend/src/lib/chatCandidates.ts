@@ -26,7 +26,8 @@ function getSourceTier(place: CandidateSource): number {
  * 짐작 결과가 너무 좁으면(오탈자·특이한 질문) 필터 없는 전체 후보로 되돌아간다.
  */
 export function pickChatCandidates(places: CandidateSource[], prompt: string, cap = MAX_CANDIDATES): CandidateSource[] {
-  const petFriendly = places.filter((place) => place.petFriendly);
+  const bakeryIntent = /빵지순례|빵집|베이커리|제과점/.test(prompt);
+  const petFriendly = places.filter((place) => place.petFriendly || (bakeryIntent && place.id.startsWith("bakery-")));
 
   const matchedDistricts = DISTRICTS.filter((district) => prompt.includes(district));
   const matchedCategories = (Object.keys(CATEGORY_KEYWORDS) as PlaceCategory[]).filter((category) =>
