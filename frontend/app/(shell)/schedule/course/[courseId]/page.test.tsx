@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/s
 vi.mock("@/hooks/useSyncCoursesFromApi", () => ({ useSyncCoursesFromApi: vi.fn() }));
 
 // 지도·공유·장소 시트는 각자 테스트가 있다 — 상세 화면이 엮는 방식만 본다.
-vi.mock("@/components/course/CourseRouteMap", () => ({ CourseRouteMap: () => null }));
+vi.mock("@/components/course/CourseRouteMap", () => ({ CourseRouteMap: () => <div data-testid="route-map" /> }));
 vi.mock("@/components/course/PlacePickerSheet", () => ({ PlacePickerSheet: () => null }));
 const share = vi.hoisted(() => ({ render: vi.fn() }));
 vi.mock("@/components/course/ResultShareActions", () => ({
@@ -91,6 +91,7 @@ beforeEach(() => {
   useSheetStore.setState({ isOpen: false, title: "", selected: [], onDone: null });
   useCourseStore.setState({
     courses: [course],
+    courseIdAliases: {},
     schedules: [],
     hasSynced: true,
     updateCourse,
@@ -99,6 +100,14 @@ beforeEach(() => {
 });
 
 describe("들어갈 수 있는지", () => {
+  it("저장 중 임시 ID로 연 상세를 실제 ID로 이어서 보여준다", () => {
+    useCourseStore.setState({ courseIdAliases: { "optimistic-1": "c1" } });
+    setup("optimistic-1");
+
+    expect(ticketLabel()).toBe("유성 산책 코스");
+    expect(nav.replace).toHaveBeenCalledWith("/schedule/course/c1");
+  });
+
   it("비로그인이면 코스 대신 로그인 안내를 보여준다", () => {
     useAuthStore.setState({ isLoggedIn: false });
     setup();
@@ -178,15 +187,18 @@ describe("동선", () => {
     expect(screen.getByText("동선 · 2곳")).toBeTruthy();
   });
 
-  it("여러 날이면 일차마다 나누고 넘겨볼 점을 둔다", () => {
+  it("여러 날이면 현재 일차의 지도만 그리고 넘겨볼 때 바꾼다", async () => {
     useCourseStore.setState({
       courses: [makeCourse({ ...course, nights: 1, days: [[갑천], [댕댕카페]] })],
     });
-    setup();
+    const { user } = setup();
 
     expect(screen.getByText("1일차 동선 · 1곳")).toBeTruthy();
     expect(screen.getByText("2일차 동선 · 1곳")).toBeTruthy();
     expect(screen.getByRole("button", { name: "2일차 보기" })).toBeTruthy();
+    expect(screen.getAllByTestId("route-map")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "2일차 보기" }));
+    expect(screen.getAllByTestId("route-map")).toHaveLength(1);
   });
 
   it("확정된 조건은 동반 가능 여부와 출처를 같이 보여준다", () => {

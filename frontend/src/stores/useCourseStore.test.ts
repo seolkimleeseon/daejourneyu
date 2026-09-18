@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { useToastStore } from "@/stores/useToastStore";
 import { makeCourse, makeSchedule } from "@/test/fixtures";
 
 const api = vi.hoisted(() => ({
@@ -32,7 +33,7 @@ beforeEach(() => {
   api.createCourseApi.mockResolvedValue(serverCourse);
   api.updateCourseApi.mockResolvedValue(undefined);
   api.deleteCourseApi.mockResolvedValue(undefined);
-  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set() });
+  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), courseIdAliases: {} });
 });
 
 describe("setCourses", () => {
@@ -108,21 +109,44 @@ describe("addCourse", () => {
   });
 
   it("서버 응답이 오면 진짜 id로 바꿔 끼운다", async () => {
-    useCourseStore.getState().addCourse(newCourseInput());
+    const created = useCourseStore.getState().addCourse(newCourseInput());
 
     await vi.waitFor(() => {
       expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual(["server-1"]);
+      expect(useCourseStore.getState().courseIdAliases[created.id]).toBe("server-1");
     });
   });
 
-  it("저장에 실패해도 화면의 코스를 지우지 않는다", async () => {
+  it("저장에 실패하면 임시 코스를 제거하고 실패를 알린다", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     api.createCourseApi.mockRejectedValue(new Error("네트워크 오류"));
 
     const created = useCourseStore.getState().addCourse(newCourseInput());
 
     await vi.waitFor(() => expect(error).toHaveBeenCalled());
-    expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual([created.id]);
+    expect(useCourseStore.getState().courses).toEqual([]);
+    expect(useCourseStore.getState().pendingNewCourseIds.has(created.id)).toBe(false);
+    expect(useToastStore.getState().message).toContain("저장하지 못했어요");
+  });
+
+  it("목록 조회가 저장 응답보다 먼저 오더라도 같은 코스를 중복 표시하지 않는다", async () => {
+    let finish!: (course: typeof serverCourse) => void;
+    api.createCourseApi.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const created = useCourseStore.getState().addCourse(newCourseInput());
+
+    useCourseStore.getState().setCourses([serverCourse]);
+    finish(serverCourse);
+
+    await vi.waitFor(() => {
+      expect(useCourseStore.getState().courses.map((item) => item.id)).toEqual(["server-1"]);
+      expect(useCourseStore.getState().courseIdAliases[created.id]).toBe("server-1");
+    });
+  });
+
+  it("같은 시각에 코스를 두 번 저장해도 임시 ID가 겹치지 않는다", () => {
+    const first = useCourseStore.getState().addCourse(newCourseInput());
+    const second = useCourseStore.getState().addCourse(newCourseInput());
+    expect(first.id).not.toBe(second.id);
   });
 });
 

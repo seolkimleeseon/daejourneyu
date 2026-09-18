@@ -292,6 +292,19 @@ describe("이미지 보강", () => {
     expect(place.name).toBe("대전시립미술관");
     expect(place.imageUrl).toBeNull();
   });
+
+  it("사진 보강 요청 수를 제한해 장소 목록 응답이 과도하게 지연되지 않게 한다", async () => {
+    sources.assertKakaoRestKey.mockReturnValue("kakao-key");
+    sources.fetchPlaceImage.mockResolvedValue("https://img/found.jpg");
+    sources.culture.mockResolvedValue(Array.from({ length: 30 }, (_, index) =>
+      daejeonPlace({ id: `culture-${index}`, name: `문화시설 ${index}`, imageUrl: null })
+    ));
+
+    const places = await fetchAggregatedPlaces();
+
+    expect(places).toHaveLength(30);
+    expect(sources.fetchPlaceImage).toHaveBeenCalledTimes(24);
+  });
 });
 
 describe("동반 조건", () => {

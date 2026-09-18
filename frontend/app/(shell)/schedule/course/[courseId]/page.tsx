@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -53,14 +53,22 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   useSyncCoursesFromApi();
   const courses = useCourseStore((state) => state.courses);
+  const courseIdAliases = useCourseStore((state) => state.courseIdAliases);
   const hasSynced = useCourseStore((state) => state.hasSynced);
   const updateCourse = useCourseStore((state) => state.updateCourse);
   const deleteCourse = useCourseStore((state) => state.deleteCourse);
   const schedules = useCourseStore((state) => state.schedules);
-  const course = courses.find((item) => item.id === params.courseId);
+  const resolvedCourseId = courseIdAliases[params.courseId] ?? params.courseId;
+  const course = courses.find((item) => item.id === resolvedCourseId);
   const courseSchedules = schedules
-    .filter((item) => item.courseId === params.courseId)
+    .filter((item) => item.courseId === resolvedCourseId)
     .sort((a, b) => a.date.localeCompare(b.date));
+
+  useEffect(() => {
+    if (resolvedCourseId !== params.courseId) {
+      router.replace(`/schedule/course/${resolvedCourseId}`);
+    }
+  }, [params.courseId, resolvedCourseId, router]);
 
   const captureRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -290,6 +298,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                     <DayStops
                       day={day}
                       dayIndex={dayIndex}
+                      showMap={dayIndex === activeDay}
                       totalDays={displayDays.length}
                       onStopClick={goToPlace}
                       editMode={editMode}
@@ -320,6 +329,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               <DayStops
                 day={displayDays[0] ?? []}
                 dayIndex={0}
+                showMap
                 totalDays={1}
                 onStopClick={goToPlace}
                 editMode={editMode}
@@ -432,6 +442,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
 function DayStops({
   day,
   dayIndex,
+  showMap,
   totalDays,
   onStopClick,
   editMode,
@@ -441,6 +452,7 @@ function DayStops({
 }: {
   day: CourseStop[];
   dayIndex: number;
+  showMap: boolean;
   totalDays: number;
   onStopClick: (stop: CourseStop) => void;
   editMode: boolean;
@@ -487,7 +499,7 @@ function DayStops({
         <Emoji3D emoji="📍" size={14} shadow={false} />
         {totalDays > 1 ? `${dayIndex + 1}일차 동선` : "동선"} · {day.length}곳
       </div>
-      {!editMode ? <CourseRouteMap stops={day} /> : null}
+      {!editMode && showMap ? <CourseRouteMap stops={day} /> : null}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         {day.map((stop, stopIndex) => (
           <div

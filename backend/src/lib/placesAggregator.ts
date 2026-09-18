@@ -310,6 +310,8 @@ const IMAGE_SEARCH_HINT: Record<PlaceCategory, string> = {
 
 /** 이미지 보강 동시 요청 상한 — 레이트리밋 방지(kakaoLocal.ts의 다른 호출부와 동일 값). */
 const IMAGE_BACKFILL_CONCURRENCY = 8;
+/** 목록 로딩을 수백 건의 이미지 검색이 막지 않도록 보강 대상을 제한한다. */
+const IMAGE_BACKFILL_LIMIT = 24;
 
 /** 소스별 fetch 단계에서 이미지를 못 채운 행을 dedupe 이후 한 번 더 훑어 카카오 이미지 검색으로 채운다. */
 async function backfillMissingImages(rows: AggregatedPlace[]): Promise<void> {
@@ -320,7 +322,7 @@ async function backfillMissingImages(rows: AggregatedPlace[]): Promise<void> {
     return;
   }
 
-  const missing = rows.filter((row) => !row.imageUrl);
+  const missing = rows.filter((row) => !row.imageUrl).slice(0, IMAGE_BACKFILL_LIMIT);
   if (!missing.length) return;
 
   const images = await mapWithConcurrency(missing, IMAGE_BACKFILL_CONCURRENCY, (row) =>
