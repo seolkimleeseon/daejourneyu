@@ -1,5 +1,6 @@
 import type { DaejeonDistrict, Place, PlaceCategory } from "@/types";
 import type { PickablePlace } from "./petTourMapper";
+import { sortPlacesByQuality } from "./placeQuality";
 
 type CandidateSource = Place | PickablePlace;
 
@@ -59,7 +60,7 @@ export function pickChatCandidates(places: CandidateSource[], prompt: string, ca
   // API 배열의 앞부분만 잘라내면 한 지역·종류가 후보를 독식한다. 품질 등급별로
   // 지역과 종류를 번갈아 뽑아 제한된 후보 안에도 여러 선택지를 남긴다.
   const buckets = new Map<string, CandidateSource[]>();
-  for (const place of pool) {
+  for (const place of sortPlacesByQuality(pool)) {
     const key = `${preferredIds.has(place.id) ? 0 : 1}:${getSourceTier(place)}:${place.district}:${place.category}`;
     const bucket = buckets.get(key) ?? [];
     bucket.push(place);

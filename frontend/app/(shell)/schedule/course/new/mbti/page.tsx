@@ -17,11 +17,11 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
-import { ensureCategoryMinimum, type PickablePlace } from "@/lib/petTourMapper";
+import type { PickablePlace } from "@/lib/petTourMapper";
 import { routeDistanceKm, shortestRoute } from "@/lib/nearestNeighborRoute";
 import { haversine } from "@/lib/haversine";
+import { placeQualityScore } from "@/lib/placeQuality";
 import { stashPendingCourseSave } from "@/lib/pendingCourseSave";
-import { mockPlaces } from "@/mocks";
 import type { Course, DaejeonDistrict, Place, PlaceCategory } from "@/types";
 
 type Phase = "intro" | "quiz" | "result" | "nights" | "generated";
@@ -29,7 +29,6 @@ type Phase = "intro" | "quiz" | "result" | "nights" | "generated";
 const GENERATE_STEP_LABELS = ["기간", "코스"] as const;
 /** 직접짓기 위저드와 동일하게 이동수단 선택 단계를 없애고 자차로 고정한다. */
 const DEFAULT_TRANSPORT = "자차" as const;
-const MIN_PER_CATEGORY = 3;
 const COURSE_TITLES: Record<CourseTheme, string> = {
   산책: "청량 힐링 산책 데이",
   맛집: "댕댕이랑 빵지순례 데이",
@@ -40,12 +39,6 @@ const ALL_CATEGORIES: PlaceCategory[] = ["산책", "놀이터", "맛집", "문�
 const ALL_DISTRICTS: DaejeonDistrict[] = ["유성구", "중구", "동구", "대덕구", "서구"];
 
 type SourcePlace = Place | PickablePlace;
-
-/** backend가 매긴 소스 신뢰도(1=식약처·관광공사 등 인증 소스, 2=공공데이터 미인증). mockPlaces처럼
- * 신뢰도 정보가 없는 폴백 데이터는 미인증과 동급(2)으로 취급한다. */
-function getSourceTier(place: SourcePlace): number {
-  return "sourceTier" in place && typeof place.sourceTier === "number" ? place.sourceTier : 2;
-}
 
 const MAX_ANCHOR_DISTANCE_KM = 8;
 const MAX_DAY_ROUTE_KM = 16;
@@ -70,7 +63,7 @@ function shuffle<T>(items: T[]): T[] {
 /** 밥 먹을 곳을 중심으로 하루 이동 반경을 잡고, 테마·아직 못 간 카테고리를 채운다. */
 function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePlace[], variation = 0): SourcePlace[][] {
   const daysCount = nights + 1;
-  const perDay = daysCount === 1 ? 4 : 3;
+  const perDay = theme === "맛집" ? (daysCount === 1 ? 5 : 4) : (daysCount === 1 ? 4 : 3);
 
   const districtRichness = shuffle(ALL_DISTRICTS)
     .map((district) => ({
@@ -103,7 +96,7 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePl
       const coverage = (restaurant: SourcePlace) => new Set(available.filter(
         (place) => haversine(restaurant, place) <= MAX_ANCHOR_DISTANCE_KM
       ).map((place) => place.category)).size;
-      return coverage(b) - coverage(a) || getSourceTier(a) - getSourceTier(b);
+      return coverage(b) - coverage(a) || placeQualityScore(b) - placeQualityScore(a);
     });
     const anchor = anchors[0];
     if (!anchor) return [];
@@ -114,20 +107,20 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePl
     const picked: SourcePlace[] = [anchor];
     const otherCategories = ALL_CATEGORIES.filter((category) => category !== "맛집" && category !== theme);
     const categoryOrder: PlaceCategory[] = [
-      ...(theme === "맛집" ? [] : [theme]),
+      ...(theme === "맛집" ? ["맛집" as const] : [theme]),
       ...otherCategories.filter((category) => !coveredCategories.has(category)),
       ...otherCategories.filter((category) => coveredCategories.has(category)),
     ];
     for (const category of categoryOrder) {
       if (picked.length >= perDay) break;
       const options = nearby.filter((place) => place.category === category && !picked.some((item) => item.id === place.id))
-        .sort((a, b) => getSourceTier(a) - getSourceTier(b) || haversine(anchor, a) - haversine(anchor, b));
+        .sort((a, b) => placeQualityScore(b) - placeQualityScore(a) || haversine(anchor, a) - haversine(anchor, b));
       const next = options.find((place) => isCompactRoute([...picked, place]));
       if (next) picked.push(next);
     }
     if (picked.length < perDay) {
       const remaining = nearby.filter((place) => !picked.some((item) => item.id === place.id))
-        .sort((a, b) => haversine(anchor, a) - haversine(anchor, b));
+        .sort((a, b) => placeQualityScore(b) - placeQualityScore(a) || haversine(anchor, a) - haversine(anchor, b));
       for (const place of remaining) {
         if (picked.length >= perDay) break;
         if (isCompactRoute([...picked, place])) picked.push(place);
@@ -232,20 +225,14 @@ function MbtiCourseWizard() {
   const handleGenerate = () => {
     // 동반 불가(petFriendly: false) 장소는 정렬에서 뒤로 밀릴 뿐 걸러지진 않아서, 후보가 적으면
     // 반려동물 동반 여행 코스에 동반 불가 장소가 뽑힐 수 있었다 — 후보 단계에서 아예 제외한다.
-    const primary = (apiPlaces ?? []).filter((place) => place.petFriendly);
-    const fallback = mockPlaces.filter((place) => place.petFriendly);
-    const source = ensureCategoryMinimum(primary, fallback, MIN_PER_CATEGORY);
+    const source = (apiPlaces ?? []).filter((place) => place.petFriendly);
     setGeneratedDays(generateCourseDays(theme, nights, source));
     setGenerationIndex(0);
     setPhase("generated");
   };
 
   const handleRegenerate = () => {
-    const source = ensureCategoryMinimum(
-      (apiPlaces ?? []).filter((place) => place.petFriendly),
-      mockPlaces.filter((place) => place.petFriendly),
-      MIN_PER_CATEGORY
-    );
+    const source = (apiPlaces ?? []).filter((place) => place.petFriendly);
     const nextIndex = generationIndex + 1;
     setGenerationIndex(nextIndex);
     setGeneratedDays(generateCourseDays(theme, nights, source, nextIndex));

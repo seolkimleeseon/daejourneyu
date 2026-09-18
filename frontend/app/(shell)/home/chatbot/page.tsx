@@ -13,7 +13,6 @@ import { apiUrl } from "@/lib/api/authFetch";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { pickChatCandidates } from "@/lib/chatCandidates";
 import type { PickablePlace } from "@/lib/petTourMapper";
-import { mockPlaces } from "@/mocks";
 import type { Course, CourseStop } from "@/types";
 
 type CourseSuggestion = Omit<Course, "id">;
@@ -61,7 +60,7 @@ const FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
-const QUICK_PROMPTS = ["조용히 산책하기 좋은 곳", "당일치기 코스 추천해줘", "실내 카페 위주로", "소형견도 갈 수 있는 곳"];
+const QUICK_PROMPTS = ["🥐 빵지순례 코스 추천해줘", "조용히 산책하기 좋은 곳", "당일치기 코스 추천해줘", "실내 카페 위주로", "소형견도 갈 수 있는 곳"];
 
 const THINKING_PHRASES = ["킁킁 냄새 맡는 중...", "지도를 펼치는 중...", "발자국 따라가는 중...", "코스를 그리는 중..."];
 
@@ -137,9 +136,11 @@ export default function ChatbotPage() {
     const timeoutId = setTimeout(() => controller.abort(), /빵지순례|빵집|베이커리|제과점/.test(prompt) ? 45000 : 15000);
 
     try {
-      // 실 장소 데이터가 아직 안 불러와졌으면(첫 진입 직후 등) 목데이터로라도 대체한다 —
-      // 매번 목데이터를 쓰던 예전과 달리 실데이터가 있으면 항상 그걸 우선한다.
-      let places: (PickablePlace | (typeof mockPlaces)[number])[] = apiPlaces && apiPlaces.length > 0 ? apiPlaces : mockPlaces;
+      if (!apiPlaces?.length) {
+        replacePending(pendingId, { text: "장소 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요" });
+        return;
+      }
+      let places: PickablePlace[] = apiPlaces;
       if (/빵지순례|빵집|베이커리|제과점/.test(prompt)) {
         const district = ["대덕구", "동구", "유성구", "중구", "서구"].find((name) => prompt.includes(name));
         const query = district ? `?district=${encodeURIComponent(district)}` : "";
@@ -211,6 +212,7 @@ export default function ChatbotPage() {
 
     requestCourseSuggestion(text);
   };
+
 
   const handleSaveCourse = (course: CourseSuggestion) => {
     if (!isLoggedIn) {

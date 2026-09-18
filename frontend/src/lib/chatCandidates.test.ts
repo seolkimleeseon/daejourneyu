@@ -96,4 +96,12 @@ describe("pickChatCandidates", () => {
     expect(new Set(result.map((place) => place.category)).size).toBe(2);
     expect(new Set(result.map((place) => place.district)).size).toBe(2);
   });
+
+  it("맛집 후보가 많으면 등록 근거와 사진이 있는 장소를 먼저 전달한다", () => {
+    const places = [
+      { ...makePlace({ id: "raw", category: "맛집" }), sourceTier: 2 },
+      { ...makePlace({ id: "foodsafety-1", category: "맛집" }), sourceTier: 1, source: "foodsafety", imageUrl: "https://img/test.jpg" },
+    ];
+    expect(pickChatCandidates(places, "맛집 추천해줘", 1).map((place) => place.id)).toEqual(["foodsafety-1"]);
+  });
 });

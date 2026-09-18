@@ -112,13 +112,34 @@ describe("코스로 답할 때", () => {
   it("빵지순례에서 미확인 빵집 조건을 유지하고 일반 요청에서는 제외한다", async () => {
     const bakery = place({ id: "bakery-test", name: "동네빵집", category: "맛집", petFriendly: false,
       condition: "빵집 · 반려동물 동반 가능 여부는 방문 전 매장에 확인해주세요" });
-    aiReplies({ responseType: "course", label: "빵지순례", days: [["p1", "bakery-test"]] });
-    const response = await post(body({ prompt: "빵지순례 코스", candidatePlaces: [...CANDIDATES, bakery] }));
+    const secondBakery = place({ ...bakery, id: "bakery-other", name: "다른빵집" });
+    aiReplies({ responseType: "course", label: "빵지순례", days: [["p1", "bakery-test", "bakery-other"]] });
+    const response = await post(body({ prompt: "빵지순례 코스", candidatePlaces: [...CANDIDATES, bakery, secondBakery] }));
     expect(response.status).toBe(200);
     expect(response.body.days[0][1]).toMatchObject({ placeId: "bakery-test", petFriendly: false });
     expect(response.body.days[0][1].condition).toContain("확인해주세요");
-    const ordinary = await post(body({ prompt: "산책 코스", candidatePlaces: [...CANDIDATES, bakery] }));
+    const ordinary = await post(body({ prompt: "산책 코스", candidatePlaces: [...CANDIDATES, bakery, secondBakery] }));
     expect(ordinary.status).toBe(502);
+  });
+  it("일반 코스에서 식사 장소가 빠졌으면 거절한다", async () => {
+    aiReplies({ responseType: "course", label: "산책만", days: [["p1", "p3"]] });
+    expect((await post()).status).toBe(502);
+  });
+  it("빵지순례에 빵집 한 곳만 넣은 응답은 거절한다", async () => {
+    const bakery = place({ id: "bakery-test", name: "동네빵집", category: "맛집", petFriendly: false,
+      condition: "빵집 · 반려동물 동반 가능 여부는 방문 전 매장에 확인해주세요" });
+    aiReplies({ responseType: "course", label: "빵지순례", days: [["p1", "bakery-test"]] });
+    expect((await post(body({ prompt: "빵지순례 코스", candidatePlaces: [...CANDIDATES, bakery] }))).status).toBe(502);
+  });
+  it("빵집 두 지점만 고른 코스도 거절한다", async () => {
+    const condition = "빵집 · 반려동물 동반 가능 여부는 방문 전 매장에 확인해주세요";
+    const candidates = [
+      ...CANDIDATES,
+      place({ id: "bakery-1", name: "성심당본점", category: "맛집", condition, petFriendly: false }),
+      place({ id: "bakery-2", name: "성심당 대전역점2", category: "맛집", condition, petFriendly: false }),
+    ];
+    aiReplies({ responseType: "course", label: "빵지순례", days: [["p1", "bakery-1", "bakery-2"]] });
+    expect((await post(body({ prompt: "빵지순례 코스", candidatePlaces: candidates }))).status).toBe(502);
   });
   it("id만 받은 동선을 장소 정보로 펼쳐 돌려준다 — 프론트가 이름·조건을 바로 쓴다", async () => {
     const response = await post();
@@ -143,7 +164,9 @@ describe("코스로 답할 때", () => {
   it("요청에 실려 온 박 수와 이동수단을 그대로 붙인다 — AI가 정하는 값이 아니다", async () => {
     aiReplies({ responseType: "course", label: "1박 코스", days: [["p1", "p2"], ["p3", "p4"]] });
 
-    const response = await post(body({ nights: 1, transport: "대중교통" }));
+    const response = await post(body({ nights: 1, transport: "대중교통", candidatePlaces: [
+      ...CANDIDATES.filter((candidate) => candidate.id !== "p4"), place({ id: "p4", name: "둘째 날 식당", category: "맛집" }),
+    ] }));
 
     expect(response.body).toMatchObject({ nights: 1, transport: "대중교통" });
     expect(response.body.days).toHaveLength(2);
@@ -155,7 +178,7 @@ describe("AI 응답을 그대로 믿지 않는다", () => {
     aiReplies({ responseType: "course", label: "가까운 코스", days: [["p1", "p3", "p2"]] });
     const response = await post(body({ candidatePlaces: [
       place({ id: "p1", lat: 36.35, lng: 127.38 }),
-      place({ id: "p2", lat: 36.35, lng: 127.39 }),
+      place({ id: "p2", category: "맛집", lat: 36.35, lng: 127.39 }),
       place({ id: "p3", lat: 36.35, lng: 127.4 }),
     ] }));
     const ids = response.body.days[0].map((stop: { placeId: string }) => stop.placeId);
@@ -166,7 +189,7 @@ describe("AI 응답을 그대로 믿지 않는다", () => {
     aiReplies({ responseType: "course", label: "먼 코스", days: [["p1", "p2"]] });
     const response = await post(body({ candidatePlaces: [
       place({ id: "p1", lat: 36.35, lng: 127.38 }),
-      place({ id: "p2", lat: 36.75, lng: 127.78 }),
+      place({ id: "p2", category: "맛집", lat: 36.75, lng: 127.78 }),
     ] }));
     expect(response.status).toBe(502);
     expect(response.body.error).toContain("가까운 장소");
@@ -205,7 +228,7 @@ describe("AI 응답을 그대로 믿지 않는다", () => {
   it("동반 불가 장소는 모델이 선택해도 제외한다", async () => {
     aiReplies({ responseType: "course", label: "동반 코스", days: [["p1", "p2", "p4"]] });
     const response = await post(body({ candidatePlaces: [
-      place({ id: "p1" }), place({ id: "p2", petFriendly: false }), place({ id: "p4" }),
+      place({ id: "p1" }), place({ id: "p2", petFriendly: false }), place({ id: "p4", category: "맛집" }),
     ] }));
     expect(response.body.days[0].map((stop: { placeId: string }) => stop.placeId)).toEqual(["p1", "p4"]);
   });

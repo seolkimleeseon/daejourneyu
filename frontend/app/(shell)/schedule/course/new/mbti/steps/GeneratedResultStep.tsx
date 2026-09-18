@@ -19,6 +19,8 @@ interface GeneratedResultStepProps {
   transport: Transport;
   days: Place[][];
   courseTitle: string;
+  routeLabel?: string;
+  bakeryMode?: boolean;
   onReorderDay: (dayIndex: number, next: Place[]) => void;
   onRegenerate: () => void;
   onSave: () => void;
@@ -31,6 +33,8 @@ export function GeneratedResultStep({
   transport,
   days,
   courseTitle,
+  routeLabel,
+  bakeryMode = false,
   onReorderDay,
   onRegenerate,
   onSave,
@@ -45,6 +49,12 @@ export function GeneratedResultStep({
         <div className="mb-4 rounded-2xl bg-brand-100 p-4 text-center">
           <div className="text-sm font-extrabold text-brand-700">&lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
+            {bakeryMode ? (
+              <Tag tone="neutral" className="cursor-default border border-line bg-card">
+                🔍 빵집 반려견 동반여부 확인 필요
+              </Tag>
+            ) : (
+              <>
             <Tag tone="brand" className="cursor-default border border-line bg-card">
               {nights > 0 ? (
                 <span className="inline-flex items-center gap-1">
@@ -58,9 +68,11 @@ export function GeneratedResultStep({
             <Tag tone="purple" className="cursor-default border border-line bg-card">
               {transport === "자차" ? "🚗" : "🚌"} {transport}
             </Tag>
-            <Tag tone="brand" className="flex cursor-default items-center gap-1 border border-line bg-card">
-              <Emoji3D emoji="🐾" size={12} shadow={false} />동반 가능
+            <Tag tone={days.some((day) => day.some((place) => !place.petFriendly)) ? "neutral" : "brand"} className="flex cursor-default items-center gap-1 border border-line bg-card">
+              {days.some((day) => day.some((place) => !place.petFriendly)) ? "🔍 동반 여부 확인 필요" : <><Emoji3D emoji="🐾" size={12} shadow={false} />동반 가능</>}
             </Tag>
+              </>
+            )}
           </div>
         </div>
 
@@ -85,7 +97,7 @@ export function GeneratedResultStep({
           <div key={dayIndex} className="mb-4 last:mb-0">
             <div className="mb-2 flex items-center gap-1 px-1 text-xs font-bold text-ink-muted">
               <Emoji3D emoji="📍" size={14} shadow={false} />
-              {days.length > 1 ? `${dayIndex + 1}일차 동선` : `${theme}형 동선`} · {day.length}곳
+              {days.length > 1 ? `${dayIndex + 1}일차 동선` : routeLabel ?? `${theme}형 동선`} · {day.length}곳
             </div>
             {day.length > 0 ? <CourseRouteMap places={day} /> : null}
             <div className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
@@ -157,7 +169,7 @@ export function GeneratedResultStep({
         <div ref={shareCardRef}>
           <CourseShareCard
             title={courseTitle}
-            tags={[nightsLabel(nights), `${theme}형`, transport]}
+            tags={[nightsLabel(nights), routeLabel ?? `${theme}형`, transport]}
             days={days}
           />
         </div>
@@ -168,7 +180,7 @@ export function GeneratedResultStep({
         captureRef={shareCardRef}
         fileName={`대저니유-${courseTitle}`}
         kakaoTitle={courseTitle}
-        kakaoDescription={`${nightsLabel(nights)} · ${theme}형 코스 · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
+        kakaoDescription={`${nightsLabel(nights)} · ${routeLabel ?? `${theme}형 코스`} · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
       />
 
       <div className="mb-4 rounded-lg bg-surface p-4 text-xs leading-relaxed text-ink-muted">

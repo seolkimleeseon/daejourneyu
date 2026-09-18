@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MBTI_QUESTIONS, MBTI_TYPES, scoreAnswers } from "@/lib/mbti";
+import { MBTI_QUESTIONS, MBTI_TYPES, scoreAnswers, topTheme } from "@/lib/mbti";
 import type { PickablePlace } from "@/lib/petTourMapper";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
@@ -328,6 +328,17 @@ describe("코스 만들기", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
+  it("맛집형은 가까운 식사 장소 두 곳과 다른 활동을 함께 담는다", async () => {
+    const code = Object.keys(MBTI_TYPES).find((key) => topTheme(MBTI_TYPES[key]) === "맛집")!;
+    enterWithSavedResult(code);
+    const { container, user } = setup();
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
+    await user.click(screen.getByRole("button", { name: "다음" }));
+    const names = generatedDays(container)[0];
+    expect(names.filter((name) => name.includes("맛집"))).toHaveLength(2);
+    expect(names.some((name) => name.includes("산책"))).toBe(true);
+  });
+
   it("같은 구에 있어도 이동 반경 밖인 장소는 끼워 넣지 않는다", async () => {
     pickable.usePickablePlaces.mockReturnValue({ data: [
       ...pool.filter((place) => place.id !== "uc1"),
@@ -368,15 +379,15 @@ describe("저장과 뒤로가기", () => {
     expect(nav.push).toHaveBeenCalledWith("/schedule");
   });
 
-  it("실 API가 빈손이어도 목데이터로 채워 빈 코스를 내놓지 않는다", async () => {
+  it("실 API가 빈손이면 예시 장소로 코스를 지어내지 않고 저장을 막는다", async () => {
     pickable.usePickablePlaces.mockReturnValue({ data: [] });
     const { container, user } = setup();
 
     await generate(user);
 
-    expect(generatedDays(container)[0].length).toBeGreaterThan(0);
+    expect(generatedDays(container)[0]).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "코스 저장하기" }));
-    expect(addCourse).toHaveBeenCalled();
+    expect(addCourse).not.toHaveBeenCalled();
   });
 
   it("비로그인이면 저장하지 않고 로그인부터 받는다", async () => {

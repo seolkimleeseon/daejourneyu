@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ApiError, Type } from "@google/genai";
 import { gemini, GEMINI_MODEL } from "../lib/gemini";
+import { bakeryBrandKey } from "../lib/bakeries";
 
 type Transport = "자차" | "대중교통";
 const TRANSPORTS: Transport[] = ["자차", "대중교통"];
@@ -96,6 +97,21 @@ function validateRequest(body: unknown): body is SuggestionRequest {
 function isAllowedForPrompt(place: CandidatePlace, prompt: string): boolean {
   return place.petFriendly || (/빵지순례|빵집|베이커리|제과점/.test(prompt) &&
     place.id.startsWith("bakery-") && place.condition.includes("동반 가능 여부는 방문 전 매장에 확인해주세요"));
+}
+
+function matchesCourseIntent(days: string[][], byId: Map<string, CandidatePlace>, prompt: string): boolean {
+  const bakeryIntent = /빵지순례|빵집|베이커리|제과점/.test(prompt);
+  if (bakeryIntent) return days.every((day) =>
+    new Set(day.filter((id) => id.startsWith("bakery-")).map((id) => bakeryBrandKey(byId.get(id)!.name))).size >= 2 &&
+    day.some((id) => {
+      const place = byId.get(id);
+      return place?.petFriendly && (place.category === "산책" || place.category === "놀이터");
+    })
+  );
+
+  // 한 종류만 명시한 요청은 그대로 존중한다. 일반 코스는 가능한 한 매일 식사 장소를 포함한다.
+  if (/(?:산책|놀이터|문화|맛집|카페)(?:만|만으로|만 해|만 보여)/.test(prompt)) return true;
+  return days.every((day) => day.some((id) => byId.get(id)?.category === "맛집"));
 }
 
 interface ParsedSuggestion {
@@ -242,6 +258,9 @@ router.post("/course-suggestion", async (req, res) => {
     }
 
     const byId = new Map(candidatePlaces.map((place) => [place.id, place]));
+    if (!matchesCourseIntent(parsed.suggestion.days, byId, prompt)) {
+      return res.status(502).json({ error: "요청한 테마에 맞는 코스를 만들지 못했어요. 다시 시도해주세요" });
+    }
     const routedDays = parsed.suggestion.days.map((day) => shortestDayRoute(day.map((placeId) => byId.get(placeId)!)));
     if (routedDays.some((day) => !routeIsNear(day))) {
       return res.status(502).json({ error: "가까운 장소로 코스를 만들지 못했어요. 지역이나 조건을 바꿔 다시 시도해주세요" });
