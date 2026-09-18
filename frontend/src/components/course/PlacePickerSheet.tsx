@@ -11,11 +11,8 @@ import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { useKakaoPlacesMulti, type KakaoSearchTarget } from "@/hooks/useKakaoPlaces";
 import type { PickablePlace } from "@/lib/petTourMapper";
 import { CATEGORIES, CATEGORY_ICON, DISTRICTS } from "@/lib/placeFilters";
-import { haversine } from "@/lib/haversine";
+import { sortPlacesByQuality } from "@/lib/placeQuality";
 import type { DaejeonDistrict, PlaceCategory } from "@/types";
-
-type SortMode = "기본" | "이름순" | "거리순";
-const SORT_MODES: SortMode[] = ["기본", "이름순", "거리순"];
 
 /** MIN_RESULTS_BEFORE_RELAX 미만이면 구 필터를 풀거나 카카오맵으로 더 찾아본다 */
 const MIN_RESULTS_BEFORE_RELAX = 4;
@@ -37,37 +34,6 @@ const CATEGORY_KAKAO_KEYWORD: Record<PlaceCategory, string> = {
   문화: "문화시설",
 };
 
-/**
- * 소스별 신뢰도 티어를 매긴다 — 낮을수록 먼저 보여준다. backend/scripts/syncPlaces.ts가
- * Place.sourceTier로 이미 매겨서(1=반려동물 동반 인증 소스, 2=공공데이터 미인증) 응답에 실어주므로
- * 그대로 쓰고, 카카오맵 실시간 검색 결과(Place 테이블 밖, id가 "kakao-"로 시작)만 3으로 취급한다.
- */
-function getTrustTier(place: PickablePlace): number {
-  if (place.id.startsWith("kakao-")) return 3;
-  return place.sourceTier ?? 2;
-}
-
-/** "기본" 정렬 — 동반 인증 소스 우선, 같은 소스 안에서는 사진 있는 카드 우선. */
-function sortByQuality(list: PickablePlace[]): PickablePlace[] {
-  return [...list].sort((a, b) => {
-    const tierDiff = getTrustTier(a) - getTrustTier(b);
-    if (tierDiff !== 0) return tierDiff;
-    return (b.imageUrl ? 1 : 0) - (a.imageUrl ? 1 : 0);
-  });
-}
-
-/**
- * 사용자가 고른 정렬 기준을 그대로 적용한다 — "신뢰도"처럼 설명이 필요한 내부 로직 대신,
- * 사용자가 누른 게 곧 기준이 되게 한다. "거리순"인데 위치 권한이 없으면 "기본"으로 되돌아간다.
- */
-function applySortMode(list: PickablePlace[], mode: SortMode, coords: { lat: number; lng: number } | null): PickablePlace[] {
-  if (mode === "이름순") return [...list].sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  if (mode === "거리순" && coords) {
-    return [...list].sort((a, b) => haversine(coords, a) - haversine(coords, b));
-  }
-  return sortByQuality(list);
-}
-
 function PickablePlaceCard({
   place,
   isAdded,
@@ -81,6 +47,7 @@ function PickablePlaceCard({
   // 로드 실패하면 깨진 이미지 아이콘 대신 이모지 카드로 조용히 전환한다.
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = place.imageUrl && !imageFailed;
+  const needsPetCheck = place.id.startsWith("kakao-") || place.condition.includes("동반 가능 여부는 방문 전 확인");
 
   return (
     <button
@@ -116,7 +83,11 @@ function PickablePlaceCard({
             ✓
           </div>
         ) : null}
-        {!place.petFriendly ? (
+        {needsPetCheck ? (
+          <span className="absolute right-1.5 top-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-ink">
+            동반 확인 필요
+          </span>
+        ) : !place.petFriendly ? (
           <span className="absolute right-1.5 top-1.5 rounded-full bg-accent-coral px-2 py-0.5 text-[10px] font-semibold text-white">
             🚫 동반 불가
           </span>
@@ -128,6 +99,11 @@ function PickablePlaceCard({
           <Emoji3D emoji="📍" size={10} shadow={false} />
           {place.district}
         </div>
+        {place.source === "foodsafety" || place.id.startsWith("foodsafety-") ? (
+          <div className="mt-1 truncate text-[10px] font-semibold text-brand-700">식약처 동반출입 등록</div>
+        ) : place.sourceTier === 1 ? (
+          <div className="mt-1 truncate text-[10px] text-ink-muted">동반 정보 제공</div>
+        ) : null}
       </div>
     </button>
   );
@@ -140,19 +116,6 @@ export function PlacePickerSheet() {
   const [category, setCategory] = useState<PlaceCategory | "전체">("전체");
   const [district, setDistrict] = useState<DaejeonDistrict | "전체">("전체");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [sortMode, setSortMode] = useState<SortMode>("기본");
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationDenied, setLocationDenied] = useState(false);
-
-  // "거리순"을 처음 고를 때만 위치 권한을 물어본다 — 매번 열 때마다 물어보면 성가시다.
-  useEffect(() => {
-    if (sortMode !== "거리순" || coords || locationDenied || typeof navigator === "undefined" || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setLocationDenied(true),
-      { timeout: 5000, maximumAge: 10 * 60 * 1000 }
-    );
-  }, [sortMode, coords, locationDenied]);
   // Place 테이블(backend/scripts/syncPlaces.ts가 9개 공공데이터 소스+문체부 CSV를 정규화·dedupe해 채움)
   // 하나만 부르면 된다 — 예전엔 소스별로 훅을 따로 불러 여기서 이름 기준으로 병합했다(커밋 0b5c8ac).
   const { data: fetchedPlaces, isLoading, isError } = usePickablePlaces(isOpen);
@@ -168,13 +131,13 @@ export function PlacePickerSheet() {
       const matchesDistrict = district === "전체" || place.district === district;
       return matchesCategory && matchesDistrict && matchesQuery(place, q);
     });
-    return applySortMode(matched, sortMode, coords);
-  }, [places, query, category, district, sortMode, coords]);
+    return sortPlacesByQuality(matched);
+  }, [places, query, category, district]);
 
-  // 검색어·카테고리·구·정렬을 바꾸면 이전 필터의 "더 보기" 진행분은 의미가 없으니 20개로 되돌린다.
+  // 검색어·카테고리·구를 바꾸면 이전 필터의 "더 보기" 진행분은 의미가 없으니 20개로 되돌린다.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [query, category, district, sortMode]);
+  }, [query, category, district]);
   const visibleStrict = strict.slice(0, visibleCount);
 
   // 카테고리+구를 같이 걸면 실데이터가 적어 결과가 텅 빌 수 있다 — 구 조건만 풀어서 후보를 더 보여준다.
@@ -187,8 +150,8 @@ export function PlacePickerSheet() {
       const matchesCategory = category === "전체" || place.category === category;
       return matchesCategory && matchesQuery(place, q);
     });
-    return applySortMode(matched, sortMode, coords);
-  }, [places, query, category, district, strict, sortMode, coords]);
+    return sortPlacesByQuality(matched);
+  }, [places, query, category, district, strict]);
 
   // 정부 데이터로도 여전히 빈약하면 카카오맵 키워드 검색으로 보완한다.
   // "전체" 카테고리로 볼 때 strict.length(5개 카테고리 합산)만 보면, 산책(공원) 하나만 많아도
@@ -233,8 +196,8 @@ export function PlacePickerSheet() {
     const q = query.trim();
     const knownNames = new Set([...strict, ...relaxed].map((place) => place.name));
     const matched = kakaoPlaces.filter((place) => !knownNames.has(place.name) && matchesQuery(place, q));
-    return applySortMode(matched, sortMode, coords);
-  }, [kakaoPlaces, strict, relaxed, query, sortMode, coords]);
+    return sortPlacesByQuality(matched);
+  }, [kakaoPlaces, strict, relaxed, query]);
 
   return (
     <BottomSheet
@@ -292,31 +255,6 @@ export function PlacePickerSheet() {
           </Tag>
         ))}
       </div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold text-ink-muted">정렬</span>
-        <div className="flex flex-1 rounded-full bg-surface p-0.5">
-          {SORT_MODES.map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setSortMode(mode)}
-              className={cn(
-                "flex-1 rounded-full py-1.5 text-[11px] font-semibold transition-colors",
-                sortMode === mode ? "bg-card text-brand-700 shadow-sm" : "text-ink-muted"
-              )}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-      </div>
-      {sortMode === "거리순" && !coords ? (
-        <div className="mb-2 flex items-center gap-0.5 text-[10px] text-ink-muted">
-          <Emoji3D emoji="📍" size={10} shadow={false} />
-          {locationDenied ? "위치 접근이 안 돼서 기본순으로 보여드려요" : "위치 확인 중..."}
-        </div>
-      ) : null}
-
       <div className="mb-2 text-[10px] text-ink-muted">
         {isLoading ? (
           "실시간 반려동물 동반여행지를 불러오는 중이에요..."
@@ -326,10 +264,10 @@ export function PlacePickerSheet() {
           <>
             <span className="inline-flex items-center gap-0.5">
               <Emoji3D emoji="🐾" size={10} shadow={false} />
-              동반 인증 · {strict.length}곳
+              공공데이터 장소 · {strict.length}곳
             </span>
             <br />
-            지자체·정부기관이 반려동물 동반 가능 여부를 확인한 곳이에요
+            장소별 동반 조건을 확인하고 담아주세요
           </>
         )}
       </div>
