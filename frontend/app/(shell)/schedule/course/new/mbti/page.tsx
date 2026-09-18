@@ -18,7 +18,8 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { ensureCategoryMinimum, type PickablePlace } from "@/lib/petTourMapper";
-import { nearestNeighborRoute } from "@/lib/nearestNeighborRoute";
+import { routeDistanceKm, shortestRoute } from "@/lib/nearestNeighborRoute";
+import { haversine } from "@/lib/haversine";
 import { stashPendingCourseSave } from "@/lib/pendingCourseSave";
 import { mockPlaces } from "@/mocks";
 import type { Course, DaejeonDistrict, Place, PlaceCategory } from "@/types";
@@ -46,8 +47,15 @@ function getSourceTier(place: SourcePlace): number {
   return "sourceTier" in place && typeof place.sourceTier === "number" ? place.sourceTier : 2;
 }
 
-const byQuality = (a: SourcePlace, b: SourcePlace) =>
-  getSourceTier(a) - getSourceTier(b) || Number(b.petFriendly) - Number(a.petFriendly);
+const MAX_ANCHOR_DISTANCE_KM = 8;
+const MAX_DAY_ROUTE_KM = 16;
+const MAX_LEG_KM = 10;
+
+function isCompactRoute(places: SourcePlace[]): boolean {
+  const route = shortestRoute(places);
+  return routeDistanceKm(route) <= MAX_DAY_ROUTE_KM &&
+    route.every((place, index) => index === 0 || haversine(route[index - 1], place) <= MAX_LEG_KM);
+}
 
 /** Fisher–Yates. 배열을 무작위로 섞어 새 배열을 반환한다(원본은 건드리지 않는다). */
 function shuffle<T>(items: T[]): T[] {
@@ -59,68 +67,10 @@ function shuffle<T>(items: T[]): T[] {
   return result;
 }
 
-/**
- * 후보군(pool)에서 테마 카테고리를 2번 뽑을 때 다른 카테고리를 1번씩 라운드로빈으로 섞어
- * count개를 채운다 — 테마 색은 유지하되 한 카테고리로 도배되지 않게 한다. 카테고리 안에서는
- * 신뢰도 높은(정제된) 소스를 우선하되, 같은 신뢰도 안에서는 무작위로 섞는다 — 안 그러면 이름
- * 가나다순으로 매번 똑같은 장소만 뽑혀 같은 테마·같은 지역이면 코스가 항상 똑같이 나왔다.
- */
-function pickBalancedByCategory(theme: CourseTheme, pool: SourcePlace[], count: number): SourcePlace[] {
-  const buckets = new Map<PlaceCategory, SourcePlace[]>(
-    ALL_CATEGORIES.map((category) => [
-      category,
-      shuffle(pool.filter((place) => place.category === category)).sort(byQuality),
-    ])
-  );
-  const otherCategories = shuffle(ALL_CATEGORIES.filter((category) => category !== theme));
-
-  const result: SourcePlace[] = [];
-  let otherIndex = 0;
-  while (result.length < count) {
-    const before = result.length;
-
-    const themeBucket = buckets.get(theme)!;
-    for (let i = 0; i < 2 && result.length < count; i++) {
-      const place = themeBucket.shift();
-      if (place) result.push(place);
-    }
-
-    if (result.length < count) {
-      for (let tries = 0; tries < otherCategories.length; tries++) {
-        const bucket = buckets.get(otherCategories[otherIndex % otherCategories.length])!;
-        otherIndex++;
-        const place = bucket.shift();
-        if (place) {
-          result.push(place);
-          break;
-        }
-      }
-    }
-
-    if (result.length === before) break; // 후보군 소진 — 더 뽑을 게 없음
-  }
-  return result;
-}
-
-/**
- * 여행인데 밥 먹을 곳이 하루에 하나도 없으면 안 되니, 테마가 맛집이 아닌 날은 신뢰도 높은
- * 맛집(식약처 인증 등 sourceTier 1 우선)을 한 곳 무조건 먼저 담고 시작한다.
- */
-function pickGuaranteedRestaurant(pool: SourcePlace[]): SourcePlace | null {
-  const restaurants = shuffle(pool.filter((place) => place.category === "맛집")).sort(byQuality);
-  return restaurants[0] ?? null;
-}
-
-/**
- * 대전 여행이니만큼 하루는 한 자치구 위주로 묶어서(그래야 실제로 다닐 수 있는 동선이 된다),
- * 여러 날이면 서로 다른 구를 하루씩 배정해 대전 여러 지역을 골고루 둘러보게 한다. 구를 정할
- * 땐 그 구 안에 테마 카테고리 장소가 많은 순으로 우선순위를 매긴다. 각 날은 맛집을 하나
- * 보장하고, 나머지는 `pickBalancedByCategory`로 테마 카테고리를 중심으로 다른 카테고리도
- * 섞는다. 배정된 구에 장소(특히 맛집)가 모자라면 이미 쓰지 않은 다른 구의 장소로 채운다.
- */
+/** 밥 먹을 곳을 중심으로 하루 이동 반경을 잡고, 테마·아직 못 간 카테고리를 채운다. */
 function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePlace[], variation = 0): SourcePlace[][] {
   const daysCount = nights + 1;
-  const perDay = daysCount === 1 ? 3 : 2;
+  const perDay = daysCount === 1 ? 4 : 3;
 
   const districtRichness = shuffle(ALL_DISTRICTS)
     .map((district) => ({
@@ -130,10 +80,10 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePl
     }))
     .sort((a, b) => b.themeCount - a.themeCount || b.totalCount - a.totalCount);
 
-  // 재추천 시 첫 지역도 바꾼다. 장소 수가 부족한 구는 시작 지역 후보에서 제외한다.
+  // 재추천 시 첫 지역도 바꾼다. 식사 장소가 없는 지역은 하루 동선의 중심으로 쓰지 않는다.
   const viableDistricts = districtRichness.filter(({ district }) => {
     const places = source.filter((place) => place.district === district);
-    return places.length >= perDay && (theme === "맛집" || places.some((place) => place.category === "맛집"));
+    return places.some((place) => place.category === "맛집") && places.length >= 2;
   });
   const districtOptions = viableDistricts.length > 0 ? viableDistricts : districtRichness.filter(({ totalCount }) => totalCount > 0);
   if (districtOptions.length === 0) return Array.from({ length: daysCount }, () => []);
@@ -143,33 +93,51 @@ function generateCourseDays(theme: CourseTheme, nights: number, source: SourcePl
   );
 
   const usedIds = new Set<string>();
+  const coveredCategories = new Set<PlaceCategory>();
   return assignedDistricts.map((district) => {
-    const districtPool = () => source.filter((place) => place.district === district && !usedIds.has(place.id));
-    const remainingPool = () => source.filter((place) => !usedIds.has(place.id));
+    const available = source.filter((place) => !usedIds.has(place.id));
+    const localRestaurants = shuffle(available.filter((place) => place.district === district && place.category === "맛집"));
+    const restaurants = localRestaurants.length > 0 ? localRestaurants : shuffle(available.filter((place) => place.category === "맛집"));
+    // 같은 구 안에서도 외곽 장소끼리 멀 수 있다. 주변 카테고리를 많이 담는 식당을 중심으로 고른다.
+    const anchors = restaurants.sort((a, b) => {
+      const coverage = (restaurant: SourcePlace) => new Set(available.filter(
+        (place) => haversine(restaurant, place) <= MAX_ANCHOR_DISTANCE_KM
+      ).map((place) => place.category)).size;
+      return coverage(b) - coverage(a) || getSourceTier(a) - getSourceTier(b);
+    });
+    const anchor = anchors[0];
+    if (!anchor) return [];
 
-    const picked: SourcePlace[] = [];
-
-    if (theme !== "맛집") {
-      const restaurant = pickGuaranteedRestaurant(districtPool()) ?? pickGuaranteedRestaurant(remainingPool());
-      if (restaurant) {
-        picked.push(restaurant);
-        usedIds.add(restaurant.id);
+    const nearby = shuffle(available.filter((place) =>
+      place.id !== anchor.id && haversine(anchor, place) <= MAX_ANCHOR_DISTANCE_KM
+    ));
+    const picked: SourcePlace[] = [anchor];
+    const otherCategories = ALL_CATEGORIES.filter((category) => category !== "맛집" && category !== theme);
+    const categoryOrder: PlaceCategory[] = [
+      ...(theme === "맛집" ? [] : [theme]),
+      ...otherCategories.filter((category) => !coveredCategories.has(category)),
+      ...otherCategories.filter((category) => coveredCategories.has(category)),
+    ];
+    for (const category of categoryOrder) {
+      if (picked.length >= perDay) break;
+      const options = nearby.filter((place) => place.category === category && !picked.some((item) => item.id === place.id))
+        .sort((a, b) => getSourceTier(a) - getSourceTier(b) || haversine(anchor, a) - haversine(anchor, b));
+      const next = options.find((place) => isCompactRoute([...picked, place]));
+      if (next) picked.push(next);
+    }
+    if (picked.length < perDay) {
+      const remaining = nearby.filter((place) => !picked.some((item) => item.id === place.id))
+        .sort((a, b) => haversine(anchor, a) - haversine(anchor, b));
+      for (const place of remaining) {
+        if (picked.length >= perDay) break;
+        if (isCompactRoute([...picked, place])) picked.push(place);
       }
     }
-
-    const rest = pickBalancedByCategory(theme, districtPool(), perDay - picked.length);
-    picked.push(...rest);
-    rest.forEach((place) => usedIds.add(place.id));
-
-    if (picked.length < perDay) {
-      const fallback = pickBalancedByCategory(theme, remainingPool(), perDay - picked.length);
-      picked.push(...fallback);
-      fallback.forEach((place) => usedIds.add(place.id));
-    }
-
-    // 뽑힌 순서 그대로면 A→C→B처럼 왔다 갔다 하는 동선이 나올 수 있어, 직접 짓기와 동일하게
-    // 최근접 이웃으로 다시 이어 붙인다.
-    return picked.length > 1 ? nearestNeighborRoute(picked) : picked;
+    picked.forEach((place) => {
+      usedIds.add(place.id);
+      coveredCategories.add(place.category);
+    });
+    return shortestRoute(picked);
   });
 }
 
@@ -210,8 +178,9 @@ function MbtiCourseWizard() {
   const [nights, setNights] = useState(0);
   const [generatedDays, setGeneratedDays] = useState<Place[][]>([]);
   const [generationIndex, setGenerationIndex] = useState(0);
-  const generatedTitle = generatedDays[0]?.[0]
-    ? `${generatedDays[0][0].district} ${COURSE_TITLES[theme]}`
+  const firstDayRestaurant = generatedDays[0]?.find((place) => place.category === "맛집");
+  const generatedTitle = firstDayRestaurant
+    ? `${firstDayRestaurant.district} ${COURSE_TITLES[theme]}`
     : COURSE_TITLES[theme];
   const [loginOpen, setLoginOpen] = useState(false);
 

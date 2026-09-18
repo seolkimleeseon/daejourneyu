@@ -63,6 +63,17 @@ describe("pickChatCandidates", () => {
     expect(result).toHaveLength(80);
   });
 
+  it("산책 코스 요청에는 식사와 다른 활동 후보도 남긴다", () => {
+    const places = [
+      makePlace({ id: "walk", category: "산책" }),
+      makePlace({ id: "food", category: "맛집" }),
+      makePlace({ id: "play", category: "놀이터" }),
+      makePlace({ id: "culture", category: "문화" }),
+    ];
+    const categories = pickChatCandidates(places, "산책 코스 추천해줘").map((place) => place.category);
+    expect(new Set(categories)).toEqual(new Set(["산책", "맛집", "놀이터", "문화"]));
+  });
+
   it("한 곳만 맞으면 그 장소를 보존하면서 코스에 필요한 두 번째 후보를 보충한다", () => {
     const places = [makePlace({ id: "y", district: "유성구" }), makePlace({ id: "s", district: "서구" })];
     expect(pickChatCandidates(places, "유성구 추천").map((place) => place.id)).toEqual(["y", "s"]);

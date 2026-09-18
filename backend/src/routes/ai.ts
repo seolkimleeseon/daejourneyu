@@ -12,7 +12,53 @@ type CandidatePlace = {
   district: string;
   condition: string;
   petFriendly: boolean;
+  lat?: number;
+  lng?: number;
 };
+
+const MAX_DAY_ROUTE_KM = 16;
+const MAX_LEG_KM = 10;
+
+function distanceKm(a: CandidatePlace, b: CandidatePlace): number | null {
+  if (a.lat === undefined || a.lng === undefined || b.lat === undefined || b.lng === undefined) return null;
+  const rad = (degrees: number) => degrees * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+
+/** 장소가 최대 5곳이라 가능한 순서를 모두 비교할 수 있다. 좌표가 없으면 AI의 순서를 유지한다. */
+function shortestDayRoute(places: CandidatePlace[]): CandidatePlace[] {
+  if (places.some((place) => place.lat === undefined || place.lng === undefined)) return places;
+  let best = places;
+  let bestDistance = Infinity;
+  const visit = (route: CandidatePlace[], rest: CandidatePlace[], distance: number) => {
+    if (distance >= bestDistance) return;
+    if (rest.length === 0) {
+      best = route;
+      bestDistance = distance;
+      return;
+    }
+    rest.forEach((place, index) => visit(
+      [...route, place], [...rest.slice(0, index), ...rest.slice(index + 1)],
+      distance + (route.length ? distanceKm(route[route.length - 1], place)! : 0)
+    ));
+  };
+  visit([], places, 0);
+  return best;
+}
+
+function routeIsNear(route: CandidatePlace[]): boolean {
+  let total = 0;
+  for (let i = 1; i < route.length; i++) {
+    const leg = distanceKm(route[i - 1], route[i]);
+    if (leg === null) continue;
+    if (leg > MAX_LEG_KM) return false;
+    total += leg;
+  }
+  return total <= MAX_DAY_ROUTE_KM;
+}
 
 function isValidCandidatePlace(p: unknown): p is CandidatePlace {
   return (
@@ -23,7 +69,9 @@ function isValidCandidatePlace(p: unknown): p is CandidatePlace {
     typeof (p as CandidatePlace).category === "string" &&
     typeof (p as CandidatePlace).district === "string" &&
     typeof (p as CandidatePlace).condition === "string" &&
-    typeof (p as CandidatePlace).petFriendly === "boolean"
+    typeof (p as CandidatePlace).petFriendly === "boolean" &&
+    ((p as CandidatePlace).lat === undefined && (p as CandidatePlace).lng === undefined ||
+      Number.isFinite((p as CandidatePlace).lat) && Number.isFinite((p as CandidatePlace).lng))
   );
 }
 
@@ -146,7 +194,7 @@ router.post("/course-suggestion", async (req, res) => {
   const placesDescription = candidatePlaces.filter((place: CandidatePlace) => place.petFriendly)
     .map(
       (place) =>
-        `- ${place.id}: ${place.name} (${place.district} · ${place.category} · ${place.petFriendly ? "동반가능" : "동반불가"} · ${place.condition})`
+        `- ${place.id}: ${place.name} (${place.district} · ${place.category} · 동반가능 · ${place.condition}${place.lat === undefined ? "" : ` · ${place.lat},${place.lng}`})`
     )
     .join("\n");
 
@@ -163,8 +211,11 @@ router.post("/course-suggestion", async (req, res) => {
           "반드시 responseType을 chat으로 하고 message에 짧고 친근하게 답해 — 이때는 절대 코스를 지어내지 마. " +
           "사용자가 실제로 갈 곳이나 코스를 원할 때만 responseType을 course로 하고, " +
           "아래 후보 장소 목록에 있는 id만 사용해서 하루 2~5곳씩 동선을 짜. " +
-          "목록에 없는 장소를 지어내면 안 돼. 여러 날에 같은 장소를 반복하지 말고, 같은 날엔 가까운 지역끼리 묶어서 동선이 자연스럽게 해줘. " +
-          "가능하면 산책·식사·체험을 섞되 사용자의 취향과 방문 조건을 먼저 지켜줘.",
+          "목록에 없는 장소를 지어내면 안 돼. 여러 날에 같은 장소를 반복하지 마. " +
+          "하루 이동은 직선거리 합계 16km 이내, 한 구간은 10km 이내로 묶어. " +
+          "산책 코스나 문화 코스처럼 테마가 있어도 산책·놀이터·맛집·문화를 가능한 범위에서 섞고, 매일 식사할 곳을 포함해. " +
+          "사용자가 명시적으로 한 종류의 장소만 요청한 경우에는 그 요청을 우선해. " +
+          "사용자의 취향과 방문 조건을 먼저 지켜줘.",
         responseMimeType: "application/json",
         responseSchema,
       },
@@ -185,9 +236,12 @@ router.post("/course-suggestion", async (req, res) => {
     }
 
     const byId = new Map(candidatePlaces.map((place) => [place.id, place]));
-    const days = parsed.suggestion.days.map((day) =>
-      day.map((placeId) => {
-        const place = byId.get(placeId)!;
+    const routedDays = parsed.suggestion.days.map((day) => shortestDayRoute(day.map((placeId) => byId.get(placeId)!)));
+    if (routedDays.some((day) => !routeIsNear(day))) {
+      return res.status(502).json({ error: "가까운 장소로 코스를 만들지 못했어요. 지역이나 조건을 바꿔 다시 시도해주세요" });
+    }
+    const days = routedDays.map((day) =>
+      day.map((place) => {
         return {
           placeId: place.id,
           name: place.name,

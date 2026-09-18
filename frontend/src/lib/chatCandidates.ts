@@ -32,12 +32,13 @@ export function pickChatCandidates(places: CandidateSource[], prompt: string, ca
   const matchedCategories = (Object.keys(CATEGORY_KEYWORDS) as PlaceCategory[]).filter((category) =>
     CATEGORY_KEYWORDS[category].some((keyword) => prompt.includes(keyword))
   );
+  const asksForCourse = /코스|여행|일정|동선|루트/.test(prompt);
 
   let filtered = petFriendly;
   if (matchedDistricts.length > 0) {
     filtered = filtered.filter((place) => matchedDistricts.includes(place.district));
   }
-  if (matchedCategories.length > 0) {
+  if (matchedCategories.length > 0 && !asksForCourse) {
     filtered = filtered.filter((place) => matchedCategories.includes(place.category));
   }
 

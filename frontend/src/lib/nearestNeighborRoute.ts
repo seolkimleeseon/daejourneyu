@@ -26,6 +26,29 @@ export function nearestNeighborRoute<T extends LatLng>(places: T[], startIndex =
   return route;
 }
 
+/** 추천 코스처럼 장소가 적을 때는 모든 시작점과 방문 순서를 비교해 가장 짧은 경로를 고른다. */
+export function shortestRoute<T extends LatLng>(places: T[]): T[] {
+  if (places.length < 2) return [...places];
+  if (places.length > 8) return nearestNeighborRoute(places);
+
+  let best = [...places];
+  let bestDistance = Infinity;
+  const visit = (route: T[], remaining: T[], distance: number) => {
+    if (distance >= bestDistance) return;
+    if (remaining.length === 0) {
+      best = route;
+      bestDistance = distance;
+      return;
+    }
+    remaining.forEach((place, index) => {
+      const leg = route.length > 0 ? haversine(route[route.length - 1], place) : 0;
+      visit([...route, place], [...remaining.slice(0, index), ...remaining.slice(index + 1)], distance + leg);
+    });
+  };
+  visit([], places, 0);
+  return best;
+}
+
 /** 경로 전체 이동 거리(km) 합산 */
 export function routeDistanceKm(route: LatLng[]): number {
   let sum = 0;

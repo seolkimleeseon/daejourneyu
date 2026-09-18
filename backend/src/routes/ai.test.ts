@@ -140,6 +140,27 @@ describe("코스로 답할 때", () => {
 });
 
 describe("AI 응답을 그대로 믿지 않는다", () => {
+  it("좌표가 있으면 이동 거리가 가장 짧은 순서로 정렬한다", async () => {
+    aiReplies({ responseType: "course", label: "가까운 코스", days: [["p1", "p3", "p2"]] });
+    const response = await post(body({ candidatePlaces: [
+      place({ id: "p1", lat: 36.35, lng: 127.38 }),
+      place({ id: "p2", lat: 36.35, lng: 127.39 }),
+      place({ id: "p3", lat: 36.35, lng: 127.4 }),
+    ] }));
+    const ids = response.body.days[0].map((stop: { placeId: string }) => stop.placeId);
+    expect(ids).toEqual(["p1", "p2", "p3"]);
+  });
+
+  it("최단 순서로도 하루 이동이 너무 길면 추천하지 않는다", async () => {
+    aiReplies({ responseType: "course", label: "먼 코스", days: [["p1", "p2"]] });
+    const response = await post(body({ candidatePlaces: [
+      place({ id: "p1", lat: 36.35, lng: 127.38 }),
+      place({ id: "p2", lat: 36.75, lng: 127.78 }),
+    ] }));
+    expect(response.status).toBe(502);
+    expect(response.body.error).toContain("가까운 장소");
+  });
+
   it("후보 목록에 없는 id는 지워낸다 — AI가 장소를 지어낼 수 있다", async () => {
     aiReplies({ responseType: "course", label: "지어낸 코스", days: [["p1", "없는곳", "p2"]] });
 
