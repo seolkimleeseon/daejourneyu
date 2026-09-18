@@ -213,7 +213,7 @@ export async function supplementImagesByName<T extends { imageUrl: string | null
     return items;
   }
 
-  const targets = items.slice(0, cap);
+  const targets = items.filter((item) => !item.imageUrl).slice(0, cap);
   const images = await mapWithConcurrency(targets, KAKAO_CONCURRENCY, (item) =>
     fetchPlaceImage(getName(item), key).catch(() => null)
   );

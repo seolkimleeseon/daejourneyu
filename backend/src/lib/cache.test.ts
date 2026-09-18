@@ -17,6 +17,19 @@ afterEach(() => {
 });
 
 describe("cached", () => {
+  it("동시에 같은 키를 요청하면 진행 중인 load를 공유한다", async () => {
+    const key = nextKey();
+    let finish!: (value: string) => void;
+    const load = vi.fn(() => new Promise<string>((resolve) => { finish = resolve; }));
+
+    const first = cached(key, 1000, load);
+    const second = cached(key, 1000, load);
+    await Promise.resolve();
+    expect(load).toHaveBeenCalledTimes(1);
+    finish("공유된 값");
+    expect(await Promise.all([first, second])).toEqual(["공유된 값", "공유된 값"]);
+  });
+
   it("처음에는 load를 부르고 값을 돌려준다", async () => {
     const load = vi.fn().mockResolvedValue("값");
 

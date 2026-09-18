@@ -242,6 +242,20 @@ describe("supplementImagesByName", () => {
     expect(result[0].imageUrl).toBe("https://img/photo.jpg");
     expect(result[2].imageUrl).toBeNull();
   });
+
+  it("기존 사진은 유지하고 사진이 없는 장소만 검색한다", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ documents: [imageDoc()] }));
+    const items = [
+      { name: uniq("사진있는공원"), imageUrl: "https://img/original.jpg" as string | null },
+      { name: uniq("사진없는공원"), imageUrl: null as string | null },
+    ];
+
+    await supplementImagesByName(items, (item) => item.name, 1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(items[0].imageUrl).toBe("https://img/original.jpg");
+    expect(items[1].imageUrl).toBe("https://img/photo.jpg");
+  });
 });
 
 describe("searchKakaoPlaces", () => {
