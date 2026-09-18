@@ -14,7 +14,8 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 // 빵지순례 요청에서만 호출한다. 출입 가능 여부 미확인 장소이므로 일반 반려동반 목록과 분리한다.
 router.get("/bakeries", async (req, res) => {
   const district = typeof req.query.district === "string" ? req.query.district : undefined;
-  res.json(await fetchBakeryCandidates(district));
+  const batch = typeof req.query.batch === "string" && /^[0-2]$/.test(req.query.batch) ? Number(req.query.batch) : 0;
+  res.json(await fetchBakeryCandidates(district, batch));
 });
 
 // GET /api/places?district=서구&category=산책&source=petacp — 공공데이터 API를 실시간 호출해 만든
