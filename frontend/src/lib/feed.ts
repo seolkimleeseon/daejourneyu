@@ -36,6 +36,27 @@ export function formatStopSummary(post: FeedPost): string {
   return post.stops.map((stop) => stop.name).join(" › ");
 }
 
+export interface ArticleBodyBlock {
+  type: "heading" | "paragraph";
+  text: string;
+}
+
+/**
+ * 아티클 본문을 소제목·문단 블록으로 나눈다. 빈 줄(`\n\n`)로 문단을 가르고, `## `로 시작하는
+ * 줄은 소제목으로 취급한다 — 상세 화면이 소제목마다 사진을 한 장씩 끼워 넣을 자리를 잡는 데 쓴다.
+ */
+export function parseArticleBody(body: string): ArticleBodyBlock[] {
+  return body
+    .split("\n\n")
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0)
+    .map((block) =>
+      block.startsWith("## ")
+        ? { type: "heading" as const, text: block.slice(3).trim() }
+        : { type: "paragraph" as const, text: block }
+    );
+}
+
 /** 아티클 좋아요 — 게시물과 동일하게 원본 값 + 토글 오버라이드로 표시값을 계산한다. */
 export function resolveArticleLike(
   article: { likes: number; liked: boolean },

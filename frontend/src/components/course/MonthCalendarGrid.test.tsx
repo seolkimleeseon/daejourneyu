@@ -3,13 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MonthCalendarGrid } from "@/components/course/MonthCalendarGrid";
 
-function setup(selectedDate = "2026-09-14", markedDates?: Set<string>) {
+function setup(
+  selectedDate = "2026-09-14",
+  markedDates?: Set<string>,
+  options: { nights?: number; lineDates?: Set<string> } = {}
+) {
   const onSelectDate = vi.fn();
   const view = render(
     <MonthCalendarGrid
       selectedDate={selectedDate}
       onSelectDate={onSelectDate}
       markedDates={markedDates}
+      nights={options.nights}
+      lineDates={options.lineDates}
     />
   );
   return { ...view, onSelectDate, user: userEvent.setup() };
@@ -96,6 +102,24 @@ describe("MonthCalendarGrid", () => {
 
     expect(dayCell("18").querySelector(".rounded-full")).toBeTruthy();
     expect(dayCell("19").querySelector(".rounded-full")).toBeNull();
+  });
+
+  it("1박 이상 일정이 걸친 날에는 주황 선을 표시한다", () => {
+    setup("2026-09-14", undefined, { lineDates: new Set(["2026-09-18", "2026-09-19"]) });
+
+    expect(dayCell("18").querySelector(".bg-accent-coral")).toBeTruthy();
+    expect(dayCell("19").querySelector(".bg-accent-coral")).toBeTruthy();
+    expect(dayCell("20").querySelector(".bg-accent-coral")).toBeNull();
+  });
+
+  it("nights를 주면 선택한 날부터 그만큼의 날짜를 한꺼번에 강조한다", () => {
+    setup("2026-09-14", undefined, { nights: 2 });
+
+    expect(dayCell("14").className).toContain("bg-brand-100");
+    expect(dayCell("15").className).toContain("bg-brand-100");
+    expect(dayCell("16").className).toContain("bg-brand-100");
+    expect(dayCell("13").className).not.toContain("bg-brand-100");
+    expect(dayCell("17").className).not.toContain("bg-brand-100");
   });
 
   it("이전·다음 달로 넘길 수 있다", async () => {

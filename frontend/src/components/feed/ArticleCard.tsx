@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { Article } from "@/types";
 import { Card } from "@/components/ui/Card";
@@ -21,6 +22,8 @@ interface ArticleCardProps {
 
 /** 둘러보기 '아티클' 세그 카드. 아티클 상세는 홈 탭과 공유하는 공용 라우트다. */
 export function ArticleCard({ article, onRequireLogin }: ArticleCardProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!article.imageUrl && !imageFailed;
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   /** 세션 복구 전에는 로그인 여부를 알 수 없다 — 이때 막으면 로그인 사용자도 게이팅에 걸린다. */
   const authHydrated = useAuthStore((state) => state.hydrated);
@@ -45,13 +48,32 @@ export function ArticleCard({ article, onRequireLogin }: ArticleCardProps) {
       <Link
         href={`/article/${article.id}`}
         prefetch={false}
-        className="block px-3.5 pb-2 pt-3.5"
+        className="flex items-start gap-3 px-3.5 pb-2 pt-3.5"
       >
-        <div className="flex items-start gap-1.5 text-sm font-bold text-ink">
-          <Emoji3D emoji="📰" size={16} shadow={false} />
-          <span className="min-w-0 flex-1">{article.title}</span>
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+          {showImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={article.imageUrl}
+              alt=""
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setImageFailed(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-brand-100">
+              <Emoji3D emoji="📰" size={22} shadow={false} />
+            </div>
+          )}
         </div>
-        <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">{article.summary}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-1.5 text-sm font-bold text-ink">
+            <Emoji3D emoji="📰" size={16} shadow={false} />
+            <span className="min-w-0 flex-1">{article.title}</span>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">{article.summary}</p>
+        </div>
       </Link>
 
       {/* 좋아요 버튼이 링크 안에 들어가면 a > button 중첩이 되므로 메타 줄만 링크 밖으로 뺀다. */}

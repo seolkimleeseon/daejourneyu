@@ -17,13 +17,25 @@ function todayYmd(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+/** YYYY-MM-DD에서 days만큼 지난 날짜(YYYY-MM-DD). 월 넘어가는 계산은 Date에 맡긴다. */
+function addDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const date = new Date(y, m - 1, d + days);
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
 export default function CourseScheduleAddPage({ params }: { params: { courseId: string } }) {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   useSyncCoursesFromApi();
   const showToast = useToastStore((state) => state.show);
 
-  const course = useCourseStore((state) => state.courses.find((c) => c.id === params.courseId));
+  const courses = useCourseStore((state) => state.courses);
+  const course = courses.find((c) => c.id === params.courseId);
   const schedules = useCourseStore((state) => state.schedules);
   // .filter().sort()를 셀렉터 안에서 바로 하면 store가 갱신될 때마다(구독 중인 다른 필드가
   // 바뀌어도) 매번 새 배열을 만들어 불필요한 리렌더를 유발한다 — schedules 값 자체가 바뀔 때만
@@ -32,6 +44,21 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
     () => schedules.filter((s) => s.courseId === params.courseId).sort((a, b) => a.date.localeCompare(b.date)),
     [schedules, params.courseId]
   );
+
+  /** 다른 코스까지 포함해, 이미 잡힌 모든 일정을 당일치기(점)/1박 이상(선)으로 나눠 달력에 표시한다. */
+  const { dotDates, lineDates } = useMemo(() => {
+    const dots = new Set<string>();
+    const lines = new Set<string>();
+    schedules.forEach((s) => {
+      const nights = courses.find((c) => c.id === s.courseId)?.nights ?? 0;
+      if (nights === 0) {
+        dots.add(s.date);
+      } else {
+        for (let offset = 0; offset <= nights; offset++) lines.add(addDays(s.date, offset));
+      }
+    });
+    return { dotDates: dots, lineDates: lines };
+  }, [schedules, courses]);
   const addSchedule = useCourseStore((state) => state.addSchedule);
   const removeSchedule = useCourseStore((state) => state.removeSchedule);
 
@@ -121,11 +148,24 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
         <MonthCalendarGrid
           selectedDate={date}
           onSelectDate={setDate}
-          markedDates={new Set(courseSchedules.map((s) => s.date))}
+          nights={course.nights}
+          markedDates={dotDates}
+          lineDates={lineDates}
         />
-        <div className="mt-1.5 flex items-center gap-1 px-1 text-[11px] text-ink-muted">
-          <Emoji3D emoji="📅" size={12} shadow={false} />
-          선택한 날짜: {date}
+        <div className="mt-1.5 flex items-center justify-between px-1 text-[11px] text-ink-muted">
+          <span className="flex items-center gap-1">
+            <Emoji3D emoji="📅" size={12} shadow={false} />
+            선택한 날짜: {date}
+            {course.nights > 0 ? ` ~ ${addDays(date, course.nights)}` : ""}
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="flex items-center gap-1">
+              <span className="h-1 w-1 rounded-full bg-brand" /> 당일치기
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-[3px] w-2.5 rounded-full bg-accent-coral" /> 1박 이상
+            </span>
+          </span>
         </div>
 
         <Button className="mt-5" onClick={handleSave} disabled={saving}>

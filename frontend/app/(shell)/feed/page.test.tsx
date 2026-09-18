@@ -72,9 +72,9 @@ function paragraph(text: string) {
 
 /** 아티클 카드 제목. 제목 줄은 "3D 아이콘 + 제목" 두 span이라 마지막 span이 제목이다. */
 function articleTitles(): string[] {
-  return Array.from(
-    document.querySelectorAll('a[href^="/article/"] > div > span:last-child')
-  ).map((element) => element.textContent ?? "");
+  return Array.from(document.querySelectorAll('a[href^="/article/"] span:last-child'))
+    .map((element) => element.textContent ?? "")
+    .filter((text) => text !== "");
 }
 
 beforeEach(() => {

@@ -33,9 +33,9 @@ function dayCell(day: string): HTMLElement {
   return screen.getAllByRole("button").find((button) => button.textContent === day)!;
 }
 
-/** 다박 일정이 달 그리드 위에 겹쳐 그리는 막대(row/column으로 정확히 배치)들. */
-function barEls(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll('[aria-hidden="true"]'));
+/** 1박 이상 일정에 속한 날짜 칸 아래에 뜨는 짧은 선 표시가 있는지. */
+function hasOvernightMark(day: string): boolean {
+  return dayCell(day).querySelector(".bg-accent-coral") !== null;
 }
 
 beforeEach(() => {
@@ -85,58 +85,32 @@ describe("달 그리드", () => {
     expect(dayCell("21").querySelector(".rounded-full")).toBeNull();
   });
 
-  it("여러 박이면 겹쳐 그린 막대로 날짜 칸들을 이어붙인다 — 2박3일이 하루짜리 점처럼 보이지 않게", () => {
+  it("여러 박이면 묵는 날짜마다 짧은 선을 표시한다 — 2박3일이 하루짜리 점처럼 보이지 않게", () => {
     useCourseStore.setState({
       courses: [makeCourse({ id: "course-1", nights: 2 })],
       // 2026-09-20(일)~22(화) — 한 주 안에 다 들어간다.
       schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-20" })],
     });
-    const { container } = render(<ScheduleCalendar />);
+    render(<ScheduleCalendar />);
 
-    const segments = barEls(container);
-    expect(segments).toHaveLength(1);
-    expect(segments[0].style.gridColumn).toBe("1 / 4");
-    expect(segments[0].className).toContain("rounded-l-full");
-    expect(segments[0].className).toContain("rounded-r-full");
+    expect(hasOvernightMark("20")).toBe(true);
+    expect(hasOvernightMark("21")).toBe(true);
+    expect(hasOvernightMark("22")).toBe(true);
+    expect(hasOvernightMark("19")).toBe(false);
+    expect(hasOvernightMark("23")).toBe(false);
   });
 
-  it("주를 넘어가는 일정은 주마다 막대를 끊어 그리고, 실제 시작·끝 쪽 끄트머리만 둥글게 한다", () => {
+  it("주를 넘어가는 일정도 묵는 기간의 날짜마다 빠짐없이 표시한다", () => {
     useCourseStore.setState({
       courses: [makeCourse({ id: "course-1", nights: 2 })],
       // 2026-09-26(토)~27(일)~28(월) — 주 경계를 넘어간다.
       schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-26" })],
     });
-    const { container } = render(<ScheduleCalendar />);
-
-    const segments = barEls(container).sort(
-      (a, b) => Number(a.style.gridRow) - Number(b.style.gridRow)
-    );
-    expect(segments).toHaveLength(2);
-
-    const [firstWeekSegment, secondWeekSegment] = segments;
-    expect(firstWeekSegment.style.gridColumn).toBe("7 / 8"); // 토요일 한 칸
-    expect(firstWeekSegment.className).toContain("rounded-l-full");
-    expect(firstWeekSegment.className).not.toContain("rounded-r-full");
-
-    expect(secondWeekSegment.style.gridColumn).toBe("1 / 3"); // 일~월
-    expect(secondWeekSegment.className).not.toContain("rounded-l-full");
-    expect(secondWeekSegment.className).toContain("rounded-r-full");
-  });
-
-  it("막대가 있어도 뒤쪽 날짜 칸이 엉뚱한 자리로 밀리지 않는다", () => {
-    // 명시적으로 배치된 막대(grid-row/grid-column)와 auto-flow에 맡긴 날짜 칸이 같은 grid 안에
-    // 섞이면, 막대보다 DOM상 뒤에 있고 아직 auto-flow가 지나가지 않은 칸들이 밀려나는 문제가
-    // 실제로 있었다 — 날짜 칸도 전부 명시적으로 배치해 고쳤다. 2026년 9월은 1일이 화요일이라
-    // 18일은 3번째 주(0-indexed 2행) · 금요일(0-indexed 5열)이어야 한다.
-    useCourseStore.setState({
-      courses: [makeCourse({ id: "course-1", nights: 2 })],
-      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-13" })],
-    });
     render(<ScheduleCalendar />);
 
-    const cell18 = dayCell("18");
-    expect(cell18.style.gridRow).toBe("3");
-    expect(cell18.style.gridColumn).toBe("6");
+    expect(hasOvernightMark("26")).toBe(true);
+    expect(hasOvernightMark("27")).toBe(true);
+    expect(hasOvernightMark("28")).toBe(true);
   });
 
   it("날짜를 누르면 그 날 일정으로 바꾼다", async () => {
