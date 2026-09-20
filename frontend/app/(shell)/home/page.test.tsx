@@ -166,7 +166,7 @@ describe("바로 가기", () => {
   it("가장 최근 아티클 하나를 띄우고 그 글로 보낸다", async () => {
     const { user } = setup();
 
-    await user.click(screen.getByText("최신 아티클 · 보기"));
+    await user.click(screen.getByText("보러가기 →"));
 
     expect(nav.push).toHaveBeenCalledWith(expect.stringMatching(/^\/article\//));
   });
@@ -180,11 +180,11 @@ describe("바로 가기", () => {
     expect(nav.push).toHaveBeenCalledWith("/schedule/course/new/mbti");
   });
 
-  it("검사 결과가 있으면 결과 보기로 바꾸고 지름길로 보낸다", async () => {
+  it("검사 결과가 있으면 유형 이름을 보여주고 지름길로 보낸다", async () => {
     usePetStore.setState({ pets: [makePet({ mbti: makeMbtiResult({ code: "ENFP" }) })], activePetIndex: 0 });
     const { user } = setup();
 
-    expect(screen.getByText("ENFP · 결과 보기")).toBeTruthy();
+    expect(screen.getByText("ENFP · 호기심 탐험가")).toBeTruthy();
     await user.click(tile(/내 반려동물 MBTI/));
 
     expect(nav.push).toHaveBeenCalledWith("/schedule/course/new/mbti?quick=1");

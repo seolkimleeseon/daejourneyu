@@ -32,6 +32,12 @@
   --color-accent-coral-light: #ffe9d6;
   --color-accent-navy: #183b56;
 
+  /* 홈 아이콘 칩 전용 — 아티클/MBTI/챗봇 칩이 나란히 놓였을 때 서로 어울리도록 고른 색.
+     accent-coral/purple/brand과는 별도 값이라 다른 화면의 기존 톤에는 영향 없다. */
+  --color-icon-article: #ff9a62;
+  --color-icon-mbti: #5b83e8;
+  --color-icon-chat: #35a995;
+
   /* 소셜 로그인 브랜드 색 — 카카오 가이드 고정값이라 팔레트와 별개로 둔다.
      가이드의 라벨색은 '검정 85%'인데, 버튼 배경(#FEE500) 위에 얹혔을 때의 실제 색을
      불투명값으로 박아둔다 — 반투명으로 두면 버튼 위에 뭐가 겹치느냐에 따라 색이 흔들린다 */
