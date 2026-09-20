@@ -17,7 +17,15 @@ vi.mock("@/hooks/useSyncCoursesFromApi", () => ({ useSyncCoursesFromApi: vi.fn()
 // 지도·공유·장소 시트는 각자 테스트가 있다 — 상세 화면이 엮는 방식만 본다.
 vi.mock("@/components/course/CourseRouteMap", () => ({ CourseRouteMap: () => <div data-testid="route-map" /> }));
 vi.mock("@/components/course/PlacePickerSheet", () => ({ PlacePickerSheet: () => null }));
+const shareCard = vi.hoisted(() => ({ render: vi.fn() }));
+vi.mock("@/components/course/CourseShareCard", () => ({
+  CourseShareCard: (props: Record<string, unknown>) => {
+    shareCard.render(props);
+    return <div data-testid="share-card" />;
+  },
+}));
 const share = vi.hoisted(() => ({ render: vi.fn() }));
+
 vi.mock("@/components/course/ResultShareActions", () => ({
   ResultShareActions: (props: Record<string, unknown>) => {
     share.render(props);
@@ -288,6 +296,24 @@ describe("다음 행동", () => {
         kakaoDescription: "당일치기 · 2곳 · 대저니유에서 만든 반려동물 여행 코스예요 🐾",
         path: "/schedule/course/c1",
       })
+    );
+  });
+
+  it("캡처 대상은 화면 티켓이 아니라 화면 밖 전용 카드다 — 티켓 속 지도 타일·장소 사진은 CORS가 막아 캡처가 통째로 실패한다", () => {
+    setup();
+
+    const { captureRef } = share.render.mock.lastCall?.[0] as { captureRef: { current: HTMLElement | null } };
+    const card = captureRef.current as HTMLElement;
+
+    expect(card.querySelector('[data-testid="share-card"]')).toBeTruthy();
+    expect((card.parentElement as HTMLElement).style.left).toBe("-9999px");
+  });
+
+  it("공유 카드에 코스 이름·기간·출처와 일차별 동선을 그대로 넘긴다", () => {
+    setup();
+
+    expect(shareCard.render).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "유성 산책 코스", tags: ["당일치기", "AI 추천"] })
     );
   });
 
