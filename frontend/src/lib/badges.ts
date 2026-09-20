@@ -822,18 +822,22 @@ const BADGE_DEFS: BadgeDef[] = [
     emoji: "🍁",
     name: "가을 계족산",
     category: "한정",
-    rarity: 2,
-    description: "시즌 한정",
-    earned: "9~11월에 대덕구 일정을 다녀왔어요",
-    how: "9~11월에 대덕구 일정을 다녀와보세요",
+    // 계족산으로 좁히면서 '계족산 맨발'(2)보다 한 단계 어려워졌다 — 같은 곳을 석 달 안에 가야 한다.
+    rarity: 3,
+    description: "가을 황톳길",
+    earned: "단풍이 드는 9~11월에 계족산을 다녀왔어요",
+    how: "9~11월에 대덕구 계족산 황톳길을 다녀와보세요",
     tiers: [1],
+    // 이름이 계족산인데 판정은 대덕구 전체였다 — 가을에 대덕구 카페만 들러도 '가을 계족산'이
+    // 찍혀서, 이름이 약속한 것과 다른 뱃지가 됐다. 명소 뱃지와 같은 장소 id로 좁힌다.
     measure: (facts) =>
       facts.visited.some((entry) => {
         const month = monthOf(entry.schedule.date);
+        const ids = LANDMARK_PLACE_IDS.gyejoksan ?? [];
         return (
           month >= 9 &&
           month <= 11 &&
-          entry.course.days.flat().some((stop) => stop.district === "대덕구")
+          entry.course.days.flat().some((stop) => ids.includes(stop.placeId))
         );
       })
         ? 1

@@ -283,9 +283,20 @@ describe("computeMyBadges — 한정", () => {
     ).toBe(true);
   });
 
-  it("9~11월에 대덕구를 다녀오면 가을 계족산", () => {
-    const badges = compute(visited([[stopIn("대덕구")]], { date: "2025-10-03" }));
-    expect(badgeById(badges, "autumn-gyejoksan").got).toBe(true);
+  it("가을 계족산은 계족산을 가을에 다녀와야 한다 — 대덕구 아무 곳이 아니다", () => {
+    const gyejoksan = makeStop({ placeId: "place-2", district: "대덕구" });
+    expect(
+      badgeById(compute(visited([[gyejoksan]], { date: "2025-10-03" })), "autumn-gyejoksan").got
+    ).toBe(true);
+
+    // 이름이 약속하는 곳을 가야 찍힌다.
+    expect(
+      badgeById(compute(visited([[stopIn("대덕구")]], { date: "2025-10-03" })), "autumn-gyejoksan").got
+    ).toBe(false);
+    // 철이 지나면 같은 곳도 안 된다.
+    expect(
+      badgeById(compute(visited([[gyejoksan]], { date: "2025-06-03" })), "autumn-gyejoksan").got
+    ).toBe(false);
   });
 
   it("0시축제 일정은 중구 장소가 있어야 인정한다", () => {
