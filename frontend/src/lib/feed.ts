@@ -1,4 +1,4 @@
-import type { Article, Course, FeedPost } from "@/types";
+import type { Article, Course, FeedPost, FeedStop } from "@/types";
 import type { PostCreateInput } from "@/lib/api/posts";
 import type { FeedInteraction } from "@/stores/useFeedStore";
 import { nightsLabel } from "@/lib/courseFormat";
@@ -119,7 +119,26 @@ export function visiblePostTags(tags: string[]): string[] {
   return tags.filter((tag) => NIGHTS_TAG_PATTERN.test(tag) || DISTRICT_TAGS.has(tag));
 }
 
+/**
+ * 한 줄로 펼쳐진 게시물 동선을 일차별로 다시 묶는다 — 1박 2일 코스가 상세 화면에서
+ * 하루에 다 돈 것처럼 보이지 않게 하려는 것이다.
+ *
+ * 일차를 저장하기 전에 올라간 글은 모든 장소가 0일차라, 결과가 한 덩어리로 나온다.
+ * 화면은 묶음이 하나면 일차 제목을 붙이지 않으므로 예전 글도 예전처럼 보인다.
+ */
+export function groupStopsByDay(stops: FeedStop[]): FeedStop[][] {
+  const byDay = new Map<number, FeedStop[]>();
+  stops.forEach((stop) => {
+    const dayIndex = stop.dayIndex ?? 0;
+    const bucket = byDay.get(dayIndex);
+    if (bucket) bucket.push(stop);
+    else byDay.set(dayIndex, [stop]);
+  });
+  return [...byDay.entries()].sort(([a], [b]) => a - b).map(([, day]) => day);
+}
+
 export interface CoursePostAuthor {
+
   name: string;
   emoji: string;
   petTypeName: string;
@@ -138,7 +157,7 @@ export function buildPostInputFromCourse(
   return {
     caption: course.label,
     text: text.trim(),
-    stops: course.days.flat(),
+    stops: course.days.flatMap((day, dayIndex) => day.map((stop) => ({ ...stop, dayIndex }))),
     tags: buildCourseTags(course),
     authorName: author.name,
     authorEmoji: author.emoji,

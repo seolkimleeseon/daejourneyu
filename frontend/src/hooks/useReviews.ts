@@ -8,11 +8,16 @@ import {
 
 const REVIEWS_KEY = ["reviews"];
 
-/** GET /api/reviews — placeId를 넘기면 장소 상세용으로 필터링, 안 넘기면 전체(마이탭이 isMine으로 걸러 씀). */
-export function useReviews(placeId?: string) {
+/**
+ * GET /api/reviews — placeId를 넘기면 장소 상세용으로 필터링, 안 넘기면 전체(마이탭이 isMine으로 걸러 씀).
+ * enabled를 false로 두면 요청을 보내지 않는다 — 장소 상세처럼 placeId가 아직 없는(로딩 중이거나
+ * 존재하지 않는 장소인) 동안 의도치 않게 전체 후기를 불러오는 걸 막을 때 쓴다.
+ */
+export function useReviews(placeId?: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...REVIEWS_KEY, placeId ?? null],
     queryFn: () => fetchReviewsApi(placeId),
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -17,8 +17,11 @@ const SIZES: PetSize[] = ["소형견", "중형견", "대형견"];
 /** 서버(`backend/src/routes/pets.ts`)와 같은 상한. 왕복 없이 즉시 알려주려고 여기서도 본다. */
 const MAX_WEIGHT_KG = 200;
 const MAX_AGE_YEARS = 50;
-/** 프로토타입의 견종별 SVG 렌더러 대신 쓰는 아바타 후보 — TODO(step3 이후): 사진 업로드로 교체 */
-const EMOJIS = ["🐕", "🐩", "🦮", "🐕‍🦺", "🐈", "🐇"];
+/** 프로토타입의 견종별 SVG 렌더러 대신 쓰는 아바타 후보 — TODO(step3 이후): 사진 업로드로 교체.
+ *  대저니유는 반려견 동반 여행 서비스라 강아지만 둔다(고양이·토끼는 뺐다). 여기 있는 이모지는
+ *  전부 Emoji3D에 3D 아이콘이 있어야 한다 — 여권 카드·마이 탭이 그걸로 그린다. */
+const EMOJIS = ["🐕", "🐩", "🦮", "🐕‍🦺", "🐶", "🐾"];
+
 
 interface PetRegisterFormProps {
   mode: "create" | "edit";

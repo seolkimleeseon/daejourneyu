@@ -4,13 +4,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { useToastStore } from "@/stores/useToastStore";
 
-const capture = vi.hoisted(() => ({ saveElementAsImage: vi.fn() }));
-vi.mock("@/lib/captureImage", () => ({ saveElementAsImage: capture.saveElementAsImage }));
+const capture = vi.hoisted(() => ({ saveElementAsImage: vi.fn(), captureElementAsFile: vi.fn() }));
+vi.mock("@/lib/captureImage", () => ({
+  saveElementAsImage: capture.saveElementAsImage,
+  captureElementAsFile: capture.captureElementAsFile,
+}));
 
-const kakao = vi.hoisted(() => ({ shareTextToKakao: vi.fn() }));
-vi.mock("@/lib/kakao", () => ({ shareTextToKakao: kakao.shareTextToKakao }));
+const kakao = vi.hoisted(() => ({ shareTextToKakao: vi.fn(), shareImageToKakao: vi.fn() }));
+vi.mock("@/lib/kakao", () => ({
+  shareTextToKakao: kakao.shareTextToKakao,
+  shareImageToKakao: kakao.shareImageToKakao,
+}));
 
 const target = document.createElement("div");
+const capturedFile = new File(["png"], "유성-산책-코스.png", { type: "image/png" });
 
 function setup(props: Partial<React.ComponentProps<typeof ResultShareActions>> = {}) {
   render(
@@ -33,7 +40,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   useToastStore.setState({ message: null, key: 0 });
   capture.saveElementAsImage.mockResolvedValue(true);
+  capture.captureElementAsFile.mockResolvedValue(capturedFile);
   kakao.shareTextToKakao.mockReturnValue({ ok: true });
+  kakao.shareImageToKakao.mockResolvedValue({ ok: true });
 });
 
 describe("이미지 저장", () => {
@@ -80,16 +89,20 @@ describe("이미지 저장", () => {
 });
 
 describe("카카오톡 공유", () => {
-  it("제목·설명·이동 경로를 넘긴다", async () => {
+  it("결과 화면을 캡처해 제목·설명·이동 경로와 함께 넘긴다 — 말풍선 미리보기에 쓸 이미지다", async () => {
     const { user } = setup({ path: "/schedule/course/course-1" });
 
     await user.click(shareButton());
 
-    expect(kakao.shareTextToKakao).toHaveBeenCalledWith({
-      title: "유성 산책 코스",
-      description: "당일치기 · 3곳",
-      path: "/schedule/course/course-1",
-    });
+    expect(capture.captureElementAsFile).toHaveBeenCalledWith(target, "유성-산책-코스");
+    await waitFor(() =>
+      expect(kakao.shareImageToKakao).toHaveBeenCalledWith({
+        title: "유성 산책 코스",
+        description: "당일치기 · 3곳",
+        path: "/schedule/course/course-1",
+        file: capturedFile,
+      })
+    );
   });
 
   it("아직 저장 전이라 갈 곳이 없으면 경로 없이 부른다", async () => {
@@ -97,7 +110,33 @@ describe("카카오톡 공유", () => {
 
     await user.click(shareButton());
 
-    expect(kakao.shareTextToKakao).toHaveBeenCalledWith(expect.objectContaining({ path: undefined }));
+    await waitFor(() =>
+      expect(kakao.shareImageToKakao).toHaveBeenCalledWith(expect.objectContaining({ path: undefined }))
+    );
+  });
+
+  it("캡처가 안 되면 이미지 없이 텍스트로라도 연다 — 공유창까지 막히면 안 된다", async () => {
+    capture.captureElementAsFile.mockResolvedValue(null);
+    const { user } = setup();
+
+    await user.click(shareButton());
+
+    await waitFor(() => expect(kakao.shareTextToKakao).toHaveBeenCalled());
+    expect(kakao.shareImageToKakao).not.toHaveBeenCalled();
+  });
+
+  it("만드는 동안 버튼을 잠가 두 번 눌리지 않게 한다", async () => {
+    let finish = (_file: File | null) => {};
+    capture.captureElementAsFile.mockReturnValue(new Promise<File | null>((resolve) => (finish = resolve)));
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: /카카오톡 공유/ }));
+
+    const sharing = screen.getByRole("button", { name: /여는 중/ });
+    expect(sharing.hasAttribute("disabled")).toBe(true);
+
+    finish(capturedFile);
+    await waitFor(() => expect(shareButton().hasAttribute("disabled")).toBe(false));
   });
 
   it("열리면 토스트로 방해하지 않는다", async () => {
@@ -105,24 +144,27 @@ describe("카카오톡 공유", () => {
 
     await user.click(shareButton());
 
+    await waitFor(() => expect(kakao.shareImageToKakao).toHaveBeenCalled());
     expect(useToastStore.getState().message).toBeNull();
   });
 
   it("못 열면 사유를 그대로 알려준다", async () => {
-    kakao.shareTextToKakao.mockReturnValue({ ok: false, reason: "카카오 SDK를 아직 불러오지 못했어요" });
+    kakao.shareImageToKakao.mockResolvedValue({ ok: false, reason: "카카오 SDK를 아직 불러오지 못했어요" });
     const { user } = setup();
 
     await user.click(shareButton());
 
-    expect(useToastStore.getState().message).toBe("카카오 SDK를 아직 불러오지 못했어요");
+    await waitFor(() =>
+      expect(useToastStore.getState().message).toBe("카카오 SDK를 아직 불러오지 못했어요")
+    );
   });
 
   it("사유를 모르면 기본 문구라도 남긴다", async () => {
-    kakao.shareTextToKakao.mockReturnValue({ ok: false });
+    kakao.shareImageToKakao.mockResolvedValue({ ok: false });
     const { user } = setup();
 
     await user.click(shareButton());
 
-    expect(useToastStore.getState().message).toBe("카카오톡 공유를 열지 못했어요");
+    await waitFor(() => expect(useToastStore.getState().message).toBe("카카오톡 공유를 열지 못했어요"));
   });
 });

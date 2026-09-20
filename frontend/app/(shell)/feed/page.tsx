@@ -20,6 +20,7 @@ import { useArticles } from "@/hooks/useArticles";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { sortArticles, type PostSortMode, type ArticleSortMode } from "@/lib/feed";
+import { cn } from "@/lib/cn";
 
 const POST_SORT_OPTIONS: { value: PostSortMode; label: string }[] = [
   { value: "saves", label: "담긴순" },
@@ -96,6 +97,7 @@ function FeedTabContent() {
     data: coursePosts,
     total: courseTotal,
     isLoading: postsLoading,
+    isPlaceholderData: showingPreviousList,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -168,21 +170,30 @@ function FeedTabContent() {
               onSubmit={(next) => setKeyword(next.trim())}
             />
 
+            {/* 배너·유형 필터는 목록이 바뀌는 동안에도 자리를 지킨다 — 예전에는 로딩 화면이 이
+                줄까지 통째로 걷어내서, 방금 누른 필터 버튼이 눈앞에서 사라졌다 돌아왔다. */}
+            {!searching ? (
+              <>
+                {showHotBanner && hottestPost ? <HotPostCard post={hottestPost} /> : null}
+                <SameTypeFilter
+                  active={sameTypeOnly}
+                  petTypeName={activePet?.mbti?.name ?? null}
+                  onToggle={() => setSameTypeOnly((previous) => !previous)}
+                />
+              </>
+            ) : null}
+
             {postsLoading ? (
               <LoadingState />
             ) : (
-              <>
-                {!searching ? (
-                  <>
-                    {showHotBanner && hottestPost ? <HotPostCard post={hottestPost} /> : null}
-                    <SameTypeFilter
-                      active={sameTypeOnly}
-                      petTypeName={activePet?.mbti?.name ?? null}
-                      onToggle={() => setSameTypeOnly((previous) => !previous)}
-                    />
-                  </>
-                ) : null}
-
+              <div
+                // 조건을 바꾼 직후에는 이전 목록을 흐리게 깔아 두고 새 목록으로 갈아끼운다.
+                className={cn(
+                  "flex flex-col gap-2.5 transition-opacity",
+                  showingPreviousList && "opacity-50"
+                )}
+                aria-busy={showingPreviousList}
+              >
                 {/* 건수와 정렬은 목록 바로 위에 붙여 둔다 — 정렬은 아래 카드 순서를 바꾸는 값이라
                     탭 줄보다 목록에 붙어 있어야 무엇이 바뀌는지 바로 읽힌다.
                     전체 건수는 서버가 필터·검색을 적용해 세어 준 값이라 그대로 보여주고,
@@ -232,7 +243,7 @@ function FeedTabContent() {
                     }
                   />
                 )}
-              </>
+              </div>
             )}
           </div>
         ) : null}

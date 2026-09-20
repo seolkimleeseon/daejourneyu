@@ -167,6 +167,42 @@ describe("둘러보기 — 코스 탭", () => {
     expect(lastCourseOptions()).toMatchObject({ sameTypeOnly: true });
   });
 
+  it("필터를 켠 뒤 목록을 처음 받아오는 동안에도 필터 버튼은 자리를 지킨다", async () => {
+    usePetStore.setState({
+      pets: [makePet({ mbti: { code: "ENFP", name: PET_TYPE_NAME, theme: "산책", traits: [] } })],
+      activePetIndex: 0,
+    });
+    // 캐시가 없는 첫 전환 — 필터를 켠 목록만 아직 받아오는 중이다.
+    hooks.useFeedPosts.mockImplementation((options: FeedListOptions) =>
+      options.sameTypeOnly
+        ? { ...listResult([]), isLoading: true }
+        : listResult(options.mine ? myPosts : coursePosts)
+    );
+    render(<FeedPage />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: /같은 유형 · .* 코스만 보기/ }));
+
+    expect(screen.getByText("불러오는 중…")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /같은 유형 · .* 코스만 보기/ })).toBeTruthy();
+  });
+
+  it("조건을 바꾸는 동안에는 이전 목록을 흐리게 깔아 둔다", async () => {
+    usePetStore.setState({
+      pets: [makePet({ mbti: { code: "ENFP", name: PET_TYPE_NAME, theme: "산책", traits: [] } })],
+      activePetIndex: 0,
+    });
+    hooks.useFeedPosts.mockImplementation((options: FeedListOptions) => ({
+      ...listResult(options.mine ? myPosts : coursePosts),
+      isPlaceholderData: Boolean(options.sameTypeOnly),
+    }));
+    render(<FeedPage />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: /같은 유형 · .* 코스만 보기/ }));
+
+    const list = document.querySelector('[aria-busy="true"]');
+    expect(list?.textContent).toContain("갑천 산책 코스");
+  });
+
   it("정렬을 바꾸면 목록 조건에 반영한다", async () => {
     const user = userEvent.setup();
     render(<FeedPage />);

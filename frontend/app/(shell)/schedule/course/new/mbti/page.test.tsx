@@ -236,8 +236,8 @@ describe("코스 만들기", () => {
 
     await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
 
-    expect(stepTitle()).toBe("산책형 코스");
-    expect(screen.getByText("산책형 코스로 추천해드려요")).toBeTruthy();
+    // "산책형"이 아니라 "산책 중심" — 실제로는 맛집·놀이터·문화도 함께 담기기 때문이다.
+    expect(stepTitle()).toBe("산책 중심 코스");
   });
 
   it("당일치기는 가까운 곳에서 네 카테고리를 모두 담는다", async () => {

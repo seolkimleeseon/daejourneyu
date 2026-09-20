@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "PostStop" ADD COLUMN     "dayIndex" INTEGER NOT NULL DEFAULT 0;

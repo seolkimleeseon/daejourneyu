@@ -1,7 +1,11 @@
 /**
  * 넓은(웹) 화면에서 가운데 앱 프레임(max-w-480px) 양옆에 보이는 장식용 패널.
- * 모바일 폭에서는 항상 숨김(`hidden lg:flex`) — 프레임 자체 크기는 모바일과 완전히 동일하게 유지하고,
- * 남는 공간만 채우는 용도라 탭 화면 로직에는 관여하지 않는다.
+ * 모바일 폭에서는 항상 숨김(`hidden min-[1340px]:flex`) — 프레임 자체 크기는 모바일과 완전히 동일하게
+ * 유지하고, 남는 공간만 채우는 용도라 탭 화면 로직에는 관여하지 않는다.
+ * 패널 380px × 2 + gap-x-10(40px) × 2 + 프레임 480px = 1320px가 온전히 들어갈 때만 보여야 해서
+ * 표시 기준을 Tailwind 기본 `lg`(1024px)가 아니라 1320px보다 여유 있는 1340px로 잡았다 — 그보다
+ * 좁은 폭에서 lg만으로 노출하면 flex-shrink가 패널과 프레임을 비례해서 눌러버려 프레임 폭이
+ * 480px 밑으로 줄어들고, `BottomNav`(뷰포트 기준으로 고정 폭 480px를 따로 중앙 정렬)와 어긋나 보였다.
  * (SVG 필터로 손그림 원을 그려봤는데 렌더링이 깨져서 걷어내고, 반짝임만 듬성듬성 작게 남겼다.)
  */
 const SPARKLES: { top: string; left?: string; right?: string; size: string; color: string; delay: string }[] = [
@@ -32,7 +36,7 @@ function Sparkles() {
 
 export function AppBrandPanel() {
   return (
-    <div className="relative hidden lg:flex lg:w-[380px] lg:flex-col lg:items-center lg:justify-center lg:gap-5 lg:px-10">
+    <div className="relative hidden shrink-0 min-[1340px]:flex min-[1340px]:w-[380px] min-[1340px]:flex-col min-[1340px]:items-center min-[1340px]:justify-center min-[1340px]:gap-5 min-[1340px]:px-10">
       <Sparkles />
 
       <div>
@@ -60,7 +64,7 @@ export function AppBrandPanel() {
 /** 오른쪽은 균형을 맞추는 여백 — 반짝임만 듬성듬성. */
 export function AppDecorPanel() {
   return (
-    <div className="relative hidden lg:flex lg:w-[380px]">
+    <div className="relative hidden shrink-0 min-[1340px]:flex min-[1340px]:w-[380px]">
       <Sparkles />
     </div>
   );

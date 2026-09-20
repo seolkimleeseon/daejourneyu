@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/Modal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ResultShareActions } from "@/components/course/ResultShareActions";
 import { CourseRouteMap } from "@/components/course/CourseRouteMap";
+import { CourseShareCard } from "@/components/course/CourseShareCard";
 import { PlacePickerSheet } from "@/components/course/PlacePickerSheet";
 import { KakaoPlacePreviewSheet } from "@/components/course/KakaoPlacePreviewSheet";
 import { StopThumbnail } from "@/components/course/StopThumbnail";
@@ -41,7 +42,7 @@ const TICKET_TAG_CLASS = "cursor-default border border-line bg-card";
 /** Emoji3D에 3D 렌더가 있는 것만 골랐다 — 매핑 안 된 이모지는 OS 기본 폰트로 그려져서
  * Windows/Mac에서 모양이 달라 보인다(예: 윈도우 vs 맥 이모지 폰트 차이). */
 const EMOJI_CHOICES = [
-  "🐾", "🐶", "🐕", "🐩", "🐈", "🦴",
+  "🐾", "🐶", "🐕", "🐩", "🦮", "🦴",
   "🌳", "🌸", "🌈", "🌙", "⭐", "🎈",
   "🎾", "🥾", "🏛️", "🎯", "🎨", "🎉",
   "🍖", "🥐", "📍", "🗺️", "🏠", "🎒",
@@ -70,7 +71,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     }
   }, [params.courseId, resolvedCourseId, router]);
 
-  const captureRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeDay, setActiveDay] = useState(0);
 
@@ -209,7 +210,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
 
       <div className="px-4 pb-3 pt-3">
         {/* 여행 티켓 카드 — 상단 탑승권 스트립 + 절취선(펀치홀) + 일차 스탬프 */}
-        <div ref={captureRef} className="overflow-hidden rounded-2xl bg-brand-100 shadow-sm">
+        <div className="overflow-hidden rounded-2xl bg-brand-100 shadow-sm">
           <div className="flex items-center justify-between px-4 pt-3 font-mono text-[9px] font-bold tracking-widest text-brand-700/70">
             <span>COURSE TICKET</span>
             <span>DAEJEON</span>
@@ -251,9 +252,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 ) : (
                   `☀️ ${nightsLabel(course.nights)}`
                 )}
-              </Tag>
-              <Tag tone="purple" className={TICKET_TAG_CLASS}>
-                {course.transport === "자차" ? "🚗" : "🚌"} {course.transport}
               </Tag>
               {course.shared ? (
                 <Tag tone="amber" className={TICKET_TAG_CLASS}>
@@ -385,7 +383,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               )}
               <ResultShareActions
                 className="contents"
-                captureRef={captureRef}
+                captureRef={shareCardRef}
                 fileName={`대저니유-${course.label}`}
                 kakaoTitle={course.label}
                 kakaoDescription={`${nightsLabel(course.nights)} · ${stopCount}곳 · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
@@ -394,6 +392,19 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             </div>
           </>
         )}
+      </div>
+
+      {/* 저장/공유용 캡처 전용 카드 — 화면엔 안 보이고 이미지 저장·카카오 공유할 때만 쓰인다.
+          화면의 티켓을 그대로 캡처하면 실패한다: 안에 든 카카오 지도 타일과 장소 사진이 CORS를
+          허용하지 않아, html-to-image가 그 이미지를 못 가져오는 순간 캡처 전체가 엎어진다. */}
+      <div style={{ position: "fixed", top: 0, left: -9999 }} aria-hidden="true">
+        <div ref={shareCardRef}>
+          <CourseShareCard
+            title={course.label}
+            tags={[nightsLabel(course.nights), SOURCE_LABEL[course.source]]}
+            days={displayDays}
+          />
+        </div>
       </div>
 
       <PlacePickerSheet />

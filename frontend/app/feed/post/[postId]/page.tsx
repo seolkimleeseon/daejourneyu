@@ -13,7 +13,7 @@ import { PostSaveBar } from "@/components/feed/PostSaveBar";
 import { CourseRouteMap } from "@/components/course/CourseRouteMap";
 import { useDeletePost, usePost, useUpdatePost } from "@/hooks/usePosts";
 import { useToastStore } from "@/stores/useToastStore";
-import { formatPostDate, visiblePostTags } from "@/lib/feed";
+import { formatPostDate, groupStopsByDay, visiblePostTags } from "@/lib/feed";
 
 /** journeyPostDetail — 둘러보기에서 진입하는 공유 코스 상세. */
 export default function FeedPostDetailPage() {
@@ -56,6 +56,7 @@ export default function FeedPostDetailPage() {
 
   // 목록 카드와 같은 기준으로 거른다 — 같은 글이 화면마다 다른 태그를 달고 있으면 더 헷갈린다.
   const tags = visiblePostTags(post.tags);
+  const days = groupStopsByDay(post.stops);
 
   const saveEdit = async () => {
     if (!draft) return;
@@ -189,27 +190,37 @@ export default function FeedPostDetailPage() {
         <div className="mb-1 mt-5 px-1 text-xs font-bold text-ink-muted">
           방문 장소 {post.stops.length}곳
         </div>
-        {/* 내 여정 코스 상세와 같은 동선 지도. 게시물의 방문 장소는 일차 구분 없이 코스 전체를
-            순서대로 이어 붙인 목록이라(buildPostInputFromCourse) 지도도 한 장으로 그린다. */}
-        {post.stops.length > 0 ? <CourseRouteMap stops={post.stops} /> : null}
-        <div className="flex flex-col gap-2">
-          {post.stops.map((stop, index) => (
-            <Link key={`${stop.placeId}-${index}`} href={`/place/${encodeURIComponent(stop.name)}`}>
-              <Card className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-bold text-ink">{stop.name}</div>
-                  <div className="truncate text-[10px] text-ink-muted">
-                    {stop.district} · {stop.category} · {stop.condition}
-                  </div>
-                </div>
-                <span className="shrink-0 text-[9px] text-ink-muted">›</span>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        {/* 내 여정 코스 상세와 같은 동선 지도. 게시물의 방문 장소는 한 줄로 펼쳐져 오지만
+            장소마다 몇 일차였는지를 달고 있어(groupStopsByDay), 일차별로 나눠 지도도 따로 그린다 —
+            1박 2일 코스가 하루에 다 도는 코스처럼 보이지 않게 하려는 것이다. */}
+        {days.map((day, dayIndex) => (
+          <div key={dayIndex} className="mb-4 last:mb-0">
+            {days.length > 1 ? (
+              <div className="mb-1.5 px-1 text-xs font-bold text-brand-700">
+                {dayIndex + 1}일차 · {day.length}곳
+              </div>
+            ) : null}
+            <CourseRouteMap stops={day} />
+            <div className="flex flex-col gap-2">
+              {day.map((stop, index) => (
+                <Link key={`${stop.placeId}-${index}`} href={`/place/${encodeURIComponent(stop.name)}`}>
+                  <Card className="flex items-center gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold text-ink">{stop.name}</div>
+                      <div className="truncate text-[10px] text-ink-muted">
+                        {stop.district} · {stop.category} · {stop.condition}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-[9px] text-ink-muted">›</span>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
 
         {/* 좋아요는 빼고 목록 카드와 같은 '담긴 수 + 담기' 줄만 둔다. */}
         <PostSaveBar

@@ -2,11 +2,15 @@ import { Emoji3D } from "@/components/ui/Emoji3D";
 import { nightsLabel } from "@/lib/courseFormat";
 import type { Place } from "@/types";
 
+/** 캡처에 필요한 만큼만 받는다 — 위저드는 좌표까지 있는 Place[]를, 저장된 코스 상세는
+ * 스냅샷인 CourseStop[]을 그대로 넘길 수 있게 이름·구·분류만 요구한다. */
+export type ShareCardStop = Pick<Place, "name" | "district" | "category">;
+
 interface CourseShareCardProps {
   title: string;
-  /** 헤더에 보여줄 뱃지 문구(이모지 포함). 예: ["☀️ 당일치기", "🚗 자차"] */
+  /** 헤더에 보여줄 뱃지 문구(이모지 포함). 예: ["☀️ 당일치기", "🌳 산책형"] */
   tags: string[];
-  days: Place[][];
+  days: ShareCardStop[][];
 }
 
 /** app/globals.css의 @theme 토큰 값을 그대로 옮겨왔다 — 아래 이유로 Tailwind 클래스 대신
@@ -129,7 +133,7 @@ export function CourseShareCard({ title, tags, days }: CourseShareCardProps) {
               </div>
               {day.map((place, i) => (
                 <div
-                  key={place.id ?? `${dayIndex}-${i}`}
+                  key={`${dayIndex}-${i}`}
                   style={{
                     display: "grid",
                     gridTemplateColumns: "30px 1fr 82px",

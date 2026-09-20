@@ -80,7 +80,7 @@ export function BadgeDetailModal({ badge, onClose, onGo }: BadgeDetailModalProps
         {masked
           ? "조건이 비밀인 히든 뱃지예요. 받고 나면 무엇으로 받았는지 알려드릴게요."
           : shown.got
-            ? shown.description
+            ? shown.earned
             : shown.how}
       </p>
 

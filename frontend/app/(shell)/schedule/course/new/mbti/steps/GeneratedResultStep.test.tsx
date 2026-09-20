@@ -33,7 +33,6 @@ function setup(props: Partial<React.ComponentProps<typeof GeneratedResultStep>> 
     <GeneratedResultStep
       theme="산책"
       nights={0}
-      transport="자차"
       days={[[한밭수목원, 댕댕카페]]}
       courseTitle="유성 산책 코스"
       {...handlers}
@@ -72,10 +71,10 @@ describe("완성 요약", () => {
     expect(onScreen("1박 2일")).toHaveLength(1);
   });
 
-  it("이동 수단도 함께 보여준다", () => {
-    setup({ transport: "대중교통" });
+  it("이동 수단은 더 이상 알리지 않는다 — 고를 수 있는 값이 아니라 자차로 고정된 값이다", () => {
+    setup();
 
-    expect(screen.getByText("🚌 대중교통")).toBeTruthy();
+    expect(screen.queryByText(/자차|대중교통/)).toBeNull();
   });
 });
 
@@ -161,8 +160,8 @@ describe("순서 편집", () => {
 });
 
 describe("공유와 저장", () => {
-  it("공유 문구에 박 수·테마·이동 수단을 모두 담는다", () => {
-    setup({ theme: "문화", nights: 1, transport: "대중교통", courseTitle: "대전 문화 코스" });
+  it("공유 문구에 박 수·테마를 모두 담는다", () => {
+    setup({ theme: "문화", nights: 1, courseTitle: "대전 문화 코스" });
 
     expect(share.render).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -174,13 +173,12 @@ describe("공유와 저장", () => {
   });
 
   it("공유 카드는 화면 밖에 숨겨 두고 캡처할 때만 쓴다", () => {
-    const { container } = setup({ theme: "문화", transport: "대중교통" });
+    const { container } = setup({ theme: "문화" });
     const hidden = container.querySelector('[aria-hidden="true"]') as HTMLElement;
 
     expect(hidden.style.left).toBe("-9999px");
     // 티켓 카드 머리에 붙는 뱃지 — 화면 태그와 같은 정보를 다시 싣는다.
     expect(hidden.textContent).toContain("문화형");
-    expect(hidden.textContent).toContain("대중교통");
   });
 
   it("저장 버튼이 코스를 보관함에 넣는다", async () => {

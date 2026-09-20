@@ -294,7 +294,10 @@ const T: Record<string, Omit<MbtiTypeInfo, "code">> = {
     stats: { social: 5, explore: 1, expressive: 2, structure: 5 },
     goodFor: "익숙한 산책길 · 단골 공원 · 일정이 안정적인 여행",
     toughFor: "처음 보는 장소를 계속 이동하는 여행",
-    theme: { 산책: 30, 맛집: 30, 문화: 40 },
+    /* 이름(단골산책대장)·태그라인·goodFor가 전부 산책을 가리키는데 문화가 1위였다 —
+       topTheme()이 그대로 AI 코스 테마가 되는 탓에 산책형 아이가 문화 코스를 받았다.
+       사교형이라 맛집은 남겨두고 산책을 1위로 올린다. */
+    theme: { 산책: 45, 맛집: 30, 문화: 25 },
   },
   ESFJ: {
     emoji: "🏡",

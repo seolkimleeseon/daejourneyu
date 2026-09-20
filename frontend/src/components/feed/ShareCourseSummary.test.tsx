@@ -5,11 +5,10 @@ import { makeCourse, makeStop } from "@/test/fixtures";
 import { icon3D } from "@/test/icon3d";
 
 describe("ShareCourseSummary", () => {
-  it("코스 이름과 일정 길이·이동수단·전체 장소 수, 출처를 보여준다", () => {
+  it("코스 이름과 일정 길이·전체 장소 수, 출처를 보여준다", () => {
     const course = makeCourse({
       label: "갑천 1박 코스",
       nights: 1,
-      transport: "대중교통",
       source: "manual",
       days: [[makeStop({ placeId: "a" }), makeStop({ placeId: "b" })], [makeStop({ placeId: "c" })]],
     });
@@ -17,7 +16,7 @@ describe("ShareCourseSummary", () => {
     render(<ShareCourseSummary course={course} />);
 
     expect(screen.getByText("갑천 1박 코스")).toBeTruthy();
-    expect(screen.getByText("1박 2일 · 대중교통 · 장소 3곳")).toBeTruthy();
+    expect(screen.getByText("1박 2일 · 장소 3곳")).toBeTruthy();
     expect(screen.getByText("직접 지음")).toBeTruthy();
   });
 

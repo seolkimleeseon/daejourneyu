@@ -13,7 +13,9 @@ const TRAIL_PATH = "M18 96 Q92 102 138 64 T242 38";
  */
 export function TravelingDog({ destination }: TravelingDogProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-5 px-5 py-16 text-center">
+    // 연출이 화면 위쪽에 붙어 있으면 아래가 텅 비어 어색하다 — TopBar(56px)와 BottomNav 여백(76px)을
+    // 뺀 나머지 높이를 다 차지하게 해서 화면 한가운데에 놓는다.
+    <div className="flex min-h-[calc(100dvh-132px)] flex-col items-center justify-center gap-5 px-5 py-10 text-center">
       <div className="relative" style={{ width: 264, height: 128 }}>
         {/* 곡선 점선길 */}
         <svg

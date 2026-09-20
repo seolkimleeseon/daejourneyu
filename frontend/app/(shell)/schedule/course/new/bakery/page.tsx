@@ -122,7 +122,7 @@ export default function BakeryCoursePage() {
           이 지역에서는 가까운 빵집과 산책길을 묶지 못했어요. 다른 지역을 골라주세요.
         </div>
       ) : (
-        <GeneratedResultStep key={`${region}-${variation}`} theme="맛집" nights={0} transport="자차"
+        <GeneratedResultStep key={`${region}-${variation}`} theme="맛집" nights={0}
           days={[route]} courseTitle={title} routeLabel="빵지순례 동선" bakeryMode
           onReorderDay={(_, next) => setReordered(next)}
           onRegenerate={() => { setVariation((current) => current + 1); setReordered(null); }}

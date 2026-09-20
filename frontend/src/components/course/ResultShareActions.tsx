@@ -3,8 +3,8 @@
 import { useState, type RefObject } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToastStore } from "@/stores/useToastStore";
-import { saveElementAsImage } from "@/lib/captureImage";
-import { shareTextToKakao } from "@/lib/kakao";
+import { captureElementAsFile, saveElementAsImage } from "@/lib/captureImage";
+import { shareImageToKakao, shareTextToKakao } from "@/lib/kakao";
 
 interface ResultShareActionsProps {
   /** 캡처할 결과 카드 영역 */
@@ -28,6 +28,7 @@ export function ResultShareActions({
 }: ResultShareActionsProps) {
   const showToast = useToastStore((state) => state.show);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const handleSaveImage = async () => {
     setIsSaving(true);
@@ -40,9 +41,21 @@ export function ResultShareActions({
     }
   };
 
-  const handleKakaoShare = () => {
-    const result = shareTextToKakao({ title: kakaoTitle, description: kakaoDescription, path });
-    if (!result.ok) showToast(result.reason ?? "카카오톡 공유를 열지 못했어요");
+  /**
+   * 말풍선에 결과 화면이 그대로 보이도록, 공유 직전에 같은 영역을 캡처해서 함께 넘긴다.
+   * 캡처가 안 되면(브라우저 제약 등) 이미지 없이 텍스트로라도 공유창을 연다.
+   */
+  const handleKakaoShare = async () => {
+    setIsSharing(true);
+    try {
+      const file = await captureElementAsFile(captureRef.current, fileName);
+      const result = file
+        ? await shareImageToKakao({ title: kakaoTitle, description: kakaoDescription, path, file })
+        : shareTextToKakao({ title: kakaoTitle, description: kakaoDescription, path });
+      if (!result.ok) showToast(result.reason ?? "카카오톡 공유를 열지 못했어요");
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   return (
@@ -53,9 +66,11 @@ export function ResultShareActions({
         </span>
         <span>{isSaving ? "저장 중..." : "이미지 저장"}</span>
       </Button>
-      <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleKakaoShare}>
-        <span className="inline-flex w-5 shrink-0 justify-center text-lg leading-none">💬</span>
-        <span>카카오톡 공유</span>
+      <Button variant="secondary" className="flex-1 gap-1.5" onClick={handleKakaoShare} disabled={isSharing}>
+        <span className="inline-flex w-5 shrink-0 justify-center text-lg leading-none">
+          {isSharing ? "⏳" : "💬"}
+        </span>
+        <span>{isSharing ? "여는 중..." : "카카오톡 공유"}</span>
       </Button>
     </div>
   );

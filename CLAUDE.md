@@ -68,7 +68,6 @@ DB를 다시 띄운 뒤 백엔드를 재시작할 필요는 없다 — Prisma가
 
 변경 후에는 **`npm test`와 `npm run build`를 둘 다 통과시킨다.** 프론트 테스트 파일은 `next build`의
 타입 체크 대상이고, 백엔드 테스트 파일은 `tsconfig.json`에서 제외되어 `dist/`에 빌드되지 않는다.
-현재 테스트가 있는 범위는 둘러보기·마이 탭과 `/api/posts`·`/api/reviews`다.
 
 양쪽 `package.json`의 `"overrides": { "vite": "$vite" }`는 지우지 않는다. 없으면 vitest의 peer
 계산이 vite 8을 끌어오고, vite 8 → `@vitejs/devtools` → `vitest@*`(5.x) 순환 때문에 npm 10이
@@ -100,10 +99,10 @@ README의 "홈에서 백엔드 `/api/places`를 불러온다"는 설명은 **더
 대전시·고캠핑·문체부 반려동물 동반가능 시설 현황(총 9개 소스 + CSV 1건)을 정규화·dedupe해서
 `npm run sync:places`로 채워 넣는다 — 수동 실행이라 소스가 갱신되면 다시 돌려야 한다.
 
-다만 이 데이터를 실제로 쓰는 건 아직 `frontend/src/components/course/PlacePickerSheet.tsx`(코스
-위저드 장소 선택 시트)뿐이다. 홈/맵 탭이 쓰는 `frontend/src/hooks/usePlaces.ts`는 여전히
-`mockPlaces`를 반환하는 상태(`TODO(api)` 그대로 남아 있음) — 실제 API로 바꾸는 건 그 탭 담당자가
-할 일로 남겨뒀다.
+`frontend/src/components/course/PlacePickerSheet.tsx`(코스 위저드 장소 선택 시트)와 홈/맵 탭이 쓰는
+`frontend/src/hooks/usePlaces.ts` 모두 이제 `GET /api/places`를 호출한다. 다만 `usePlaces`는 백엔드/DB가
+꺼져 있어 요청이 실패하는 경우에만 `mockPlaces`로 조용히 폴백한다(목록을 비우지 않기 위함) — 정상
+동작 중엔 실 데이터만 보인다.
 
 ## 도메인 용어
 
@@ -143,5 +142,3 @@ README의 "홈에서 백엔드 `/api/places`를 불러온다"는 설명은 **더
 - 목데이터의 한글 *내용*은 프로토타입 HTML의 인코딩 깨짐 때문에 재구성된 것이라 잠정적이다.
   신뢰할 수 있는 건 *구조*(필드·유니언·관계)뿐이므로, 카피를 정본처럼 인용하지 않는다.
 - PWA 서비스워커는 개발 모드에서 비활성이다. PWA 동작 확인은 `npm run build && npm start`로 한다.
-- `frontend/public/manifest.json`은 `/icons/icon-192.png`·`icon-512.png`를 참조하지만
-  `public/icons/` 폴더 자체가 아직 없다 — PWA 설치 아이콘 미완성 상태다.

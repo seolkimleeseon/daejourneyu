@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ApiError, Type } from "@google/genai";
-import { gemini, GEMINI_MODEL } from "../lib/gemini";
+import { gemini, GEMINI_MODELS } from "../lib/gemini";
 import { bakeryBrandKey } from "../lib/bakeries";
 
 type Transport = "자차" | "대중교통";
@@ -142,6 +142,15 @@ function sanitizeSuggestion(raw: unknown, validIds: Set<string>, dayCount: numbe
   return { label: r.label.trim(), days };
 }
 
+/** 모델이 JSON이 아닌 답을 줄 수도 있다 — 던지는 대신 null로 돌려서 "다시 물어보기" 판단에 태운다. */
+function parseJsonOrNull(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 type ParsedResponse = { responseType: "chat"; message: string } | { responseType: "course"; suggestion: ParsedSuggestion };
 
 /** 응답이 잡담(chat)인지 코스 추천(course)인지 먼저 가르고, course면 기존 검증을 그대로 태운다. */
@@ -160,6 +169,37 @@ function sanitizeResponse(raw: unknown, validIds: Set<string>, dayCount: number)
   }
   return null;
 }
+
+/**
+ * 모델 하나가 막혔다고 바로 포기하지 않고 다음 모델로 갈아탄다. 두 가지를 넘긴다 —
+ * 503(UNAVAILABLE, "high demand": 그 모델이 붐빔)과 429(RESOURCE_EXHAUSTED: 그 모델의 한도 초과).
+ *
+ * 429까지 갈아타는 이유: 무료 티어의 분당 요청 한도(RPM)는 프로젝트 단위로 세되 **모델 변형마다
+ * 따로** 걸린다(ai.google.dev/gemini-api/docs/rate-limits). 그래서 3.5가 한도에 걸려도 3.6·3.7은
+ * 아직 남아 있는 경우가 많고, 목록만큼 한도가 늘어나는 셈이 된다. 새 API 키를 발급하는 건 소용이
+ * 없다 — 한도는 키가 아니라 프로젝트에 붙는다.
+ *
+ * 키 문제(401·403)는 다시 불러도 같은 답이라 그대로 던진다. 한 바퀴만 도는 것도 의도다 —
+ * 답이 늦으면 화면이 먼저 포기한다(챗봇 25초).
+ */
+type GenerateParams = Parameters<typeof gemini.models.generateContent>[0];
+
+async function generateWithFallback(params: Omit<GenerateParams, "model">) {
+  const models = [...GEMINI_MODELS];
+  for (let attempt = 0; attempt < models.length; attempt++) {
+    try {
+      return await gemini.models.generateContent({ ...params, model: models[attempt] });
+    } catch (error) {
+      const blocked = error instanceof ApiError && (error.status === 503 || error.status === 429);
+      if (!blocked || attempt === models.length - 1) throw error;
+    }
+  }
+  // GEMINI_MODELS가 비어 있을 수 없으므로 여기까지 오지 않는다 — 타입을 좁히기 위한 줄이다.
+  throw new Error("생성할 모델이 없습니다");
+}
+
+
+
 
 const router = Router();
 
@@ -220,35 +260,35 @@ router.post("/course-suggestion", async (req, res) => {
     .join("\n");
 
   try {
-    const response = await gemini.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: `요청: ${prompt}\n\n이동수단: ${transport}\n일수: ${dayCount}일\n\n후보 장소 목록:\n${placesDescription}`,
-      config: {
-        systemInstruction:
-          "너는 '대저니유' 앱의 AI 안내이자 반려동물 동반 여행 코스 추천 어시스턴트야. " +
-          "대저니유는 대전 5개 구(유성구·중구·동구·대덕구·서구)의 반려동물 동반 여행지를 소개하고 " +
-          "코스로 묶어주는 앱이고, 코스는 내 여정 탭에서 MBTI 추천·AI 추천(지금 이 대화)·직접 짓기 중 하나로 만든다. " +
-          "사용자의 메시지가 서비스 설명, 인사, 잡담처럼 장소·코스 추천과 무관하면 " +
-          "반드시 responseType을 chat으로 하고 message에 짧고 친근하게 답해 — 이때는 절대 코스를 지어내지 마. " +
-          "사용자가 실제로 갈 곳이나 코스를 원할 때만 responseType을 course로 하고, " +
-          "아래 후보 장소 목록에 있는 id만 사용해서 하루 2~5곳씩 동선을 짜. " +
-          "목록에 없는 장소를 지어내면 안 돼. 여러 날에 같은 장소를 반복하지 마. " +
-          "하루 이동은 직선거리 합계 16km 이내, 한 구간은 10km 이내로 묶어. " +
-          "산책 코스나 문화 코스처럼 테마가 있어도 산책·놀이터·맛집·문화를 가능한 범위에서 섞고, 매일 식사할 곳을 포함해. " +
-          "사용자가 명시적으로 한 종류의 장소만 요청한 경우에는 그 요청을 우선해. " +
-          "빵지순례 요청이면 bakery- id인 빵집 2~3곳을 가까운 산책 장소와 함께 고르고, 빵집의 반려동물 동반 여부는 반드시 확인 필요하다고 안내해. " +
-          "사용자의 취향과 방문 조건을 먼저 지켜줘.",
-        responseMimeType: "application/json",
-        responseSchema,
-      },
-    });
+    /* 스키마로 모양을 묶어놔도 모델이 가끔 샌다 — responseType은 course라고 해놓고 days 대신
+       message에 인사말만 채워 보내는 식이다. 걸러낸 결과가 비면 오류를 보이기 전에 한 번 더 물어본다. */
+    let parsed: ParsedResponse | null = null;
+    for (let attempt = 0; attempt < 2 && parsed === null; attempt++) {
+      const response = await generateWithFallback({
+        contents: `요청: ${prompt}\n\n이동수단: ${transport}\n일수: ${dayCount}일\n\n후보 장소 목록:\n${placesDescription}`,
+        config: {
+          systemInstruction:
+            "너는 '대저니유' 앱의 AI 안내이자 반려동물 동반 여행 코스 추천 어시스턴트야. " +
+            "대저니유는 대전 5개 구(유성구·중구·동구·대덕구·서구)의 반려동물 동반 여행지를 소개하고 " +
+            "코스로 묶어주는 앱이고, 코스는 내 여정 탭에서 MBTI 추천·AI 추천(지금 이 대화)·직접 짓기 중 하나로 만든다. " +
+            "사용자의 메시지가 서비스 설명, 인사, 잡담처럼 장소·코스 추천과 무관하면 " +
+            "반드시 responseType을 chat으로 하고 message에 짧고 친근하게 답해 — 이때는 절대 코스를 지어내지 마. " +
+            "사용자가 실제로 갈 곳이나 코스를 원할 때만 responseType을 course로 하고, " +
+            "아래 후보 장소 목록에 있는 id만 사용해서 하루 2~5곳씩 동선을 짜. " +
+            "목록에 없는 장소를 지어내면 안 돼. 여러 날에 같은 장소를 반복하지 마. " +
+            "하루 이동은 직선거리 합계 16km 이내, 한 구간은 10km 이내로 묶어. " +
+            "산책 코스나 문화 코스처럼 테마가 있어도 산책·놀이터·맛집·문화를 가능한 범위에서 섞고, 매일 식사할 곳을 포함해. " +
+            "사용자가 명시적으로 한 종류의 장소만 요청한 경우에는 그 요청을 우선해. " +
+            "빵지순례 요청이면 bakery- id인 빵집 2~3곳을 가까운 산책 장소와 함께 고르고, 빵집의 반려동물 동반 여부는 반드시 확인 필요하다고 안내해. " +
+            "사용자의 취향과 방문 조건을 먼저 지켜줘.",
+          responseMimeType: "application/json",
+          responseSchema,
+        },
+      });
 
-    const text = response.text;
-    if (!text) {
-      return res.status(502).json({ error: "AI 응답을 이해하지 못했어요. 다시 시도해주세요" });
+      const text = response.text;
+      parsed = text ? sanitizeResponse(parseJsonOrNull(text), validIds, dayCount) : null;
     }
-
-    const parsed = sanitizeResponse(JSON.parse(text), validIds, dayCount);
     if (!parsed) {
       return res.status(502).json({ error: "AI 응답을 이해하지 못했어요. 다시 시도해주세요" });
     }
@@ -288,9 +328,6 @@ router.post("/course-suggestion", async (req, res) => {
       days,
     });
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      return res.status(502).json({ error: "AI 응답을 이해하지 못했어요. 다시 시도해주세요" });
-    }
     if (error instanceof ApiError) {
       if (error.status === 401 || error.status === 403) {
         return res.status(500).json({ error: "GEMINI_API_KEY가 올바르지 않아요. backend/.env를 확인해주세요" });

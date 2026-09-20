@@ -52,7 +52,7 @@ export function HomeStatusCard({
   return (
     <div className="relative mb-3 overflow-hidden rounded-2xl bg-brand-100 shadow-sm">
       <div className="flex items-center justify-between px-4 pt-3 font-mono text-[9px] font-bold tracking-widest text-brand-700/70">
-        <span>오늘의 산책 TICKET</span>
+        <span>오늘의 여행 TICKET</span>
         <span>DAEJEON</span>
       </div>
 
@@ -67,7 +67,8 @@ export function HomeStatusCard({
             {greeting}
           </span>
           {isLoggedIn && pet ? (
-            <span className="ml-auto shrink-0 rounded-full border border-brand-300 bg-card px-2.5 py-1 text-[10px] font-bold text-brand-700">
+            <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full border border-brand-300 bg-card px-2.5 py-1 text-[10px] font-bold text-brand-700">
+              <span aria-hidden>{pet.emoji}</span>
               {pet.name}
             </span>
           ) : null}

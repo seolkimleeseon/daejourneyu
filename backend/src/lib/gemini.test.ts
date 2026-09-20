@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GEMINI_MODEL, gemini } from "./gemini";
+import { GEMINI_MODELS, gemini } from "./gemini";
 
 /*
  * 키가 비어 있어도 클라이언트 생성 자체는 던지지 않아야 한다 — 파일 주석대로 "실제 호출 시점에
@@ -12,7 +12,11 @@ describe("Gemini 클라이언트", () => {
   });
 
   it("쓸 모델을 정해 둔다 — 라우트마다 다른 모델을 쓰지 않게", () => {
-    expect(GEMINI_MODEL).toBeTruthy();
-    expect(typeof GEMINI_MODEL).toBe("string");
+    expect(GEMINI_MODELS.length).toBeGreaterThan(0);
+    expect(GEMINI_MODELS.every((model) => typeof model === "string" && model.length > 0)).toBe(true);
+  });
+
+  it("붐빌 때 갈아탈 모델을 하나 이상 남겨둔다 — 목록이 한 종류면 503에 그대로 막힌다", () => {
+    expect(new Set(GEMINI_MODELS).size).toBeGreaterThan(1);
   });
 });

@@ -244,6 +244,8 @@ model Post {
 model PostStop {
   id          String  @id @default(cuid())
   order       Int
+  /// 몇 일차 동선인지(0-base). 일차 정보가 없던 시절 글은 전부 0이라 하루짜리로 보인다.
+  dayIndex    Int     @default(0)
   placeId     String
   name        String
   category    String

@@ -35,3 +35,11 @@ vi.mock("next/link", () => ({
     );
   },
 }));
+
+/**
+ * jsdom에는 canvas가 없어 getContext가 호출될 때마다 "Not implemented" 스택을 콘솔에 쏟는다
+ * (DistrictMap이 지도 판정 마스크를 만들 때 부른다). 어차피 null을 돌려주므로 동작은 그대로고,
+ * 스택만 테스트 출력에 섞여 진짜 실패를 가리므로 조용히 null로 대신한다.
+ */
+HTMLCanvasElement.prototype.getContext =
+  (() => null) as typeof HTMLCanvasElement.prototype.getContext;

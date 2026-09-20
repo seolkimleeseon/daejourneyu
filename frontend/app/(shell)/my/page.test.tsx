@@ -105,7 +105,8 @@ describe("마이 — 비로그인", () => {
     await user.click(passport());
     expect(modalOpen(LOGIN_DESCRIPTION)).toBe(true);
 
-    await user.click(screen.getByRole("button", { name: "닫기" }));
+    await user.click(within(modalOf(LOGIN_DESCRIPTION)).getByRole("button", { name: "닫기" }));
+    expect(modalOpen(LOGIN_DESCRIPTION)).toBe(false);
     await user.click(screen.getByText("내가 쓴 후기"));
     expect(modalOpen(LOGIN_DESCRIPTION)).toBe(true);
     expect(nav.push).not.toHaveBeenCalled();
@@ -176,13 +177,13 @@ describe("마이 — 로그인", () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    // 받은 뱃지 — 무엇으로 받았는지(description)를 말해준다.
+    // 받은 뱃지 — 무엇으로 받았는지(earned)를 한 문장으로 말해준다.
     await user.click(screen.getByText("첫 반려인"));
-    expect(modalOpen("다녀온 일정")).toBe(true);
-    expect(within(modalOf("다녀온 일정")).getByText("획득")).toBeTruthy();
+    expect(modalOpen("코스에 날짜를 붙여 1번 다녀왔어요")).toBe(true);
+    expect(within(modalOf("코스에 날짜를 붙여 1번 다녀왔어요")).getByText("획득")).toBeTruthy();
 
-    await user.click(within(modalOf("다녀온 일정")).getByRole("button", { name: "닫기" }));
-    expect(modalOpen("다녀온 일정")).toBe(false);
+    await user.click(within(modalOf("코스에 날짜를 붙여 1번 다녀왔어요")).getByRole("button", { name: "닫기" }));
+    expect(modalOpen("코스에 날짜를 붙여 1번 다녀왔어요")).toBe(false);
 
     // 아직인 뱃지 — 획득 조건(how)과 진행도를 말해준다.
     await user.click(screen.getByText("대전 한바퀴"));

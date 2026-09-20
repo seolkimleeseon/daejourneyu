@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { Card } from "@/components/ui/Card";
 import { Tag } from "@/components/ui/Tag";
@@ -11,17 +12,23 @@ import { FeedPager } from "@/components/feed/FeedPager";
 import { useReviews, useDeleteReview } from "@/hooks/useReviews";
 import { useToastStore } from "@/stores/useToastStore";
 import { paginate } from "@/lib/feed";
+import type { Review } from "@/types/review";
 
 /** 한 페이지에 보여줄 후기 개수 — 둘러보기 '내 글' 목록(MY_POSTS_PER_PAGE)과 동일한 값을 쓴다. */
 const REVIEWS_PER_PAGE = 4;
 
 export default function MyReviewsPage() {
+  const router = useRouter();
   const { data: reviews = [], isLoading } = useReviews();
   const deleteReview = useDeleteReview();
   const showToast = useToastStore((state) => state.show);
 
   const [page, setPage] = useState(0);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const goToPlace = (review: Review) => {
+    router.push(`/place/${encodeURIComponent(review.placeName)}?id=${encodeURIComponent(review.placeId)}`);
+  };
 
   const myReviews = useMemo(() => reviews.filter((review) => review.isMine), [reviews]);
   const myPage = paginate(myReviews, page, REVIEWS_PER_PAGE);
@@ -53,7 +60,7 @@ export default function MyReviewsPage() {
         ) : (
           <>
             {myPage.items.map((review) => (
-              <Card key={review.id}>
+              <Card key={review.id} onClick={() => goToPlace(review)}>
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-bold text-ink">{review.placeName}</div>
@@ -63,13 +70,24 @@ export default function MyReviewsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setPendingDeleteId(review.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setPendingDeleteId(review.id);
+                    }}
                     aria-label="이 후기 삭제"
                     className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface text-[13px] text-ink-muted transition-colors hover:bg-accent-coral hover:text-white"
                   >
                     ✕
                   </button>
                 </div>
+                {review.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data URL이라 next/image 최적화 대상이 아님
+                  <img
+                    src={review.photoUrl}
+                    alt={`${review.placeName} 후기에 첨부한 사진`}
+                    className="mt-2 h-32 w-full rounded-lg object-cover"
+                  />
+                ) : null}
                 {review.text ? <div className="mt-1.5 text-xs text-ink">{review.text}</div> : null}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {review.tags.map((tag) => (

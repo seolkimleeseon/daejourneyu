@@ -50,7 +50,7 @@ describe("AppFrame", () => {
       (child) => child.className.includes("hidden")
     );
     expect(panels).toHaveLength(2);
-    panels.forEach((panel) => expect(panel.className).toContain("lg:flex"));
+    panels.forEach((panel) => expect(panel.className).toContain("min-[1340px]:flex"));
   });
 
   it("넘긴 className을 프레임에 더한다", () => {
