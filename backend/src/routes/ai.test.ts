@@ -12,7 +12,7 @@ import router from "./ai";
 const genai = vi.hoisted(() => ({ generateContent: vi.fn() }));
 vi.mock("../lib/gemini", () => ({
   gemini: { models: { generateContent: genai.generateContent } },
-  GEMINI_MODEL: "test-model",
+  GEMINI_MODELS: ["model-a", "model-b"],
 }));
 
 const app = createTestApp("/api/ai", router);
@@ -266,6 +266,27 @@ describe("AI 응답을 그대로 믿지 않는다", () => {
     expect(response.status).toBe(502);
   });
 
+  it("모양이 어긋난 답이 오면 한 번 더 물어본다 — 스키마를 줘도 모델이 가끔 샌다", async () => {
+    genai.generateContent
+      // course라면서 days 없이 인사말만 채워 보낸 응답 — 실제로 lite 모델에서 나오던 모양이다.
+      .mockResolvedValueOnce({ text: JSON.stringify({ responseType: "course", label: "유성 산책", message: "즐거운 여행 되세요!" }) })
+      .mockResolvedValueOnce({ text: JSON.stringify({ responseType: "course", label: "유성 산책", days: [["p1", "p2"]] }) });
+
+    const response = await post();
+
+    expect(response.status).toBe(200);
+    expect(genai.generateContent).toHaveBeenCalledTimes(2);
+  });
+
+  it("두 번 물어봐도 어긋나면 502로 접는다", async () => {
+    genai.generateContent.mockResolvedValue({ text: JSON.stringify({ responseType: "course", label: "유성 산책" }) });
+
+    const response = await post();
+
+    expect(response.status).toBe(502);
+    expect(genai.generateContent).toHaveBeenCalledTimes(2);
+  });
+
   it("JSON이 아닌 답도 502로 받아 넘긴다 — 던져서 500이 되게 두지 않는다", async () => {
     genai.generateContent.mockResolvedValue({ text: "이건 JSON이 아니에요" });
 
@@ -310,7 +331,7 @@ describe("AI 쪽이 막혔을 때", () => {
     expect(response.status).toBe(502);
     expect(response.body.error).toContain("일시적인 문제");
   });
-  it("모델이 붐벼서 503이면 몇 번 더 두드려 본다 — 대개 곧 붙는다", async () => {
+  it("모델이 붐벼서 503이면 다음 모델로 갈아탄다", async () => {
     genai.generateContent
       .mockRejectedValueOnce(new ApiError({ message: "high demand", status: 503 }))
       .mockResolvedValueOnce({ text: JSON.stringify({ responseType: "course", label: "유성 산책", days: [["p1", "p2"]] }) });
@@ -318,16 +339,16 @@ describe("AI 쪽이 막혔을 때", () => {
     const response = await post();
 
     expect(response.status).toBe(200);
-    expect(genai.generateContent).toHaveBeenCalledTimes(2);
+    expect(genai.generateContent.mock.calls.map((call) => call[0].model)).toEqual(["model-a", "model-b"]);
   });
 
-  it("계속 붐비면 결국 502로 알린다 — 무한정 붙잡고 있지 않는다", async () => {
+  it("모든 모델이 붐비면 502로 알린다 — 답이 늦으면 화면이 먼저 포기하므로 붙잡지 않는다", async () => {
     genai.generateContent.mockRejectedValue(new ApiError({ message: "high demand", status: 503 }));
 
     const response = await post();
 
     expect(response.status).toBe(502);
-    expect(genai.generateContent).toHaveBeenCalledTimes(3);
+    expect(genai.generateContent.mock.calls.map((call) => call[0].model)).toEqual(["model-a", "model-b"]);
   });
 
   it("한도 초과는 다시 부르지 않는다 — 같은 답이 올 뿐이고 한도만 더 깎는다", async () => {
