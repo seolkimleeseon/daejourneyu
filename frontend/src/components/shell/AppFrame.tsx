@@ -14,7 +14,7 @@ export function AppFrame({ children, className }: { children: ReactNode; classNa
       <AppBrandPanel />
       <div
         className={cn(
-          "no-scrollbar relative flex h-dvh w-full max-w-[480px] flex-col overflow-y-auto bg-surface lg:shadow-[0_0_40px_rgba(0,0,0,0.06)]",
+          "no-scrollbar relative flex h-dvh w-full max-w-[480px] shrink-0 flex-col overflow-y-auto bg-surface lg:shadow-[0_0_40px_rgba(0,0,0,0.06)]",
           className
         )}
       >

@@ -16,7 +16,7 @@ describe("AppBrandPanel", () => {
 
     const className = (container.firstElementChild as HTMLElement).className;
     expect(className).toContain("hidden");
-    expect(className).toContain("lg:flex");
+    expect(className).toContain("min-[1340px]:flex");
   });
 
   it("장식용 반짝임은 스크린리더가 읽지 않는다", () => {
