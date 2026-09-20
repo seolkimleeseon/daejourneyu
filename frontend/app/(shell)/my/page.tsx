@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { PetPassportCard } from "@/components/my/PetPassportCard";
@@ -11,6 +11,7 @@ import { BadgeDetailModal } from "@/components/my/BadgeDetailModal";
 import { MenuItem } from "@/components/my/MenuItem";
 import { LoginModal } from "@/components/my/LoginModal";
 import { LogoutModal } from "@/components/my/LogoutModal";
+import { EasterEggModal } from "@/components/my/EasterEggModal";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -35,8 +36,25 @@ export default function MyPage() {
   const [logoutOpen, setLogoutOpen] = useState(false);
   /** 뱃지 상세 모달의 대상. null이면 닫힌 상태다. */
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [easterEggOpen, setEasterEggOpen] = useState(false);
 
   const { badges, nearest, nearestMessage } = useMyBadges();
+
+  /**
+   * 버전 문구를 5번 연속 탭하면 이스터에그를 띄운다. 띄엄띄엄 누른 것까지 세면 안 되니
+   * 탭 사이 간격이 1.2초를 넘으면 카운트를 리셋한다.
+   */
+  const tapCountRef = useRef(0);
+  const lastTapRef = useRef(0);
+  const handleVersionTap = () => {
+    const now = Date.now();
+    tapCountRef.current = now - lastTapRef.current > 1200 ? 1 : tapCountRef.current + 1;
+    lastTapRef.current = now;
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      setEasterEggOpen(true);
+    }
+  };
 
   /**
    * 대표(활성) 반려동물 전환. 여권 카드와 뱃지 주어가 통째로 바뀌는 조작인데 화면이 조용히
@@ -143,7 +161,13 @@ export default function MyPage() {
           )}
         </div>
 
-        <div className="mt-5 pb-1 text-center text-[9px] text-ink-muted">대저니유 v1.0.0</div>
+        <button
+          type="button"
+          onClick={handleVersionTap}
+          className="mt-5 w-full pb-1 text-center text-[9px] text-ink-muted"
+        >
+          대저니유 v1.0.0
+        </button>
       </div>
 
       <BadgeDetailModal
@@ -156,6 +180,7 @@ export default function MyPage() {
       />
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
       <LogoutModal open={logoutOpen} onClose={() => setLogoutOpen(false)} />
+      <EasterEggModal open={easterEggOpen} onClose={() => setEasterEggOpen(false)} />
     </>
   );
 }
