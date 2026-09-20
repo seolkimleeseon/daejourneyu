@@ -1,5 +1,14 @@
 import type { CourseStop } from "./course";
 
+/**
+ * 게시물에 박제된 방문 장소. 코스(CourseStop[][])와 달리 일차가 한 줄로 펼쳐져 있어서,
+ * 몇 일차 동선이었는지를 장소마다 들고 다닌다.
+ */
+export interface FeedStop extends CourseStop {
+  /** 0-base. 일차를 저장하기 전에 올라간 글은 전부 0이라 하루짜리로 보인다. */
+  dayIndex: number;
+}
+
 /** FEED 탭에 공유되는 "코스 게시물". 프로토타입의 jyPosts에 대응 */
 export interface FeedPost {
   id: string;
@@ -12,7 +21,7 @@ export interface FeedPost {
   sameTypeMatch: boolean;
   caption: string;
   text: string;
-  stops: CourseStop[];
+  stops: FeedStop[];
   /** 자랑하기로 올라온 게시물이 어떤 코스에서 나왔는지. 목데이터 게시물에는 없다. */
   courseId?: string;
   tags: string[];

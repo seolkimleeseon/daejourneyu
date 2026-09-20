@@ -43,7 +43,7 @@ export function makePost(overrides: Partial<FeedPost> = {}): FeedPost {
     sameTypeMatch: false,
     caption: "서구 산책 코스",
     text: "넓어서 계속 뛰어놀았어요",
-    stops: [makeStop()],
+    stops: [{ ...makeStop(), dayIndex: 0 }],
     tags: ["당일치기", "서구"],
     likes: 0,
     liked: false,

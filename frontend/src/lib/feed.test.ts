@@ -5,6 +5,7 @@ import {
   formatFeedDate,
   formatPostDate,
   formatStopSummary,
+  groupStopsByDay,
   paginate,
   parseArticleBody,
   resolveArticleLike,
@@ -153,7 +154,30 @@ describe("visiblePostTags", () => {
   });
 });
 
+describe("groupStopsByDay", () => {
+  const stop = (placeId: string, dayIndex: number) => ({ ...makeStop({ placeId }), dayIndex });
+
+  it("일차별로 묶고 일차 순서대로 돌려준다", () => {
+    const grouped = groupStopsByDay([stop("a", 0), stop("b", 1), stop("c", 1)]);
+
+    expect(grouped.map((day) => day.map((s) => s.placeId))).toEqual([["a"], ["b", "c"]]);
+  });
+
+  it("순서가 뒤섞여 와도 일차 번호대로 세운다", () => {
+    const grouped = groupStopsByDay([stop("b", 1), stop("a", 0)]);
+
+    expect(grouped.map((day) => day.map((s) => s.placeId))).toEqual([["a"], ["b"]]);
+  });
+
+  it("일차가 없던 시절 글은 한 덩어리로 남는다 — 화면이 일차 제목을 붙이지 않는 기준이 된다", () => {
+    const grouped = groupStopsByDay([makeStop({ placeId: "a" }), makeStop({ placeId: "b" })] as never);
+
+    expect(grouped).toHaveLength(1);
+  });
+});
+
 describe("buildPostInputFromCourse", () => {
+
   it("코스의 제목·동선을 옮기고 일정 길이와 자치구(중복 제거)로 태그를 만든다", () => {
     const stopA = makeStop({ placeId: "a", district: "유성구" });
     const stopB = makeStop({ placeId: "b", district: "서구" });
@@ -174,7 +198,7 @@ describe("buildPostInputFromCourse", () => {
     ).toEqual({
       caption: "갑천 1박 코스",
       text: "마당이 넓어요",
-      stops: [stopA, stopB, stopC],
+      stops: [{ ...stopA, dayIndex: 0 }, { ...stopB, dayIndex: 1 }, { ...stopC, dayIndex: 1 }],
       tags: ["1박 2일", "유성구", "서구"],
       authorName: "콩이네",
       authorEmoji: "🐶",

@@ -6,6 +6,8 @@ import { optionalAuth } from "../middleware/optionalAuth";
 
 type PostStop = {
   placeId: string;
+  /** 몇 일차 동선인지(0-base). 일차 정보가 없던 시절 글과 옛 클라이언트는 안 보내므로 0으로 본다. */
+  dayIndex?: number;
   name: string;
   category: string;
   district: string;
@@ -35,7 +37,7 @@ type FeedPost = {
 };
 
 const postWithRelations = {
-  stops: { orderBy: { order: "asc" as const } },
+  stops: { orderBy: [{ dayIndex: "asc" as const }, { order: "asc" as const }] },
 };
 
 type PostRow = Prisma.PostGetPayload<{ include: typeof postWithRelations }>;
@@ -71,6 +73,7 @@ function toFeedPost(
     text: row.text,
     stops: row.stops.map((s) => ({
       placeId: s.placeId,
+      dayIndex: s.dayIndex,
       name: s.name,
       category: s.category,
       district: s.district,
@@ -93,6 +96,7 @@ function isValidStop(s: unknown): s is PostStop {
   if (typeof s !== "object" || s === null) return false;
   const stop = s as PostStop;
   if (typeof stop.placeId !== "string") return false;
+  if (stop.dayIndex !== undefined && (!Number.isInteger(stop.dayIndex) || stop.dayIndex < 0)) return false;
   if (typeof stop.name !== "string") return false;
   if (typeof stop.category !== "string") return false;
   if (typeof stop.district !== "string") return false;
@@ -262,7 +266,7 @@ router.post("/", requireAuth, async (req, res) => {
       petTypeName: input.petTypeName,
       userId: req.userId!,
       courseId: input.courseId ?? null,
-      stops: { create: input.stops.map((stop, order) => ({ ...stop, order })) },
+      stops: { create: input.stops.map((stop, order) => ({ ...stop, dayIndex: stop.dayIndex ?? 0, order })) },
     },
     include: postWithRelations,
   });
@@ -274,8 +278,9 @@ router.post("/", requireAuth, async (req, res) => {
  * 담긴 글을 내 보관함 코스로 옮겨 적는다.
  *
  * 동선은 **글에 박제된 stops를 정본으로** 쓴다 — 사용자가 화면에서 본 그대로여야 하기 때문이다.
- * 원본 코스는 일차 구분·이동수단처럼 글에 남지 않는 정보를 채우는 데만 참고하고,
- * 원본이 지워졌거나 그 사이 장소 수가 달라졌으면 참고를 포기하고 당일치기 한 일차로 접는다.
+ * 일차도 글에 함께 박제되므로 그대로 옮긴다. 다만 일차를 저장하지 않던 시절 글은 전부 0일차라
+ * 하루로 뭉쳐 보이는데, 그때만 원본 코스의 일차 길이를 빌려 나눈다 — 원본이 지워졌거나 그 사이
+ * 장소 수가 달라졌으면 그 참고도 포기하고 당일치기 한 일차로 접는다.
  */
 function buildSavedCourseData(
   post: PostRow,
@@ -285,8 +290,19 @@ function buildSavedCourseData(
   const originStopCount = dayLengths.reduce((sum, n) => sum + n, 0);
   const usable = origin !== null && originStopCount === post.stops.length;
 
+  /* 글이 들고 있는 일차가 정본이다 — 일차를 저장하기 전에 올라간 글만 전부 0일차라 한 덩어리로
+     보이고, 그때만 예전처럼 원본 코스의 일차 길이를 빌려 나눈다. */
+  const ownDays = new Map<number, PostRow["stops"]>();
+  post.stops.forEach((stop) => {
+    const bucket = ownDays.get(stop.dayIndex);
+    if (bucket) bucket.push(stop);
+    else ownDays.set(stop.dayIndex, [stop]);
+  });
+
   const days: PostRow["stops"][] = [];
-  if (usable) {
+  if (ownDays.size > 1) {
+    [...ownDays.entries()].sort(([a], [b]) => a - b).forEach(([, stops]) => days.push(stops));
+  } else if (usable) {
     let cursor = 0;
     for (const length of dayLengths) {
       days.push(post.stops.slice(cursor, cursor + length));

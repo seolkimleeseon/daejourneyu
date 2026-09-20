@@ -113,7 +113,7 @@ describe("코스 자랑하기 — 올리기", () => {
     expect(hooks.mutateAsync).toHaveBeenCalledWith({
       caption: "갑천 1박 코스",
       text: "마당이 넓어요",
-      stops: course.days.flat(),
+      stops: course.days.flatMap((day, dayIndex) => day.map((stop) => ({ ...stop, dayIndex }))),
       tags: ["1박 2일", "유성구", "서구"],
       authorName: "콩이 보호자",
       authorEmoji: "🐶",

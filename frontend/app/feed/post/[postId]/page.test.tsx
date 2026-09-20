@@ -101,6 +101,39 @@ describe("게시물 상세 — 내용", () => {
     expect(screen.getByText("5명이 담아감")).toBeTruthy();
   });
 
+
+  it("여러 날 코스는 일차별로 끊어 보여준다 — 1박 2일이 하루에 다 도는 코스처럼 보이면 안 된다", () => {
+    showPost({
+      stops: [
+        { ...makeStop({ placeId: "a", name: "한밭수목원" }), dayIndex: 0 },
+        { ...makeStop({ placeId: "b", name: "대청호 오백리길" }), dayIndex: 1 },
+        { ...makeStop({ placeId: "c", name: "댕댕카페" }), dayIndex: 1 },
+      ],
+    });
+    render(<FeedPostDetailPage />);
+
+    expect(screen.getByText("방문 장소 3곳")).toBeTruthy();
+    expect(screen.getByText("1일차 · 1곳")).toBeTruthy();
+    expect(screen.getByText("2일차 · 2곳")).toBeTruthy();
+    // 지도도 일차마다 따로 — 하루 동선을 한 장에 몰아 그리면 이어 다닌 것처럼 읽힌다.
+    expect(screen.getAllByTestId("route-map").map((map) => map.textContent)).toEqual([
+      "1곳 지도",
+      "2곳 지도",
+    ]);
+    // 번호는 일차마다 1부터 다시 센다.
+    expect(screen.getAllByText("1").length).toBe(2);
+  });
+
+  it("일차를 저장하기 전에 올라간 글은 예전처럼 한 덩어리로 보여준다", () => {
+    showPost({
+      stops: [makeStop({ placeId: "a", name: "한밭수목원" }), makeStop({ placeId: "b", name: "댕댕카페" })],
+    });
+    render(<FeedPostDetailPage />);
+
+    expect(screen.queryByText(/일차 ·/)).toBeNull();
+    expect(screen.getAllByTestId("route-map")).toHaveLength(1);
+  });
+
   it("같은 유형 표시는 남의 글에만 붙는다", () => {
     showPost({ isMine: false, sameTypeMatch: true });
     const { unmount } = render(<FeedPostDetailPage />);

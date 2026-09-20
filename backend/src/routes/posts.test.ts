@@ -25,12 +25,13 @@ vi.mock("../lib/auth", () => ({
 import postsRouter from "./posts";
 
 const AS_USER_1 = "daejourneyu_token=valid:user-1";
-const INCLUDE = { stops: { orderBy: { order: "asc" } } };
+const INCLUDE = { stops: { orderBy: [{ dayIndex: "asc" }, { order: "asc" }] } };
 
 function stopRow(order: number, overrides: Record<string, unknown> = {}) {
   return {
     id: `stop-${order}`,
     order,
+    dayIndex: 0,
     placeId: `place-${order}`,
     name: `장소 ${order}`,
     category: "산책",
@@ -99,6 +100,7 @@ describe("GET /api/posts", () => {
           text: "좋았어요",
           stops: [0, 1].map((order) => ({
             placeId: `place-${order}`,
+            dayIndex: 0,
             name: `장소 ${order}`,
             category: "산책",
             district: "서구",
@@ -260,6 +262,43 @@ describe("POST /api/posts", () => {
     ],
   };
 
+
+  it("프론트가 알려준 일차를 그대로 박제한다 — 하루에 다 간 코스처럼 보이지 않게", async () => {
+    prisma.course.findUnique.mockResolvedValue({ id: "course-1", userId: "user-1" });
+    prisma.post.create.mockResolvedValue(postRow({ userId: "user-1", courseId: "course-1" }));
+
+    const body = {
+      ...validBody,
+      stops: [{ ...validBody.stops[0], dayIndex: 0 }, { ...validBody.stops[1], dayIndex: 1 }],
+    };
+
+    await request(app).post("/api/posts").set("Cookie", AS_USER_1).send(body);
+
+    const { data } = prisma.post.create.mock.calls[0][0];
+    expect(data.stops.create.map((stop: { dayIndex: number; order: number }) => [stop.dayIndex, stop.order])).toEqual([
+      [0, 0],
+      [1, 1],
+    ]);
+  });
+
+  it("일차가 빠진 요청도 받는다 — 옛 클라이언트는 0일차 한 덩어리로 들어온다", async () => {
+    prisma.course.findUnique.mockResolvedValue({ id: "course-1", userId: "user-1" });
+    prisma.post.create.mockResolvedValue(postRow({ userId: "user-1", courseId: "course-1" }));
+
+    await request(app).post("/api/posts").set("Cookie", AS_USER_1).send(validBody);
+
+    const { data } = prisma.post.create.mock.calls[0][0];
+    expect(data.stops.create.every((stop: { dayIndex: number }) => stop.dayIndex === 0)).toBe(true);
+  });
+
+  it("일차가 음수거나 정수가 아니면 막는다", async () => {
+    for (const dayIndex of [-1, 1.5, "1"]) {
+      const body = { ...validBody, stops: [{ ...validBody.stops[0], dayIndex }] };
+      const res = await request(app).post("/api/posts").set("Cookie", AS_USER_1).send(body);
+      expect(res.status, String(dayIndex)).toBe(400);
+    }
+  });
+
   it("로그인이 필요하다", async () => {
     const res = await request(app).post("/api/posts").send(validBody);
     expect(res.status).toBe(401);
@@ -315,8 +354,8 @@ describe("POST /api/posts", () => {
         courseId: "course-1",
         stops: {
           create: [
-            { ...validBody.stops[0], order: 0 },
-            { ...validBody.stops[1], order: 1 },
+            { ...validBody.stops[0], dayIndex: 0, order: 0 },
+            { ...validBody.stops[1], dayIndex: 0, order: 1 },
           ],
         },
       },
@@ -396,6 +435,39 @@ describe("POST /api/posts/:id/save", () => {
       data: { saves: { increment: 1 } },
       select: { saves: true },
     });
+  });
+
+
+  it("글이 들고 있는 일차를 정본으로 쓴다 — 원본 코스가 그 사이 바뀌어도 올릴 때 본 일차 그대로 담긴다", async () => {
+    prisma.post.findUnique.mockResolvedValue(
+      postRow({
+        courseId: "origin-1",
+        stops: [stopRow(0), stopRow(1, { dayIndex: 1 }), stopRow(2, { dayIndex: 1 })],
+      })
+    );
+    // 원본은 그 사이 1일차 2곳 + 2일차 1곳으로 바뀌었다 — 글에 박힌 일차를 이긴다고 보면 안 된다.
+    prisma.course.findUnique.mockResolvedValue({
+      emoji: "🌲",
+      transport: "자차",
+      days: [{ stops: [{ order: 0 }, { order: 1 }] }, { stops: [{ order: 0 }] }],
+    });
+    prisma.postSave.findUnique.mockResolvedValue(null);
+    prisma.course.create.mockResolvedValue({ id: "copy-1" });
+    prisma.post.update.mockResolvedValue({ saves: 1 });
+
+    await request(app).post("/api/posts/post-1/save").set("Cookie", AS_USER_1);
+
+    const { data } = prisma.course.create.mock.calls[0][0];
+    expect(data.nights).toBe(1);
+    expect(
+      data.days.create.map((day: { dayIndex: number; stops: { create: { placeId: string }[] } }) => [
+        day.dayIndex,
+        day.stops.create.map((stop) => stop.placeId),
+      ])
+    ).toEqual([
+      [0, ["place-0"]],
+      [1, ["place-1", "place-2"]],
+    ]);
   });
 
   it("원본과 장소 수가 달라졌으면 당일치기 한 일차로 접되 이동수단은 원본을 따른다", async () => {
