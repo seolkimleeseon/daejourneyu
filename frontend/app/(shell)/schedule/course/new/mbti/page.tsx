@@ -288,12 +288,14 @@ function MbtiCourseWizard() {
 
   const stepBarActive = ["nights", "generated"].indexOf(phase);
 
+  // "산책형 코스"는 산책만 담는다고 읽히지만, generateCourseDays()는 실제로 맛집(기준점)·놀이터·
+  // 문화를 한 곳씩 함께 담는다 — 테마는 어느 카테고리를 먼저 채우냐를 정할 뿐이다. "중심"으로 적는다.
   const titleByPhase: Record<Phase, string> = {
     intro: "반려동물 여행 MBTI",
     quiz: "반려동물 여행 MBTI",
     result: "테스트 결과",
-    nights: `${theme}형 코스`,
-    generated: `${theme}형 코스`,
+    nights: `${theme} 중심 코스`,
+    generated: `${theme} 중심 코스`,
   };
 
   const handleBack = () => {
