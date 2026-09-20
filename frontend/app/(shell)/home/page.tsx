@@ -94,21 +94,25 @@ export default function HomePage() {
         />
 
         {latestArticle ? (
-          <button
-            type="button"
-            onClick={() => router.push(`/article/${latestArticle.id}`)}
-            className="mb-4 flex w-full items-center gap-2 rounded-lg bg-accent-coral-light px-3 py-2.5 text-left"
-          >
-            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-card text-sm">
-              📰
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-bold text-accent-coral">
-                {latestArticle.title}
+          <>
+            <div className="mb-2 px-1 text-xs font-bold text-ink-muted">대전 소식</div>
+            <button
+              type="button"
+              onClick={() => router.push(`/article/${latestArticle.id}`)}
+              className="mb-5 flex w-full items-center gap-2.5 rounded-2xl border border-line bg-card px-3.5 py-3 text-left shadow-sm active:scale-[.99]"
+            >
+              <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-icon-article text-sm text-white">
+                📰
               </span>
-              <span className="block text-[11px] text-accent-coral/80">최신 아티클 · 보기</span>
-            </span>
-          </button>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-bold text-ink">{latestArticle.title}</span>
+                <span className="block text-[11px] text-ink-muted">최신 아티클</span>
+              </span>
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-accent-coral-light px-2.5 py-1 text-[11px] font-bold text-accent-coral">
+                보러가기 →
+              </span>
+            </button>
+          </>
         ) : null}
 
         <div className="mb-2 px-1 text-xs font-bold text-ink-muted">무엇부터 시작할까요</div>
@@ -117,7 +121,7 @@ export default function HomePage() {
             variant="outlined"
             emoji="🐾"
             title="내 반려동물 MBTI"
-            subtitle={activePet?.mbti ? `${activePet.mbti.code} · 결과 보기` : "여행 성향 알아보기"}
+            subtitle={activePet?.mbti ? `${activePet.mbti.code} · ${activePet.mbti.name}` : "여행 성향 알아보기"}
             tone="purple"
             onClick={() =>
               router.push(activePet?.mbti ? "/schedule/course/new/mbti?quick=1" : "/schedule/course/new/mbti")
@@ -128,7 +132,7 @@ export default function HomePage() {
             emoji="💬"
             title="오늘 어디 갈까?"
             subtitle="장소와 코스 추천받기"
-            tone="brand"
+            tone="navy"
             onClick={() => router.push("/home/chatbot")}
           />
         </div>

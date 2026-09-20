@@ -33,7 +33,7 @@ describe("TileButton", () => {
     const { container } = render(<TileButton variant="outlined" {...base} tone="purple" />);
 
     expect(container.innerHTML).toContain("border-line");
-    expect(container.innerHTML).toContain("bg-accent-purple");
+    expect(container.innerHTML).toContain("bg-icon-mbti");
   });
 
   it("filled는 카드 전체를 톤 색으로 칠한다", () => {

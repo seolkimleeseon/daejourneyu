@@ -3,7 +3,7 @@
 import { cn } from "@/lib/cn";
 import { Emoji3D } from "./Emoji3D";
 
-export type TileButtonTone = "brand" | "purple" | "amber" | "coral";
+export type TileButtonTone = "brand" | "purple" | "amber" | "coral" | "navy";
 
 interface TileButtonProps {
   /** outlined: 카드에 테두리 + 아이콘만 tone 색상(홈 2열). filled: 카드 전체가 tone 색상(내 여정 3열) */
@@ -23,9 +23,10 @@ interface TileButtonProps {
 
 const ICON_TONE_CLASS: Record<TileButtonTone, string> = {
   brand: "bg-brand text-white",
-  purple: "bg-accent-purple text-white",
+  purple: "bg-icon-mbti text-white",
   amber: "bg-accent-amber text-white",
   coral: "bg-accent-coral text-white",
+  navy: "bg-icon-chat text-white",
 };
 
 /** 3D 아이콘 뒤에 은은하게 번지는 톤별 색 블롭(icon3D일 때만 쓰인다). */
@@ -34,6 +35,7 @@ const GLOW_CLASS: Record<TileButtonTone, string> = {
   purple: "bg-accent-purple",
   amber: "bg-accent-amber",
   coral: "bg-accent-coral",
+  navy: "bg-accent-navy",
 };
 
 const FILLED_TONE_CLASS: Record<TileButtonTone, string> = {
@@ -41,6 +43,7 @@ const FILLED_TONE_CLASS: Record<TileButtonTone, string> = {
   purple: "bg-accent-purple-light text-accent-purple",
   amber: "bg-accent-amber-light text-accent-amber",
   coral: "bg-accent-coral-light text-accent-coral",
+  navy: "bg-accent-navy/10 text-accent-navy",
 };
 
 /** 이모지 아이콘 + 제목 + 부제 클릭 타일. 홈의 outlined 스킨과 내 여정의 filled 스킨을 공용으로 묶었다. */
