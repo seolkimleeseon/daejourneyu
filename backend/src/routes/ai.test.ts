@@ -350,14 +350,6 @@ describe("AI 쪽이 막혔을 때", () => {
     expect(response.status).toBe(502);
     expect(genai.generateContent.mock.calls.map((call) => call[0].model)).toEqual(["model-a", "model-b"]);
   });
-
-  it("한도 초과는 다시 부르지 않는다 — 같은 답이 올 뿐이고 한도만 더 깎는다", async () => {
-    genai.generateContent.mockRejectedValue(new ApiError({ message: "quota", status: 429 }));
-
-    await post();
-
-    expect(genai.generateContent).toHaveBeenCalledTimes(1);
-  });
 });
 
 

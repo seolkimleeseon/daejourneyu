@@ -171,12 +171,16 @@ function sanitizeResponse(raw: unknown, validIds: Set<string>, dayCount: number)
 }
 
 /**
- * 무료 티어의 Gemini는 모델이 붐비면 503(UNAVAILABLE, "high demand")으로 바로 튕긴다 —
- * 우리 요청에 문제가 있어서가 아니라 잠깐 자리가 없는 것이라, 사용자에게 오류를 보이기 전에
- * 다음 모델로 갈아타 본다(GEMINI_MODELS 주석 참고). 한도 초과(429)나 키 문제(401·403)는
- * 다시 불러도 같은 답이므로 재시도하지 않는다.
+ * 모델 하나가 막혔다고 바로 포기하지 않고 다음 모델로 갈아탄다. 두 가지를 넘긴다 —
+ * 503(UNAVAILABLE, "high demand": 그 모델이 붐빔)과 429(RESOURCE_EXHAUSTED: 그 모델의 한도 초과).
  *
- * 한 바퀴만 돈다 — 답이 늦으면 화면이 먼저 포기하므로(챗봇 25초) 붙잡고 있는 편이 손해다.
+ * 429까지 갈아타는 이유: 무료 티어의 분당 요청 한도(RPM)는 프로젝트 단위로 세되 **모델 변형마다
+ * 따로** 걸린다(ai.google.dev/gemini-api/docs/rate-limits). 그래서 3.5가 한도에 걸려도 3.6·3.7은
+ * 아직 남아 있는 경우가 많고, 목록만큼 한도가 늘어나는 셈이 된다. 새 API 키를 발급하는 건 소용이
+ * 없다 — 한도는 키가 아니라 프로젝트에 붙는다.
+ *
+ * 키 문제(401·403)는 다시 불러도 같은 답이라 그대로 던진다. 한 바퀴만 도는 것도 의도다 —
+ * 답이 늦으면 화면이 먼저 포기한다(챗봇 25초).
  */
 type GenerateParams = Parameters<typeof gemini.models.generateContent>[0];
 
@@ -186,13 +190,14 @@ async function generateWithFallback(params: Omit<GenerateParams, "model">) {
     try {
       return await gemini.models.generateContent({ ...params, model: models[attempt] });
     } catch (error) {
-      const busy = error instanceof ApiError && error.status === 503;
-      if (!busy || attempt === models.length - 1) throw error;
+      const blocked = error instanceof ApiError && (error.status === 503 || error.status === 429);
+      if (!blocked || attempt === models.length - 1) throw error;
     }
   }
   // GEMINI_MODELS가 비어 있을 수 없으므로 여기까지 오지 않는다 — 타입을 좁히기 위한 줄이다.
   throw new Error("생성할 모델이 없습니다");
 }
+
 
 
 
