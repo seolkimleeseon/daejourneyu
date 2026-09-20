@@ -105,7 +105,8 @@ describe("마이 — 비로그인", () => {
     await user.click(passport());
     expect(modalOpen(LOGIN_DESCRIPTION)).toBe(true);
 
-    await user.click(screen.getByRole("button", { name: "닫기" }));
+    await user.click(within(modalOf(LOGIN_DESCRIPTION)).getByRole("button", { name: "닫기" }));
+    expect(modalOpen(LOGIN_DESCRIPTION)).toBe(false);
     await user.click(screen.getByText("내가 쓴 후기"));
     expect(modalOpen(LOGIN_DESCRIPTION)).toBe(true);
     expect(nav.push).not.toHaveBeenCalled();
