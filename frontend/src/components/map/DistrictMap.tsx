@@ -12,8 +12,8 @@ interface DistrictMapProps {
 interface Region {
   district: DaejeonDistrict;
   slug: "yuseong" | "daedeok" | "seo" | "jung" | "dong";
-  /** map_base.png(720x720) 기준 구 중심 좌표의 비율(0~1). 판정 마스크를 만들 때 군집 시작점으로
-   *  쓰고, 키보드 포커스용 히트스팟 위치로도 쓴다. */
+  /** map_base.png 원본 대비 구 중심 좌표의 비율(0~1) — 원본 해상도가 바뀌어도 그대로 쓸 수 있다.
+   *  판정 마스크를 만들 때 군집 시작점으로 쓰고, 키보드 포커스용 히트스팟 위치로도 쓴다. */
   seed: [number, number];
 }
 
@@ -21,11 +21,11 @@ const CANVAS_SIZE = 720;
 const NONE = 255;
 
 const REGIONS: Region[] = [
-  { district: "유성구", slug: "yuseong", seed: [189 / CANVAS_SIZE, 345 / CANVAS_SIZE] },
-  { district: "대덕구", slug: "daedeok", seed: [363 / CANVAS_SIZE, 203 / CANVAS_SIZE] },
-  { district: "동구", slug: "dong", seed: [490 / CANVAS_SIZE, 270 / CANVAS_SIZE] },
-  { district: "중구", slug: "jung", seed: [487 / CANVAS_SIZE, 520 / CANVAS_SIZE] },
-  { district: "서구", slug: "seo", seed: [297 / CANVAS_SIZE, 507 / CANVAS_SIZE] },
+  { district: "유성구", slug: "yuseong", seed: [0.2531, 0.4801] },
+  { district: "대덕구", slug: "daedeok", seed: [0.4983, 0.2808] },
+  { district: "동구", slug: "dong", seed: [0.7348, 0.4068] },
+  { district: "중구", slug: "jung", seed: [0.6832, 0.7265] },
+  { district: "서구", slug: "seo", seed: [0.4055, 0.7171] },
 ];
 
 /** RGB의 색상(hue, 0~360도)만 뽑아 단위원 위 좌표(cosθ, sinθ)로 바꾼다. */
