@@ -20,7 +20,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
   return (
     <button
       type="button"
-      onClick={() => router.push(`/place/${encodeURIComponent(place.name)}`)}
+      onClick={() => router.push(`/place/${encodeURIComponent(place.name)}?id=${encodeURIComponent(place.id)}`)}
       className="overflow-hidden rounded-xl border border-line bg-card text-left transition-colors active:bg-surface"
     >
       <div className="relative aspect-[4/3] w-full bg-surface">

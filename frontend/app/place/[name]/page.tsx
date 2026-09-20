@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { Card } from "@/components/ui/Card";
 import { Tag } from "@/components/ui/Tag";
@@ -15,23 +15,41 @@ import { getConditionTags } from "@/lib/placeFilters";
 import { conditionSourceLabel } from "@/lib/courseFormat";
 
 export default function PlaceDetailPage({ params }: { params: { name: string } }) {
+  return (
+    <Suspense fallback={null}>
+      <PlaceDetailPageContent params={params} />
+    </Suspense>
+  );
+}
+
+function PlaceDetailPageContent({ params }: { params: { name: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const placeName = decodeURIComponent(params.name);
+  // 동명 장소(예: 여러 구에 있는 "OO공원")가 있을 수 있어, 넘어온 id가 있으면 이름보다 우선한다.
+  // id 없이 이름으로만 들어온 링크(다른 탭에서 건 링크 등)는 기존처럼 첫 일치 결과로 대체한다.
+  const placeId = searchParams.get("id");
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const { data: places = [], isLoading: placesLoading } = usePlaces();
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const place = places.find((p) => p.name === placeName);
-  const { data: reviews = [], isLoading: reviewsLoading } = useReviews(place?.id);
+  const place = (placeId ? places.find((p) => p.id === placeId) : undefined) ?? places.find((p) => p.name === placeName);
+  const { data: reviews = [], isLoading: reviewsLoading } = useReviews(place?.id, {
+    enabled: !placesLoading && Boolean(place),
+  });
   const placeReviews = place ? reviews : [];
   const conditionTags = place ? getConditionTags(place.condition, place.smallDogOnly) : [];
+
+  const reviewHref = place
+    ? `/place/${encodeURIComponent(placeName)}/review?id=${encodeURIComponent(place.id)}`
+    : `/place/${encodeURIComponent(placeName)}/review`;
 
   const handleWriteReview = () => {
     if (!isLoggedIn) {
       setLoginOpen(true);
       return;
     }
-    router.push(`/place/${encodeURIComponent(placeName)}/review`);
+    router.push(reviewHref);
   };
 
   if (placesLoading) {
@@ -155,11 +173,7 @@ export default function PlaceDetailPage({ params }: { params: { name: string } }
         </div>
       </div>
 
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onLoggedIn={() => router.push(`/place/${encodeURIComponent(placeName)}/review`)}
-      />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} redirectTo={reviewHref} />
     </>
   );
 }

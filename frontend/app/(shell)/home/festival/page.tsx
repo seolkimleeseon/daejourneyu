@@ -108,7 +108,19 @@ export default function HomeFestivalPage() {
   };
 
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
-  const selectedFestivals = festivals.filter((f) => isFestivalOnDate(f, selectedDate));
+  const selectedFestivals = useMemo(
+    () => festivals.filter((f) => isFestivalOnDate(f, selectedDate)),
+    [festivals, selectedDate]
+  );
+  // 날짜를 고를 때마다(selectedDate 변경) 이 달의 30여 칸 × 전체 축제 수를 매번 다시 스캔하지
+  // 않도록, "이 달에 축제가 있는 날짜" 집합은 달(cells)·축제 목록이 바뀔 때만 새로 계산한다.
+  const festivalDatesInView = useMemo(() => {
+    const set = new Set<string>();
+    for (const cell of cells) {
+      if (cell && festivals.some((f) => isFestivalOnDate(f, cell.date))) set.add(cell.date);
+    }
+    return set;
+  }, [cells, festivals]);
   const visibleFlagshipFestivals = PENDING_FLAGSHIP_FESTIVALS.filter((f) =>
     isNearExpectedMonth(month0 + 1, f.expectedMonth)
   );
@@ -150,7 +162,7 @@ export default function HomeFestivalPage() {
         <div className="grid grid-cols-7 gap-1">
           {cells.map((cell, i) => {
             if (!cell) return <div key={`empty-${i}`} />;
-            const hasFestival = festivals.some((f) => isFestivalOnDate(f, cell.date));
+            const hasFestival = festivalDatesInView.has(cell.date);
             const isToday = cell.date === todayYmd;
             const isSelected = cell.date === selectedDate;
             return (

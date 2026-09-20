@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { Tag } from "@/components/ui/Tag";
@@ -47,10 +47,13 @@ function MapPageContent() {
   // 검색은 서버 쿼리가 아니라 이미 받아온 목록을 이름·동반조건으로 한 번 더 좁히는 클라이언트 필터다.
   const [query, setQuery] = useState("");
   const q = query.trim();
-  const filteredList = q
-    ? list.filter((place) => place.name.includes(q) || place.condition.includes(q))
-    : list;
-  const visibleList = filteredList.slice(0, visibleCount);
+  // list는 몇백 곳까지 늘어날 수 있어, "더 보기"로 visibleCount만 바뀌는 리렌더마다 필터를
+  // 다시 훑지 않도록 필터링 결과 자체는 q·list가 바뀔 때만 새로 계산한다.
+  const filteredList = useMemo(
+    () => (q ? list.filter((place) => place.name.includes(q) || place.condition.includes(q)) : list),
+    [list, q]
+  );
+  const visibleList = useMemo(() => filteredList.slice(0, visibleCount), [filteredList, visibleCount]);
 
   useEffect(() => {
     if (!traveling) return;

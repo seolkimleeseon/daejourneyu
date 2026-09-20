@@ -172,7 +172,7 @@ describe("이동", () => {
 
     await user.click(screen.getByText("한밭수목원"));
 
-    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90");
+    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90?id=p1");
   });
 
   it("카드 전체 클릭으로 전파하지 않는다 — 티커는 카드 안에 들어 있다", async () => {

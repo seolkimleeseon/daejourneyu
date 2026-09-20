@@ -7,8 +7,13 @@ import { makePlace } from "@/test/fixtures";
 import type { ReviewTagOption } from "@/types";
 import ReviewWritePage from "./page";
 
+const search = vi.hoisted(() => ({ params: new URLSearchParams() }));
 const nav = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/place/한밭수목원/review" }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => nav,
+  usePathname: () => "/place/한밭수목원/review",
+  useSearchParams: () => search.params,
+}));
 
 const hooks = vi.hoisted(() => ({
   usePlaces: vi.fn(),
@@ -42,6 +47,7 @@ const submit = () => screen.getByRole("button", { name: /등록/ });
 
 beforeEach(() => {
   vi.clearAllMocks();
+  search.params = new URLSearchParams();
   hooks.usePlaces.mockReturnValue({ data: [한밭수목원] });
   hooks.useReviewTags.mockReturnValue({ data: tagOptions });
   hooks.useCreateReview.mockReturnValue({ mutate, isPending: false });
@@ -68,6 +74,18 @@ describe("들어갈 수 있는지", () => {
     setup();
 
     expect(screen.getByText("한밭수목원")).toBeTruthy();
+  });
+
+  it("주소에 id가 있으면 이름이 같아도 그 id의 장소로 쓴다", async () => {
+    const 다른구_한밭수목원 = makePlace({ id: "p2", name: "한밭수목원" });
+    hooks.usePlaces.mockReturnValue({ data: [한밭수목원, 다른구_한밭수목원] });
+    search.params = new URLSearchParams("id=p2");
+    const { user } = setup();
+
+    await user.click(tag("목줄 필수"));
+    await user.click(submit());
+
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ placeId: "p2" }), expect.anything());
   });
 });
 
@@ -181,7 +199,7 @@ describe("등록", () => {
     await user.click(submit());
 
     expect(useToastStore.getState().message).toBe("후기가 등록되었어요");
-    expect(nav.replace).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90");
+    expect(nav.replace).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90?id=p1");
   });
 
   it("실패하면 쓴 내용을 날리지 않고 사유만 알린다", async () => {

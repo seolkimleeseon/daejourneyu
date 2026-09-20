@@ -19,22 +19,22 @@ describe("PlaceCard", () => {
     expect(screen.getByText(/서구/)).toBeTruthy();
   });
 
-  it("누르면 장소 상세로 보낸다", async () => {
+  it("누르면 장소 상세로 보낸다 — 동명 장소 대응을 위해 id도 함께 넘긴다", async () => {
     const user = userEvent.setup();
-    render(<PlaceCard place={makePlace({ name: "한밭수목원" })} />);
+    render(<PlaceCard place={makePlace({ id: "place-9", name: "한밭수목원" })} />);
 
     await user.click(screen.getByRole("button"));
 
-    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90");
+    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90?id=place-9");
   });
 
   it("이름에 슬래시가 있어도 경로가 깨지지 않는다", async () => {
     const user = userEvent.setup();
-    render(<PlaceCard place={makePlace({ name: "카페 A/B" })} />);
+    render(<PlaceCard place={makePlace({ id: "place-1", name: "카페 A/B" })} />);
 
     await user.click(screen.getByRole("button"));
 
-    expect(nav.push).toHaveBeenCalledWith("/place/%EC%B9%B4%ED%8E%98%20A%2FB");
+    expect(nav.push).toHaveBeenCalledWith("/place/%EC%B9%B4%ED%8E%98%20A%2FB?id=place-1");
   });
 
   it("사진이 있으면 사진을 쓴다", () => {

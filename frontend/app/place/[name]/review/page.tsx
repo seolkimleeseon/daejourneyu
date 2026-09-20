@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useMemo, useState, type ChangeEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
@@ -41,8 +41,19 @@ function groupByCategory(tags: ReviewTagOption[]): Array<[string, ReviewTagOptio
 }
 
 export default function ReviewWritePage({ params }: { params: { name: string } }) {
+  return (
+    <Suspense fallback={null}>
+      <ReviewWritePageContent params={params} />
+    </Suspense>
+  );
+}
+
+function ReviewWritePageContent({ params }: { params: { name: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const placeName = decodeURIComponent(params.name);
+  // 동명 장소 대응 — 장소 상세에서 넘겨준 id가 있으면 이름보다 우선한다(place/[name]/page.tsx 참고).
+  const placeId = searchParams.get("id");
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const { data: places = [] } = usePlaces();
   const { data: tagOptions = [] } = useReviewTags();
@@ -53,7 +64,7 @@ export default function ReviewWritePage({ params }: { params: { name: string } }
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
 
-  const place = places.find((p) => p.name === placeName);
+  const place = (placeId ? places.find((p) => p.id === placeId) : undefined) ?? places.find((p) => p.name === placeName);
   const groupedTags = useMemo(() => groupByCategory(tagOptions), [tagOptions]);
 
   const toggleTag = (code: string) => {
@@ -87,7 +98,7 @@ export default function ReviewWritePage({ params }: { params: { name: string } }
       {
         onSuccess: () => {
           showToast("후기가 등록되었어요");
-          router.replace(`/place/${encodeURIComponent(placeName)}`);
+          router.replace(`/place/${encodeURIComponent(placeName)}?id=${encodeURIComponent(place.id)}`);
         },
         onError: (err) =>
           showToast(err instanceof Error ? err.message : "후기 등록에 실패했어요. 잠시 후 다시 시도해주세요"),

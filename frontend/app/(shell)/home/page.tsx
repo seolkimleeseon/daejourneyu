@@ -67,24 +67,22 @@ export default function HomePage() {
       <TopBar title="대저니유" />
       <div className="px-4 pb-6 pt-3">
         {!isLoggedIn && !guestBannerDismissed ? (
-          <button
-            type="button"
-            onClick={() => setLoginOpen(true)}
-            className="mb-2.5 flex w-full items-center justify-between rounded-lg bg-accent-amber-light px-3 py-2"
-          >
-            <span className="text-[10px] font-medium text-accent-amber">
+          <div className="mb-2.5 flex w-full items-center justify-between rounded-lg bg-accent-amber-light px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setLoginOpen(true)}
+              className="flex-1 text-left text-[10px] font-medium text-accent-amber"
+            >
               🔒 로그인하면 코스 저장 · 후기 작성이 가능해요
-            </span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                setGuestBannerDismissed(true);
-              }}
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuestBannerDismissed(true)}
               className="pl-2 text-[11px] text-accent-amber"
             >
               ✕
-            </span>
-          </button>
+            </button>
+          </div>
         ) : null}
 
         <HomeStatusCard
@@ -143,7 +141,7 @@ export default function HomePage() {
             titleLines={["축제", "캘린더"]}
             subtitle="반려동물과 함께 갈 수 있는 축제를 확인해보세요"
             ctaLabel="축제 일정 보기"
-            gradientClass="bg-gradient-to-br from-accent-purple to-accent-navy"
+            gradientClass="bg-brand-100"
             backgroundImageSrc="/icons/3d/bg_festival_card.png"
             onClick={() => router.push("/home/festival")}
           />

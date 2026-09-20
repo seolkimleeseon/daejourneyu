@@ -47,6 +47,7 @@ function lastBubble(container: HTMLElement): HTMLElement {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
   vi.useFakeTimers({ shouldAdvanceTime: true });
   // jsdom에는 스크롤이 없다 — 새 메시지가 올 때마다 목록을 내리는 코드가 터지지 않게 둔다.
   vi.stubGlobal("fetch", fetchMock);
@@ -211,7 +212,7 @@ describe("답 받기", () => {
 
     await user.click(screen.getByText("갑천"));
 
-    expect(nav.push).toHaveBeenCalledWith("/place/%EA%B0%91%EC%B2%9C");
+    expect(nav.push).toHaveBeenCalledWith("/place/%EA%B0%91%EC%B2%9C?id=a");
   });
 
   it("서버가 사유를 주면 그 사유를 그대로 전한다", async () => {
@@ -273,5 +274,19 @@ describe("추천 코스 저장", () => {
 
     expect(addCourse).not.toHaveBeenCalled();
     expect(screen.getByText("로그인이 필요해요").closest(".fixed")?.className).toContain("opacity-100");
+  });
+
+  it("로그인 화면을 다녀오느라 이 페이지가 다시 마운트돼도 저장을 이어간다", async () => {
+    // 비로그인 상태에서 저장을 누르면 로그인 화면으로 이동하며 이 페이지가 언마운트된다 —
+    // 그 사이 세션스토리지에 남겨둔 코스를, 로그인하고 돌아와 다시 마운트됐을 때 이어서 저장해야 한다.
+    sessionStorage.setItem(
+      "daejourneyu:chatbot-pending-course",
+      JSON.stringify({ label: "유성 산책 코스", nights: 0, days: [], source: "ai", shared: false })
+    );
+
+    setup();
+
+    await waitFor(() => expect(addCourse).toHaveBeenCalledWith(expect.objectContaining({ label: "유성 산책 코스" })));
+    expect(sessionStorage.getItem("daejourneyu:chatbot-pending-course")).toBeNull();
   });
 });

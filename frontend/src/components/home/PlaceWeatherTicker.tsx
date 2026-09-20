@@ -103,7 +103,7 @@ export function PlaceWeatherTicker({ places, loading = false }: PlaceWeatherTick
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              router.push(`/place/${encodeURIComponent(place.name)}`);
+              router.push(`/place/${encodeURIComponent(place.name)}?id=${encodeURIComponent(place.id)}`);
             }}
             className="flex h-9 shrink-0 items-center justify-between"
           >
