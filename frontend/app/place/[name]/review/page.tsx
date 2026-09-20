@@ -132,16 +132,34 @@ function ReviewWritePageContent({ params }: { params: { name: string } }) {
       <div className="px-4 pb-6 pt-3">
         <div className="mb-4 text-sm font-bold text-ink">{place.name}</div>
 
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-bold text-ink-muted">
+        {/* 태그를 하나도 안 고르면 등록 버튼이 잠긴다 — 아래 '(선택)' 항목들과 구분되게
+            제목 옆에 '필수' 배지를, 그 아래에 조건을 한 줄로 못박아 둔다. */}
+        <div className="mb-1 flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-ink-muted">
             이 장소, 반려동물과 어땠나요?
+            <span className="rounded-full bg-accent-coral-light px-1.5 py-0.5 text-[10px] font-bold text-accent-coral">
+              필수
+            </span>
           </span>
-          <span className="text-[11px] font-semibold text-brand">
+          <span
+            className={cn(
+              "text-[11px] font-semibold",
+              selectedCodes.length >= MIN_TAGS ? "text-brand" : "text-ink-muted"
+            )}
+          >
             {selectedCodes.length}/{MAX_TAGS}
           </span>
         </div>
+        <p id="tag-required-hint" className="mb-2.5 text-[11px] text-ink-muted">
+          태그를 {MIN_TAGS}개 이상 선택해야 후기를 등록할 수 있어요. (최대 {MAX_TAGS}개)
+        </p>
 
-        <div className="flex flex-col gap-3">
+        <div
+          role="group"
+          aria-label="후기 태그 선택 (필수)"
+          aria-describedby="tag-required-hint"
+          className="flex flex-col gap-3"
+        >
           {groupedTags.map(([category, tags]) => (
             <div key={category}>
               <div
@@ -189,6 +207,12 @@ function ReviewWritePageContent({ params }: { params: { name: string } }) {
         </label>
 
         <div className="mt-6">
+          {/* 버튼이 왜 잠겨 있는지 바로 옆에서 알려준다 — 화면을 위로 다시 올려보지 않아도 되게. */}
+          {selectedCodes.length < MIN_TAGS ? (
+            <p className="mb-2 text-center text-[11px] font-semibold text-accent-coral">
+              태그를 {MIN_TAGS}개 이상 선택하면 등록할 수 있어요
+            </p>
+          ) : null}
           <Button variant="primary" disabled={!canSubmit} onClick={handleSubmit}>
             {createReview.isPending ? "등록 중…" : "등록하기"}
           </Button>
