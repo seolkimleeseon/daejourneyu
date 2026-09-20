@@ -246,7 +246,13 @@ export function DistrictMap({ onSelect }: DistrictMapProps) {
           if (region) setSelected(region.district);
         }}
       >
-        <img src="/map/map_base.png" alt="" draggable={false} className="absolute inset-0 h-full w-full select-none" />
+        <img
+          src="/map/map_base.png"
+          alt=""
+          draggable={false}
+          className="absolute inset-0 h-full w-full select-none transition-opacity duration-200 ease-out"
+          style={{ opacity: active ? 0 : 1 }}
+        />
         {REGIONS.map((region) => (
           <img
             key={region.slug}
