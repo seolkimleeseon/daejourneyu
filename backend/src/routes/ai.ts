@@ -161,6 +161,28 @@ function sanitizeResponse(raw: unknown, validIds: Set<string>, dayCount: number)
   return null;
 }
 
+/**
+ * 무료 티어의 Gemini는 모델이 붐비면 503(UNAVAILABLE, "high demand")으로 바로 튕긴다 —
+ * 우리 요청에 문제가 있어서가 아니라 잠깐 자리가 없는 것이라, 사용자에게 오류를 보이기 전에
+ * 짧게 두 번 더 두드려 본다. 한도 초과(429)나 키 문제(401·403)는 다시 불러도 같은 답이므로
+ * 재시도하지 않는다.
+ */
+const RETRY_DELAYS_MS = [400, 1200];
+
+type GenerateParams = Parameters<typeof gemini.models.generateContent>[0];
+
+async function generateWithRetry(params: GenerateParams) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await gemini.models.generateContent(params);
+    } catch (error) {
+      const busy = error instanceof ApiError && error.status === 503;
+      if (!busy || attempt >= RETRY_DELAYS_MS.length) throw error;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
 const router = Router();
 
 // POST /api/ai/course-suggestion — 자연어 요청 + 후보 장소 목록을 받아 AI가 일차별 동선을 짜준다.
@@ -220,7 +242,7 @@ router.post("/course-suggestion", async (req, res) => {
     .join("\n");
 
   try {
-    const response = await gemini.models.generateContent({
+    const response = await generateWithRetry({
       model: GEMINI_MODEL,
       contents: `요청: ${prompt}\n\n이동수단: ${transport}\n일수: ${dayCount}일\n\n후보 장소 목록:\n${placesDescription}`,
       config: {

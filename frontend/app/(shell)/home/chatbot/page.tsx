@@ -136,8 +136,9 @@ export default function ChatbotPage() {
 
     // 응답이 너무 오래 걸리면(기본 fetch는 브라우저 기본 타임아웃까지 무한정 기다린다) 안내
     // 메시지로 대신 끊는다 — 사용자가 "생각하는 중..." 애니메이션만 하염없이 보는 걸 막는다.
+    // 25초는 백엔드가 Gemini 503(붐빔)에 재시도하는 시간까지 감안한 값이다(backend/src/routes/ai.ts).
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), /빵지순례|빵집|베이커리|제과점/.test(prompt) ? 45000 : 15000);
+    const timeoutId = setTimeout(() => controller.abort(), /빵지순례|빵집|베이커리|제과점/.test(prompt) ? 45000 : 25000);
 
     try {
       if (!apiPlaces?.length) {

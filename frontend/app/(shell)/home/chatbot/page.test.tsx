@@ -174,7 +174,7 @@ describe("답이 오기까지", () => {
     const { user } = setup();
     await user.type(sendBox(), "유성구 산책{Enter}");
 
-    act(() => vi.advanceTimersByTime(15000));
+    act(() => vi.advanceTimersByTime(25000));
 
     await waitFor(() =>
       expect(screen.getByText("지금은 답변하기 어려워요. 잠시 후 다시 시도해주세요")).toBeTruthy()

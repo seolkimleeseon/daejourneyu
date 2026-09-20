@@ -310,7 +310,35 @@ describe("AI 쪽이 막혔을 때", () => {
     expect(response.status).toBe(502);
     expect(response.body.error).toContain("일시적인 문제");
   });
+  it("모델이 붐벼서 503이면 몇 번 더 두드려 본다 — 대개 곧 붙는다", async () => {
+    genai.generateContent
+      .mockRejectedValueOnce(new ApiError({ message: "high demand", status: 503 }))
+      .mockResolvedValueOnce({ text: JSON.stringify({ responseType: "course", label: "유성 산책", days: [["p1", "p2"]] }) });
+
+    const response = await post();
+
+    expect(response.status).toBe(200);
+    expect(genai.generateContent).toHaveBeenCalledTimes(2);
+  });
+
+  it("계속 붐비면 결국 502로 알린다 — 무한정 붙잡고 있지 않는다", async () => {
+    genai.generateContent.mockRejectedValue(new ApiError({ message: "high demand", status: 503 }));
+
+    const response = await post();
+
+    expect(response.status).toBe(502);
+    expect(genai.generateContent).toHaveBeenCalledTimes(3);
+  });
+
+  it("한도 초과는 다시 부르지 않는다 — 같은 답이 올 뿐이고 한도만 더 깎는다", async () => {
+    genai.generateContent.mockRejectedValue(new ApiError({ message: "quota", status: 429 }));
+
+    await post();
+
+    expect(genai.generateContent).toHaveBeenCalledTimes(1);
+  });
 });
+
 
 describe("AI에게 넘기는 것", () => {
   it("후보 장소를 동반 가능 여부·조건까지 붙여 알려준다 — 이름만 주면 아무 곳이나 고른다", async () => {
