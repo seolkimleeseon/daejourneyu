@@ -89,6 +89,36 @@ describe("내가 쓴 후기", () => {
     expect(hooks.mutateAsync).not.toHaveBeenCalled();
   });
 
+  it("사진이 첨부된 후기는 사진을 함께 보여준다", () => {
+    hooks.useReviews.mockReturnValue({
+      data: [makeReview({ id: "with-photo", photoUrl: "data:image/png;base64,abc" })],
+      isLoading: false,
+    });
+    render(<MyReviewsPage />);
+
+    expect(screen.getByRole("img", { name: /첨부한 사진/ })).toBeTruthy();
+  });
+
+  it("후기를 클릭하면 해당 장소 상세로 이동한다", async () => {
+    const user = userEvent.setup();
+    render(<MyReviewsPage />);
+
+    await user.click(screen.getByText("내 장소 0"));
+
+    expect(nav.push).toHaveBeenCalledWith(
+      `/place/${encodeURIComponent("내 장소 0")}?id=${encodeURIComponent("place-1")}`
+    );
+  });
+
+  it("삭제 버튼을 눌러도 장소 상세로 이동하지 않는다", async () => {
+    const user = userEvent.setup();
+    render(<MyReviewsPage />);
+
+    await user.click(screen.getAllByRole("button", { name: "이 후기 삭제" })[0]);
+
+    expect(nav.push).not.toHaveBeenCalled();
+  });
+
   it("마지막 페이지의 마지막 후기를 지워도 빈 화면이 되지 않는다", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<MyReviewsPage />);
