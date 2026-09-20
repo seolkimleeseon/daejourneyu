@@ -140,8 +140,37 @@ describe("선택한 날의 일정", () => {
     render(<ScheduleCalendar />);
 
     expect(inPage("유성 산책 코스")).toHaveLength(1);
-    expect(inPage("1박 2일 · 2곳")).toHaveLength(1);
+    expect(inPage("1박 2일 · 2곳 · 1일차")).toHaveLength(1);
     expect(inPage("AI 추천")).toHaveLength(1);
+  });
+
+  it("묵고 오는 일정은 가운데 날을 눌러도 나온다 — 일정은 시작일에만 저장되지만 여행은 이어진다", async () => {
+    const user = userEvent.setup();
+    useCourseStore.setState({
+      courses: [makeCourse({ ...course, nights: 2 })],
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-14" })],
+    });
+    render(<ScheduleCalendar />);
+
+    await user.click(dayCell("15"));
+    expect(inPage("유성 산책 코스")).toHaveLength(1);
+    expect(inPage("2박 3일 · 2곳 · 2일차")).toHaveLength(1);
+
+    await user.click(dayCell("16"));
+    expect(inPage("2박 3일 · 2곳 · 3일차")).toHaveLength(1);
+  });
+
+  it("여행이 끝난 다음 날은 다시 빈 날이다", async () => {
+    const user = userEvent.setup();
+    useCourseStore.setState({
+      courses: [makeCourse({ ...course, nights: 2 })],
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-14" })],
+    });
+    render(<ScheduleCalendar />);
+
+    await user.click(dayCell("17"));
+
+    expect(screen.getByText("이 날엔 등록된 일정이 없어요.")).toBeTruthy();
   });
 
   it("근처 축제가 있으면 함께 알려준다", () => {

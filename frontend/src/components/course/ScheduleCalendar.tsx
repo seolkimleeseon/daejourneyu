@@ -41,6 +41,13 @@ function addDays(ymd: string, days: number): string {
   return toYmd(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+/** 두 YYYY-MM-DD 사이의 일수 차이. 둘 다 로컬 자정으로 만들어 빼기 때문에 서머타임 영향이 없다. */
+function diffDays(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round((new Date(ty, tm - 1, td).getTime() - new Date(fy, fm - 1, fd).getTime()) / 86400000);
+}
+
 /**
  * 내 여정(SCHEDULE) 탭의 '캘린더' 세그. 홈의 축제 캘린더(app/(shell)/home/festival)와 달 그리드
  * 구조는 동일하지만, 표시 대상이 축제가 아니라 내가 코스에 등록한 일정(CourseSchedule)이다.
@@ -99,13 +106,24 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   };
 
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
-  const selectedSchedules = schedules.filter((schedule) => schedule.date === selectedDate);
+  const nightsOf = (courseId: string) => courses.find((course) => course.id === courseId)?.nights ?? 0;
+
+  /**
+   * 일정은 시작일 하나로만 저장되지만(CourseSchedule.date), 1박 이상 코스는 달력에서 여행 중인
+   * 날을 아무 날이나 눌러도 그 일정이 나와야 한다 — 시작일부터 박 수만큼을 일정이 걸친 기간으로
+   * 본다. 날짜가 YYYY-MM-DD로 통일돼 있어 문자열 비교로 기간 포함을 판정할 수 있다.
+   */
+  const selectedSchedules = schedules.filter(
+    (schedule) =>
+      schedule.date <= selectedDate && selectedDate <= addDays(schedule.date, nightsOf(schedule.courseId))
+  );
+
 
   /** 당일치기(0박)는 점 하나로 표시한다. */
   const dotDates = useMemo(() => {
     const set = new Set<string>();
     schedules.forEach((schedule) => {
-      const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
+      const nights = nightsOf(schedule.courseId);
       if (nights === 0) set.add(schedule.date);
     });
     return set;
@@ -115,7 +133,7 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const overnightDates = useMemo(() => {
     const set = new Set<string>();
     schedules.forEach((schedule) => {
-      const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
+      const nights = nightsOf(schedule.courseId);
       if (nights === 0) return;
       for (let offset = 0; offset <= nights; offset++) {
         set.add(addDays(schedule.date, offset));
@@ -211,6 +229,7 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
                 </div>
                 <div className="mt-1 text-xs text-ink-muted">
                   {nightsLabel(course.nights)} · {stopCount}곳
+                  {course.nights > 0 ? ` · ${diffDays(schedule.date, selectedDate) + 1}일차` : null}
                 </div>
                 {schedule.festivalTitles.length > 0 ? (
                   <div className="mt-1.5 text-[11px] text-ink-muted">
