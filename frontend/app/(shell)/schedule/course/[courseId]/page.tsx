@@ -252,9 +252,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                   `☀️ ${nightsLabel(course.nights)}`
                 )}
               </Tag>
-              <Tag tone="purple" className={TICKET_TAG_CLASS}>
-                {course.transport === "자차" ? "🚗" : "🚌"} {course.transport}
-              </Tag>
               {course.shared ? (
                 <Tag tone="amber" className={TICKET_TAG_CLASS}>
                   🔗 공유됨

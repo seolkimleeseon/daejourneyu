@@ -132,13 +132,12 @@ describe("들어갈 수 있는지", () => {
 });
 
 describe("티켓", () => {
-  it("이름과 출처·기간·이동수단을 함께 보여준다", () => {
+  it("이름과 출처·기간을 함께 보여준다", () => {
     setup();
 
     expect(ticketLabel()).toBe("유성 산책 코스");
     expect(screen.getByText("AI 추천")).toBeTruthy();
     expect(screen.getByText("☀️ 당일치기")).toBeTruthy();
-    expect(screen.getByText("🚗 자차")).toBeTruthy();
   });
 
   it("대표 이모지를 안 골랐으면 출처에 맞는 기본 이모지를 쓴다", () => {

@@ -11,12 +11,11 @@ import { CourseShareCard } from "@/components/course/CourseShareCard";
 import { Emoji3D } from "@/components/ui/Emoji3D";
 import { conditionSourceLabel, isUnverifiedCondition, NEEDS_CHECK_LABEL, nightsLabel, resolvePlaceImageUrl } from "@/lib/courseFormat";
 import type { CourseTheme } from "@/lib/mbti";
-import type { Place, Transport } from "@/types";
+import type { Place } from "@/types";
 
 interface GeneratedResultStepProps {
   theme: CourseTheme;
   nights: number;
-  transport: Transport;
   days: Place[][];
   courseTitle: string;
   routeLabel?: string;
@@ -30,7 +29,6 @@ interface GeneratedResultStepProps {
 export function GeneratedResultStep({
   theme,
   nights,
-  transport,
   days,
   courseTitle,
   routeLabel,
@@ -64,9 +62,6 @@ export function GeneratedResultStep({
               ) : (
                 `☀️ ${nightsLabel(nights)}`
               )}
-            </Tag>
-            <Tag tone="purple" className="cursor-default border border-line bg-card">
-              {transport === "자차" ? "🚗" : "🚌"} {transport}
             </Tag>
             <Tag tone={days.some((day) => day.some((place) => !place.petFriendly)) ? "neutral" : "brand"} className="flex cursor-default items-center gap-1 border border-line bg-card">
               {days.some((day) => day.some((place) => !place.petFriendly)) ? "🔍 동반 여부 확인 필요" : <><Emoji3D emoji="🐾" size={12} shadow={false} />동반 가능</>}
@@ -169,7 +164,7 @@ export function GeneratedResultStep({
         <div ref={shareCardRef}>
           <CourseShareCard
             title={courseTitle}
-            tags={[nightsLabel(nights), routeLabel ?? `${theme}형`, transport]}
+            tags={[nightsLabel(nights), routeLabel ?? `${theme}형`]}
             days={days}
           />
         </div>

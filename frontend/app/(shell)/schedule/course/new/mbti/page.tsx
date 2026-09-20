@@ -360,7 +360,6 @@ function MbtiCourseWizard() {
         <GeneratedResultStep
           theme={theme}
           nights={nights}
-          transport={DEFAULT_TRANSPORT}
           days={generatedDays}
           courseTitle={generatedTitle}
           onReorderDay={handleReorderDay}
