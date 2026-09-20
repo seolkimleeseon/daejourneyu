@@ -192,11 +192,64 @@ describe("후기", () => {
   });
 });
 
+describe("후기 더 보기", () => {
+  /** 작성자 이름만 다른 후기 n개 — 몇 번째까지 그렸는지 이름으로 센다. */
+  const 후기들 = (count: number) =>
+    Array.from({ length: count }, (_, i) => makeReview({ id: `r${i + 1}`, authorName: `작성자${i + 1}` }));
+
+  it("처음에는 3개까지만 그린다 — 나머지는 버튼으로 미룬다", () => {
+    hooks.useReviews.mockReturnValue({ data: 후기들(7), isLoading: false });
+    setup();
+
+    expect(screen.getByText("후기 7개")).toBeTruthy();
+    expect(screen.getByText("작성자3")).toBeTruthy();
+    expect(screen.queryByText("작성자4")).toBeNull();
+    expect(screen.getByRole("button", { name: "더 보기 · 4개 남음" })).toBeTruthy();
+  });
+
+  it("버튼은 한 번에 늘어나는 개수가 아니라 남은 개수를 말한다 — '4개 더 보기'는 4개가 다 나온다고 읽힌다", () => {
+    hooks.useReviews.mockReturnValue({ data: 후기들(7), isLoading: false });
+    setup();
+
+    expect(screen.queryByRole("button", { name: /4개 더 보기/ })).toBeNull();
+  });
+
+  it("더 보기는 10개씩 크게 연다 — 목록이 처음으로 되감기지도 않는다", async () => {
+    hooks.useReviews.mockReturnValue({ data: 후기들(16), isLoading: false });
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "더 보기 · 13개 남음" }));
+
+    expect(screen.getByText("작성자1")).toBeTruthy();
+    expect(screen.getByText("작성자13")).toBeTruthy();
+    expect(screen.queryByText("작성자14")).toBeNull();
+    expect(screen.getByRole("button", { name: "더 보기 · 3개 남음" })).toBeTruthy();
+  });
+
+  it("남은 게 10개보다 적으면 한 번에 다 펼친다", async () => {
+    hooks.useReviews.mockReturnValue({ data: 후기들(7), isLoading: false });
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "더 보기 · 4개 남음" }));
+
+    expect(screen.getByText("작성자7")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /더 보기/ })).toBeNull();
+  });
+
+  it("3개 이하면 버튼을 만들지 않는다", () => {
+    hooks.useReviews.mockReturnValue({ data: 후기들(3), isLoading: false });
+    setup();
+
+    expect(screen.getByText("작성자3")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /더 보기/ })).toBeNull();
+  });
+});
+
 describe("후기 쓰기", () => {
   it("로그인했으면 작성 화면으로 보낸다 — 동명 장소 대응을 위해 id도 함께 넘긴다", async () => {
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "후기 쓰기 ›" }));
+    await user.click(screen.getByRole("button", { name: "후기 쓰기" }));
 
     expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review?id=p1");
   });
@@ -205,18 +258,16 @@ describe("후기 쓰기", () => {
     useAuthStore.setState({ isLoggedIn: false });
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "후기 쓰기 ›" }));
+    await user.click(screen.getByRole("button", { name: "후기 쓰기" }));
 
     expect(nav.push).not.toHaveBeenCalled();
     expect(loginModalOpen()).toBe(true);
   });
 
-  it("목록 아래 큰 버튼도 같은 곳으로 보낸다 — 길게 읽고 내려온 사람을 위로 올려보내지 않는다", async () => {
-    const { user } = setup();
+  it("버튼은 후기 목록 바로 위 한 곳에만 있다 — 같은 동작을 두 번 노출하지 않는다", () => {
+    setup();
 
-    await user.click(screen.getByRole("button", { name: "후기 쓰기" }));
-
-    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review?id=p1");
+    expect(screen.getAllByRole("button", { name: "후기 쓰기" })).toHaveLength(1);
   });
 });
 
