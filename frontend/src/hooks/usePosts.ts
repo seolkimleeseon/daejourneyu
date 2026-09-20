@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -109,6 +110,13 @@ export function useFeedPosts({
     staleTime: LIST_STALE_MS,
     // 포커스가 돌아올 때마다 스크롤해둔 페이지를 전부 다시 받는 걸 막는다.
     refetchOnWindowFocus: false,
+    /**
+     * 조건(검색어·정렬·유형 필터)이 바뀌면 쿼리키가 갈라져 새 목록을 받는데, 받아오는 동안
+     * 이전 목록을 그대로 두고 도착하면 갈아끼운다. 없으면 캐시가 없는 첫 전환에서만 목록이
+     * 통째로 사라졌다 다시 그려지고 캐시가 생긴 다음부터는 즉시 바뀌어서, 같은 버튼이 누를
+     * 때마다 다르게 굴었다.
+     */
+    placeholderData: keepPreviousData,
   });
 
   const data = useMemo<FeedPost[]>(
