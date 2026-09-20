@@ -33,20 +33,28 @@ export function recommendBakeryRoute(bakeries: Place[], otherPlaces: Place[], va
   const eligibleBakeries = bakeries.filter((place) => !EXCLUDED_CHAINS.some((chain) => bakeryBrandKey(place.name).includes(chain)));
   const walks = otherPlaces.filter((place) => place.petFriendly &&
     (place.category === "산책" || place.category === "놀이터"));
+  const brandKeys = eligibleBakeries.map((place) => bakeryBrandKey(place.name));
+  const nearbyWalks = eligibleBakeries.map((bakery) => {
+    const nearby = new Map<Place, number>();
+    for (const walk of walks) {
+      const distance = haversine(bakery, walk);
+      if (distance <= MAX_LEG_KM) nearby.set(walk, distance);
+    }
+    return nearby;
+  });
   const routes: { places: Place[]; distance: number; highlight: number; pair: string }[] = [];
 
   for (let i = 0; i < eligibleBakeries.length; i++) {
     for (let j = i + 1; j < eligibleBakeries.length; j++) {
       const first = eligibleBakeries[i];
       const second = eligibleBakeries[j];
-      if (bakeryBrandKey(first.name) === bakeryBrandKey(second.name)) continue;
+      if (brandKeys[i] === brandKeys[j]) continue;
       if (haversine(first, second) > MAX_LEG_KM) continue;
-      const nearbyWalks = walks.filter((walk) =>
-        haversine(first, walk) <= MAX_LEG_KM && haversine(second, walk) <= MAX_LEG_KM
-      ).sort((a, b) =>
-        haversine(first, a) + haversine(second, a) - haversine(first, b) - haversine(second, b)
-      );
-      for (const walk of nearbyWalks.slice(0, 2)) {
+      const commonWalks = [...nearbyWalks[i]].flatMap(([walk, firstDistance]) => {
+        const secondDistance = nearbyWalks[j].get(walk);
+        return secondDistance === undefined ? [] : [{ walk, distance: firstDistance + secondDistance }];
+      }).sort((a, b) => a.distance - b.distance);
+      for (const { walk } of commonWalks.slice(0, 2)) {
         const route = shortestRoute([first, second, walk]);
         const distance = routeDistanceKm(route);
         if (distance > MAX_ROUTE_KM || route.some((stop, index) =>

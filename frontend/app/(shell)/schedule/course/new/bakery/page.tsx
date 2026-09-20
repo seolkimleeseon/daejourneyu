@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { TopBar } from "@/components/shell/TopBar";
 import { LoginModal } from "@/components/my/LoginModal";
+import { BakeryLoading } from "@/components/course/BakeryLoading";
 import { GeneratedResultStep } from "../mbti/steps/GeneratedResultStep";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { useCourseStore } from "@/stores/useCourseStore";
@@ -105,7 +106,7 @@ export default function BakeryCoursePage() {
         </div>
       </div>
       {bakeriesLoading || placesLoading ? (
-        <div className="px-5 py-12 text-center text-sm text-ink-muted">가까운 빵집과 산책길을 찾고 있어요...</div>
+        <BakeryLoading stage={bakeriesLoading ? "bakeries" : "walks"} />
       ) : isError ? (
         <div className="px-5 py-8 text-center text-sm text-ink-muted">
           빵집 목록을 불러오지 못했어요.
