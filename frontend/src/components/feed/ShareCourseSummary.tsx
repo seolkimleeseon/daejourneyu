@@ -25,7 +25,7 @@ export function ShareCourseSummary({ course }: ShareCourseSummaryProps) {
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-bold text-ink">{course.label}</div>
         <div className="mt-0.5 text-xs text-ink-muted">
-          {nightsLabel(course.nights)} · {course.transport} · 장소 {stopCount}곳
+          {nightsLabel(course.nights)} · 장소 {stopCount}곳
         </div>
       </div>
 
