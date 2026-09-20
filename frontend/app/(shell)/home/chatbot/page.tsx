@@ -9,7 +9,7 @@ import { useToastStore } from "@/stores/useToastStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/cn";
-import { apiUrl } from "@/lib/api/authFetch";
+import { authFetch } from "@/lib/api/authFetch";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
 import { pickChatCandidates } from "@/lib/chatCandidates";
 import type { PickablePlace } from "@/lib/petTourMapper";
@@ -62,6 +62,11 @@ const FAQ_ITEMS: FaqItem[] = [
 
 const QUICK_PROMPTS = ["🥐 빵지순례 코스 추천해줘", "조용히 산책하기 좋은 곳", "당일치기 코스 추천해줘", "실내 카페 위주로", "소형견도 갈 수 있는 곳"];
 
+/** 비로그인 상태로 "코스 저장하기"를 누르면 로그인 화면으로 이동했다가 돌아오는데, 그 왕복에
+ * 이 페이지가 통째로 언마운트·리마운트돼 React state(코스 내용)가 사라진다. 로그인 후에도
+ * 저장을 이어갈 수 있게 세션스토리지에 잠깐 담아둔다. */
+const PENDING_COURSE_SAVE_KEY = "daejourneyu:chatbot-pending-course";
+
 const THINKING_PHRASES = ["킁킁 냄새 맡는 중...", "지도를 펼치는 중...", "발자국 따라가는 중...", "코스를 그리는 중..."];
 
 /** "생각하는 중..." 고정 문구 대신 문구를 순환시키며 발바닥이 통통 튀는 로딩 인터랙션. */
@@ -106,7 +111,6 @@ export default function ChatbotPage() {
   const { data: apiPlaces } = usePickablePlaces();
 
   const [loginOpen, setLoginOpen] = useState(false);
-  const [pendingCourse, setPendingCourse] = useState<CourseSuggestion | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "greeting",
@@ -144,7 +148,7 @@ export default function ChatbotPage() {
       if (/빵지순례|빵집|베이커리|제과점/.test(prompt)) {
         const district = ["대덕구", "동구", "유성구", "중구", "서구"].find((name) => prompt.includes(name));
         const query = district ? `?district=${encodeURIComponent(district)}` : "";
-        const bakeryRes = await fetch(apiUrl(`/api/places/bakeries${query}`), { signal: controller.signal });
+        const bakeryRes = await authFetch(`/api/places/bakeries${query}`, { signal: controller.signal });
         const bakeries = bakeryRes.ok ? (await bakeryRes.json()) as PickablePlace[] : [];
         if (bakeries.length === 0) {
           replacePending(pendingId, { text: "빵집 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요" });
@@ -153,7 +157,7 @@ export default function ChatbotPage() {
         places = [...places, ...bakeries];
       }
       const candidatePlaces = pickChatCandidates(places, prompt);
-      const res = await fetch(apiUrl("/api/ai/course-suggestion"), {
+      const res = await authFetch("/api/ai/course-suggestion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces }),
@@ -216,7 +220,13 @@ export default function ChatbotPage() {
 
   const handleSaveCourse = (course: CourseSuggestion) => {
     if (!isLoggedIn) {
-      setPendingCourse(course);
+      // 로그인 화면으로 이동하면 이 페이지가 통째로 리마운트돼 course를 담은 React state는
+      // 사라진다 — 로그인 후 돌아왔을 때 이어서 저장할 수 있게 세션스토리지에 담아둔다.
+      try {
+        sessionStorage.setItem(PENDING_COURSE_SAVE_KEY, JSON.stringify(course));
+      } catch (error) {
+        console.error("로그인 전 코스를 임시 저장하지 못했어요:", error);
+      }
       setLoginOpen(true);
       return;
     }
@@ -228,6 +238,20 @@ export default function ChatbotPage() {
     showToast("코스를 보관함에 저장했어요 🐾");
     router.push(`/schedule/course/${saved.id}`);
   };
+
+  // 로그인 후 이 페이지로 돌아왔을 때(next 복귀) 저장을 이어간다.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const raw = sessionStorage.getItem(PENDING_COURSE_SAVE_KEY);
+    if (!raw) return;
+    sessionStorage.removeItem(PENDING_COURSE_SAVE_KEY);
+    try {
+      saveCourse(JSON.parse(raw) as CourseSuggestion);
+    } catch (error) {
+      console.error("로그인 후 이어서 저장할 코스를 복원하지 못했어요:", error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100dvh - 76px)" }}>
@@ -265,7 +289,9 @@ export default function ChatbotPage() {
                       key={stop.placeId}
                       type="button"
                       onClick={() => {
-                        if (!stop.placeId.startsWith("bakery-")) router.push(`/place/${encodeURIComponent(stop.name)}`);
+                        if (!stop.placeId.startsWith("bakery-")) {
+                          router.push(`/place/${encodeURIComponent(stop.name)}?id=${encodeURIComponent(stop.placeId)}`);
+                        }
                       }}
                       className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-2 text-left"
                     >
@@ -339,7 +365,9 @@ export default function ChatbotPage() {
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") handleSend();
+              // 한글 입력 중 마지막 글자를 확정하는 Enter까지 전송으로 잡히면 안 된다 —
+              // isComposing이면 조합이 아직 끝나지 않은 것이므로 무시한다.
+              if (event.key === "Enter" && !event.nativeEvent.isComposing) handleSend();
             }}
             placeholder="예: 유성구에서 산책하기 좋은 곳 알려줘"
             className="flex-1 rounded-lg border border-line bg-card px-3.5 py-3 text-sm text-ink outline-none focus:border-brand"
@@ -353,13 +381,7 @@ export default function ChatbotPage() {
           </button>
         </div>
       </div>
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onLoggedIn={() => {
-          if (pendingCourse) saveCourse(pendingCourse);
-        }}
-      />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }
