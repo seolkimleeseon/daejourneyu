@@ -52,7 +52,7 @@ export function HomeStatusCard({
   return (
     <div className="relative mb-3 overflow-hidden rounded-2xl bg-brand-100 shadow-sm">
       <div className="flex items-center justify-between px-4 pt-3 font-mono text-[9px] font-bold tracking-widest text-brand-700/70">
-        <span>오늘의 산책 TICKET</span>
+        <span>오늘의 여행 TICKET</span>
         <span>DAEJEON</span>
       </div>
 
