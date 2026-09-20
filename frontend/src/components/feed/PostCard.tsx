@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { FeedPost } from "@/types";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { formatPostDate, resolvePostInteraction, visiblePostTags } from "@/lib/feed";
 import { PostSaveBar } from "./PostSaveBar";
@@ -27,8 +28,8 @@ export function PostCard({ post }: PostCardProps) {
           실제로 탭했을 때 상세를 받아오므로, 낭비되는 건 안 열어본 카드들 몫뿐이다. */}
       <Link href={`/feed/post/${post.id}`} prefetch={false} className="block">
         <div className="flex items-center gap-2.5 px-4 pb-2.5 pt-3.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg">
-            {post.authorEmoji}
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100">
+            <Emoji3D emoji={post.authorEmoji} size={22} shadow={false} />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">

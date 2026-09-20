@@ -108,6 +108,19 @@ function ScheduleTabContent() {
             />
           </div>
 
+          <button
+            type="button"
+            onClick={() => router.push("/schedule/course/new/bakery")}
+            className="mb-6 flex w-full items-center gap-3 rounded-xl bg-accent-amber-light px-4 py-3.5 text-left transition-transform active:scale-[0.98]"
+          >
+            <span className="text-3xl" aria-hidden="true">🥐</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-ink">대전 빵지순례 코스</span>
+              <span className="block text-[11px] text-ink-muted">가까운 빵집과 산책길을 함께 추천받아요</span>
+            </span>
+            <span className="text-sm font-bold text-ink-muted" aria-hidden="true">›</span>
+          </button>
+
           {!isLoggedIn ? (
             <LoginRequiredGate compact message="보관함에 저장한 코스를 보려면 로그인해주세요" />
           ) : !hasSynced ? (

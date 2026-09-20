@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { cached } from "../lib/cache";
 import { fetchAggregatedPlaces } from "../lib/placesAggregator";
+import { fetchBakeryCandidates } from "../lib/bakeries";
 
 const router = Router();
 
@@ -9,6 +10,13 @@ const router = Router();
 // 분 단위로 바뀌지 않으므로 짧은 TTL로 캐시해 같은 창 안의 여러 요청이 호출을 공유하게 한다 —
 // DB 스냅샷이 아니라 API 응답 자체를 잠깐 담아두는 것뿐이라 "그때그때 실시간 호출" 요건은 유지된다.
 const CACHE_TTL_MS = 5 * 60 * 1000;
+
+// 빵지순례 요청에서만 호출한다. 출입 가능 여부 미확인 장소이므로 일반 반려동반 목록과 분리한다.
+router.get("/bakeries", async (req, res) => {
+  const district = typeof req.query.district === "string" ? req.query.district : undefined;
+  const batch = typeof req.query.batch === "string" && /^[0-2]$/.test(req.query.batch) ? Number(req.query.batch) : 0;
+  res.json(await fetchBakeryCandidates(district, batch));
+});
 
 // GET /api/places?district=서구&category=산책&source=petacp — 공공데이터 API를 실시간 호출해 만든
 // 목록에서 필터링한다. source는 placesAggregator가 붙이는 출처 태그(예: "petacp"=문체부 반려동물

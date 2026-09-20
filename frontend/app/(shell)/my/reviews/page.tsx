@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Tag } from "@/components/ui/Tag";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { FeedEmptyState } from "@/components/feed/FeedEmptyState";
 import { FeedPager } from "@/components/feed/FeedPager";
 import { useReviews, useDeleteReview } from "@/hooks/useReviews";
 import { useToastStore } from "@/stores/useToastStore";
@@ -44,9 +45,11 @@ export default function MyReviewsPage() {
         {isLoading ? (
           <div className="py-10 text-center text-xs text-ink-muted">불러오는 중…</div>
         ) : myReviews.length === 0 ? (
-          <div className="py-10 text-center text-xs text-ink-muted">
-            아직 작성한 후기가 없어요. 장소 상세에서 후기를 남겨보세요.
-          </div>
+          <FeedEmptyState
+            emoji="✍️"
+            title="아직 작성한 후기가 없어요"
+            description="장소 상세에서 후기를 남겨보세요"
+          />
         ) : (
           <>
             {myPage.items.map((review) => (
@@ -91,6 +94,8 @@ export default function MyReviewsPage() {
       <Modal
         open={pendingDeleteId !== null}
         onClose={() => setPendingDeleteId(null)}
+        emoji="🗑"
+        icon3D
         title="이 후기를 삭제할까요?"
         description="삭제하면 되돌릴 수 없어요"
       >

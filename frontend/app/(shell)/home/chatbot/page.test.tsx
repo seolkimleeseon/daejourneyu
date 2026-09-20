@@ -5,11 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useToastStore } from "@/stores/useToastStore";
-import { makeStop } from "@/test/fixtures";
+import { makePlace, makeStop } from "@/test/fixtures";
 import ChatbotPage from "./page";
 
 const nav = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/home/chatbot" }));
+
+const pickable = vi.hoisted(() => ({ usePickablePlaces: vi.fn() }));
+vi.mock("@/hooks/usePickablePlaces", () => ({ usePickablePlaces: pickable.usePickablePlaces }));
 
 const addCourse = vi.fn();
 const fetchMock = vi.fn();
@@ -49,6 +52,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   HTMLElement.prototype.scrollTo = vi.fn();
   fetchMock.mockResolvedValue(jsonResponse({ responseType: "chat", message: "안내 문구" }));
+  pickable.usePickablePlaces.mockReturnValue({ data: [makePlace({ id: "a", name: "갑천", district: "유성구", category: "산책" })] });
   addCourse.mockReturnValue({ id: "c1" });
   useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: null });
   useToastStore.setState({ message: null, key: 0 });

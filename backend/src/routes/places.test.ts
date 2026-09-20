@@ -8,6 +8,8 @@ import { createTestApp } from "../test/testApp";
  */
 const aggregator = vi.hoisted(() => ({ fetchAggregatedPlaces: vi.fn() }));
 vi.mock("../lib/placesAggregator", () => ({ fetchAggregatedPlaces: aggregator.fetchAggregatedPlaces }));
+const bakery = vi.hoisted(() => ({ fetchBakeryCandidates: vi.fn() }));
+vi.mock("../lib/bakeries", () => ({ fetchBakeryCandidates: bakery.fetchBakeryCandidates }));
 
 /**
  * 이 라우트는 합친 목록을 모듈 전역 Map에 5분간 담아 여러 요청이 나눠 쓰게 한다 — 테스트끼리
@@ -39,6 +41,16 @@ function place(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   aggregator.fetchAggregatedPlaces.mockReset();
   aggregator.fetchAggregatedPlaces.mockResolvedValue([]);
+  bakery.fetchBakeryCandidates.mockReset();
+  bakery.fetchBakeryCandidates.mockResolvedValue([]);
+});
+
+it("빵집 후보의 지역과 재탐색 묶음을 전달하고 범위 밖 묶음은 제한한다", async () => {
+  const app = await makeApp();
+  await request(app).get("/api/places/bakeries?district=서구&batch=2");
+  expect(bakery.fetchBakeryCandidates).toHaveBeenLastCalledWith("서구", 2);
+  await request(app).get("/api/places/bakeries?batch=99");
+  expect(bakery.fetchBakeryCandidates).toHaveBeenLastCalledWith(undefined, 0);
 });
 
 describe("GET /api/places", () => {

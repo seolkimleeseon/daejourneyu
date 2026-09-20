@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSheetStore } from "@/stores/useSheetStore";
@@ -14,7 +15,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/s
 vi.mock("@/hooks/useSyncCoursesFromApi", () => ({ useSyncCoursesFromApi: vi.fn() }));
 
 // 지도·공유·장소 시트는 각자 테스트가 있다 — 상세 화면이 엮는 방식만 본다.
-vi.mock("@/components/course/CourseRouteMap", () => ({ CourseRouteMap: () => null }));
+vi.mock("@/components/course/CourseRouteMap", () => ({ CourseRouteMap: () => <div data-testid="route-map" /> }));
 vi.mock("@/components/course/PlacePickerSheet", () => ({ PlacePickerSheet: () => null }));
 const share = vi.hoisted(() => ({ render: vi.fn() }));
 vi.mock("@/components/course/ResultShareActions", () => ({
@@ -41,8 +42,13 @@ const course = makeCourse({
 });
 
 function setup(courseId = "c1") {
-  const view = render(<CourseDetailPage params={{ courseId }} />);
-  return { ...view, user: userEvent.setup() };
+  const queryClient = new QueryClient();
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <CourseDetailPage params={{ courseId }} />
+    </QueryClientProvider>
+  );
+  return { ...view, user: userEvent.setup(), queryClient };
 }
 
 /** 동선 목록의 한 줄. */
@@ -71,7 +77,7 @@ function ticketLabel(): string {
   return document.querySelector(".text-base.font-extrabold.tracking-tight")?.textContent ?? "";
 }
 
-const editButton = () => screen.getByRole("button", { name: /코스 편집하기/ });
+const editButton = () => screen.getByRole("button", { name: /코스.*편집/ });
 
 async function enterEdit(user: ReturnType<typeof userEvent.setup>) {
   await user.click(editButton());
@@ -79,11 +85,13 @@ async function enterEdit(user: ReturnType<typeof userEvent.setup>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  updateCourse.mockResolvedValue(undefined);
   HTMLElement.prototype.scrollTo = vi.fn();
   useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: null });
   useSheetStore.setState({ isOpen: false, title: "", selected: [], onDone: null });
   useCourseStore.setState({
     courses: [course],
+    courseIdAliases: {},
     schedules: [],
     hasSynced: true,
     updateCourse,
@@ -92,6 +100,14 @@ beforeEach(() => {
 });
 
 describe("들어갈 수 있는지", () => {
+  it("저장 중 임시 ID로 연 상세를 실제 ID로 이어서 보여준다", () => {
+    useCourseStore.setState({ courseIdAliases: { "optimistic-1": "c1" } });
+    setup("optimistic-1");
+
+    expect(ticketLabel()).toBe("유성 산책 코스");
+    expect(nav.replace).toHaveBeenCalledWith("/schedule/course/c1");
+  });
+
   it("비로그인이면 코스 대신 로그인 안내를 보여준다", () => {
     useAuthStore.setState({ isLoggedIn: false });
     setup();
@@ -171,15 +187,18 @@ describe("동선", () => {
     expect(screen.getByText("동선 · 2곳")).toBeTruthy();
   });
 
-  it("여러 날이면 일차마다 나누고 넘겨볼 점을 둔다", () => {
+  it("여러 날이면 현재 일차의 지도만 그리고 넘겨볼 때 바꾼다", async () => {
     useCourseStore.setState({
       courses: [makeCourse({ ...course, nights: 1, days: [[갑천], [댕댕카페]] })],
     });
-    setup();
+    const { user } = setup();
 
     expect(screen.getByText("1일차 동선 · 1곳")).toBeTruthy();
     expect(screen.getByText("2일차 동선 · 1곳")).toBeTruthy();
     expect(screen.getByRole("button", { name: "2일차 보기" })).toBeTruthy();
+    expect(screen.getAllByTestId("route-map")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "2일차 보기" }));
+    expect(screen.getAllByTestId("route-map")).toHaveLength(1);
   });
 
   it("확정된 조건은 동반 가능 여부와 출처를 같이 보여준다", () => {
@@ -248,16 +267,16 @@ describe("다음 행동", () => {
   it("잡아둔 날짜가 없으면 일정을 붙이러 보낸다", async () => {
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: /일정을 추가하기/ }));
+    await user.click(screen.getByRole("button", { name: /일정 추가하기/ }));
 
     expect(nav.push).toHaveBeenCalledWith("/schedule/course/c1/schedule");
   });
 
-  it("이미 날짜가 있으면 문구를 편집으로 바꾼다", () => {
+  it("이미 날짜가 있으면 문구를 관리로 바꾼다", () => {
     useCourseStore.setState({ schedules: [makeSchedule({ id: "s1", courseId: "c1" })] });
     setup();
 
-    expect(screen.getByRole("button", { name: /여행 계획 편집하기/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /일정 관리하기/ })).toBeTruthy();
   });
 
   it("공유 문구에 기간과 곳 수를 담는다", () => {
@@ -322,6 +341,18 @@ describe("편집", () => {
       label: "가을 산책",
       emoji: "🌸",
       days: [[갑천, 댕댕카페]],
+    });
+  });
+
+  it("저장이 끝나면 코스 목록 캐시를 무효화한다 — 안 그러면 보관함에서 새로고침 전까지 옛 값이 보인다", async () => {
+    const { user, queryClient } = setup();
+    queryClient.setQueryData(["courses"], [course]);
+    await enterEdit(user);
+
+    await user.click(screen.getByRole("button", { name: /저장하기/ }));
+
+    await vi.waitFor(() => {
+      expect(queryClient.getQueryState(["courses"])?.isInvalidated).toBe(true);
     });
   });
 

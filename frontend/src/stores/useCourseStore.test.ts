@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { useToastStore } from "@/stores/useToastStore";
 import { makeCourse, makeSchedule } from "@/test/fixtures";
 
 const api = vi.hoisted(() => ({
@@ -32,7 +33,7 @@ beforeEach(() => {
   api.createCourseApi.mockResolvedValue(serverCourse);
   api.updateCourseApi.mockResolvedValue(undefined);
   api.deleteCourseApi.mockResolvedValue(undefined);
-  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false });
+  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), courseIdAliases: {} });
 });
 
 describe("setCourses", () => {
@@ -75,6 +76,22 @@ describe("setCourses", () => {
 
     expect(useCourseStore.getState().courses).toHaveLength(1);
   });
+
+  it("임시 id가 진짜 id로 바뀐 뒤에도, 그걸 반영 못한 낡은 서버 응답이 지우지 않는다", async () => {
+    // 저장 직후 코스 상세로 바로 들어가면: addCourse의 응답이 이미 와서 임시 id는 진짜 id로
+    // 바뀌었는데, useCourses()의 staleTime(30초) 동안 캐시된 낡은 GET 응답이 그 상세 화면에서
+    // 뒤늦게 setCourses를 부르는 경우가 있다 — 그 응답엔 방금 만든 코스가 아직 없다.
+    const created = useCourseStore.getState().addCourse(newCourseInput());
+    await vi.waitFor(() => {
+      expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual(["server-1"]);
+    });
+    void created;
+
+    // 새 코스가 생기기 전에 캐시된, 그 코스가 없는 낡은 서버 목록.
+    useCourseStore.getState().setCourses([]);
+
+    expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual(["server-1"]);
+  });
 });
 
 describe("addCourse", () => {
@@ -92,21 +109,44 @@ describe("addCourse", () => {
   });
 
   it("서버 응답이 오면 진짜 id로 바꿔 끼운다", async () => {
-    useCourseStore.getState().addCourse(newCourseInput());
+    const created = useCourseStore.getState().addCourse(newCourseInput());
 
     await vi.waitFor(() => {
       expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual(["server-1"]);
+      expect(useCourseStore.getState().courseIdAliases[created.id]).toBe("server-1");
     });
   });
 
-  it("저장에 실패해도 화면의 코스를 지우지 않는다", async () => {
+  it("저장에 실패하면 임시 코스를 제거하고 실패를 알린다", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     api.createCourseApi.mockRejectedValue(new Error("네트워크 오류"));
 
     const created = useCourseStore.getState().addCourse(newCourseInput());
 
     await vi.waitFor(() => expect(error).toHaveBeenCalled());
-    expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual([created.id]);
+    expect(useCourseStore.getState().courses).toEqual([]);
+    expect(useCourseStore.getState().pendingNewCourseIds.has(created.id)).toBe(false);
+    expect(useToastStore.getState().message).toContain("저장하지 못했어요");
+  });
+
+  it("목록 조회가 저장 응답보다 먼저 오더라도 같은 코스를 중복 표시하지 않는다", async () => {
+    let finish!: (course: typeof serverCourse) => void;
+    api.createCourseApi.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const created = useCourseStore.getState().addCourse(newCourseInput());
+
+    useCourseStore.getState().setCourses([serverCourse]);
+    finish(serverCourse);
+
+    await vi.waitFor(() => {
+      expect(useCourseStore.getState().courses.map((item) => item.id)).toEqual(["server-1"]);
+      expect(useCourseStore.getState().courseIdAliases[created.id]).toBe("server-1");
+    });
+  });
+
+  it("같은 시각에 코스를 두 번 저장해도 임시 ID가 겹치지 않는다", () => {
+    const first = useCourseStore.getState().addCourse(newCourseInput());
+    const second = useCourseStore.getState().addCourse(newCourseInput());
+    expect(first.id).not.toBe(second.id);
   });
 });
 

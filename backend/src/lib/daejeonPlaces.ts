@@ -3,6 +3,7 @@ import { parseCoordinate } from "./coordinates";
 import { geocodeAddress, supplementImagesByName } from "./kakaoLocal";
 import { mapWithConcurrency } from "./concurrency";
 import { cached } from "./cache";
+import { stableId } from "./stableId";
 
 /** 카카오 지오코딩 동시 요청 상한 — 레이트리밋(429) 방지. */
 const KAKAO_CONCURRENCY = 8;
@@ -58,14 +59,14 @@ export async function fetchDaejeonExemplaryRestaurants(): Promise<DaejeonPlace[]
     const items = extractItems<RawExemplaryRestaurantItem>(data);
 
     const places = items
-      .map((item, index) => {
+      .map((item) => {
         const district = DISTRICTS.find((candidate) => item.restrntAddr.includes(candidate));
         if (!district) return null;
         const lat = parseCoordinate(item.mapLat);
         const lng = parseCoordinate(item.mapLot);
         if (lat === null || lng === null) return null;
         return {
-          id: `restaurant-${index}`,
+          id: stableId("restaurant", item.restrntNm, item.restrntAddr),
           name: item.restrntNm,
           category: "맛집" as PlaceCategory,
           district,
@@ -93,13 +94,13 @@ export async function fetchDaejeonCultureFacilities(): Promise<DaejeonPlace[]> {
     const data = await fetchDaejeonOpenApi("culture", { numOfRows: 200 });
     const items = extractItems<RawCultureItem>(data);
 
-    const geocoded = await mapWithConcurrency(items, KAKAO_CONCURRENCY, async (item, index) => {
+    const geocoded = await mapWithConcurrency(items, KAKAO_CONCURRENCY, async (item) => {
         const district = DISTRICTS.find((candidate) => item.signgu === candidate);
         if (!district) return null;
         const point = await geocodeAddress(`대전 ${item.locplc}`).catch(() => null);
         if (!point) return null;
         return {
-          id: `culture-${index}`,
+          id: stableId("culture", item.fcltyNm, item.locplc),
           name: item.fcltyNm,
           category: "문화" as PlaceCategory,
           district,
@@ -126,13 +127,13 @@ export async function fetchDaejeonLodgings(): Promise<DaejeonPlace[]> {
     const data = await fetchDaejeonOpenApi("lodging", { numOfRows: 200 });
     const items = extractItems<RawLodgingItem>(data);
 
-    const geocoded = await mapWithConcurrency(items, KAKAO_CONCURRENCY, async (item, index) => {
+    const geocoded = await mapWithConcurrency(items, KAKAO_CONCURRENCY, async (item) => {
       const district = DISTRICTS.find((candidate) => item.romsAddr.includes(candidate));
       if (!district) return null;
       const point = await geocodeAddress(item.romsAddr).catch(() => null);
       if (!point) return null;
       return {
-        id: `lodging-${index}`,
+        id: stableId("lodging", item.romsNm, item.romsAddr),
         name: item.romsNm,
         category: "숙박" as PlaceCategory,
         district,
@@ -163,14 +164,14 @@ export async function fetchDaejeonShopping(): Promise<DaejeonPlace[]> {
     const items = extractItems<RawShoppingItem>(data);
 
     const places = items
-      .map((item, index) => {
+      .map((item) => {
         const district = DISTRICTS.find((candidate) => item.shppgAddr.includes(candidate));
         if (!district) return null;
         const lat = parseCoordinate(item.mapLat);
         const lng = parseCoordinate(item.mapLot);
         if (lat === null || lng === null) return null;
         return {
-          id: `shopping-${index}`,
+          id: stableId("shopping", item.shppgNm, item.shppgAddr),
           name: item.shppgNm,
           category: "문화" as PlaceCategory,
           district,
@@ -200,7 +201,7 @@ export async function fetchDaejeonTourspots(): Promise<DaejeonPlace[]> {
     const data = await fetchDaejeonOpenApi("tourspot", { numOfRows: 200 });
     const items = extractItems<RawTourspotItem>(data);
 
-    const geocoded = await mapWithConcurrency(items, KAKAO_CONCURRENCY, async (item, index) => {
+    const geocoded = await mapWithConcurrency(items, KAKAO_CONCURRENCY, async (item) => {
       const district = DISTRICTS.find((candidate) => item.tourspotAddr.includes(candidate));
       if (!district) return null;
 
@@ -216,7 +217,7 @@ export async function fetchDaejeonTourspots(): Promise<DaejeonPlace[]> {
       }
 
       return {
-        id: `tourspot-${index}`,
+        id: stableId("tourspot", item.tourspotNm, item.tourspotAddr),
         name: item.tourspotNm,
         category: "산책" as PlaceCategory,
         district,

@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "@/components/shell/TopBar";
 import { TabPlaceholder } from "@/components/shell/TabPlaceholder";
 import { Tag } from "@/components/ui/Tag";
@@ -48,17 +49,26 @@ const EMOJI_CHOICES = [
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   useSyncCoursesFromApi();
   const courses = useCourseStore((state) => state.courses);
+  const courseIdAliases = useCourseStore((state) => state.courseIdAliases);
   const hasSynced = useCourseStore((state) => state.hasSynced);
   const updateCourse = useCourseStore((state) => state.updateCourse);
   const deleteCourse = useCourseStore((state) => state.deleteCourse);
   const schedules = useCourseStore((state) => state.schedules);
-  const course = courses.find((item) => item.id === params.courseId);
+  const resolvedCourseId = courseIdAliases[params.courseId] ?? params.courseId;
+  const course = courses.find((item) => item.id === resolvedCourseId);
   const courseSchedules = schedules
-    .filter((item) => item.courseId === params.courseId)
+    .filter((item) => item.courseId === resolvedCourseId)
     .sort((a, b) => a.date.localeCompare(b.date));
+
+  useEffect(() => {
+    if (resolvedCourseId !== params.courseId) {
+      router.replace(`/schedule/course/${resolvedCourseId}`);
+    }
+  }, [params.courseId, resolvedCourseId, router]);
 
   const captureRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -141,8 +151,15 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const cancelEditMode = () => setEditMode(false);
 
   const saveEditMode = () => {
-    if (draftLabel.trim().length === 0 || draftDays.every((day) => day.length === 0)) return;
-    updateCourse(course.id, { label: draftLabel.trim(), emoji: draftEmoji, days: draftDays });
+    // 하루라도 장소가 0곳이면 저장을 막는다 — 개별 삭제 버튼은 마지막 1곳을 못 지우게 막아두지만,
+    // 그 방어선과 별개로 저장 시점에도 한 번 더 확인한다.
+    if (draftLabel.trim().length === 0 || draftDays.some((day) => day.length === 0)) return;
+    // 백엔드 반영이 끝난 뒤에야 캐시를 무효화한다 — 그 전에 무효화하면 아직 수정 전 값을 든
+    // 서버 응답이 캐시를 다시 채워서, 보관함으로 돌아갔을 때 방금 고친 이모지·이름이 잠깐(또는
+    // 새로고침 전까지) 원래대로 보이는 문제가 생긴다.
+    updateCourse(course.id, { label: draftLabel.trim(), emoji: draftEmoji, days: draftDays })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["courses"] }))
+      .catch(() => {});
     setEditMode(false);
   };
 
@@ -281,6 +298,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                     <DayStops
                       day={day}
                       dayIndex={dayIndex}
+                      showMap={dayIndex === activeDay}
                       totalDays={displayDays.length}
                       onStopClick={goToPlace}
                       editMode={editMode}
@@ -311,6 +329,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               <DayStops
                 day={displayDays[0] ?? []}
                 dayIndex={0}
+                showMap
                 totalDays={1}
                 onStopClick={goToPlace}
                 editMode={editMode}
@@ -345,33 +364,34 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             <Button className="mt-3" onClick={() => router.push(`/schedule/course/${course.id}/schedule`)}>
               {courseSchedules.length > 0 ? (
                 <>
-                  <span>✏️</span>여행 계획 편집하기
+                  <span>📅</span>일정 관리하기
                 </>
               ) : (
                 <>
-                  <Emoji3D emoji="📅" size={16} shadow={false} />일정을 추가하기
+                  <span>📅</span>일정 추가하기
                 </>
               )}
             </Button>
-            <Button variant="secondary" className="mt-2" onClick={enterEditMode}>
-              <span>✏️</span>코스 편집하기
-            </Button>
-            <ResultShareActions
-              captureRef={captureRef}
-              fileName={`대저니유-${course.label}`}
-              kakaoTitle={course.label}
-              kakaoDescription={`${nightsLabel(course.nights)} · ${stopCount}곳 · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
-              path={`/schedule/course/${course.id}`}
-            />
-            {course.source !== "saved" && !course.shared ? (
-              <Button
-                variant="text"
-                className="mt-1"
-                onClick={() => router.push(`/schedule/course/${course.id}/share`)}
-              >
-                <Emoji3D emoji="🧭" size={16} shadow={false} />이 코스 둘러보기에 공유하기
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Button variant="secondary" onClick={enterEditMode}>
+                <span>✏️</span>코스 내용 편집
               </Button>
-            ) : null}
+              {course.source !== "saved" && !course.shared ? (
+                <Button variant="secondary" onClick={() => router.push(`/schedule/course/${course.id}/share`)}>
+                  <span>🧭</span>둘러보기에 공유
+                </Button>
+              ) : (
+                <span />
+              )}
+              <ResultShareActions
+                className="contents"
+                captureRef={captureRef}
+                fileName={`대저니유-${course.label}`}
+                kakaoTitle={course.label}
+                kakaoDescription={`${nightsLabel(course.nights)} · ${stopCount}곳 · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
+                path={`/schedule/course/${course.id}`}
+              />
+            </div>
           </>
         )}
       </div>
@@ -422,6 +442,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
 function DayStops({
   day,
   dayIndex,
+  showMap,
   totalDays,
   onStopClick,
   editMode,
@@ -431,6 +452,7 @@ function DayStops({
 }: {
   day: CourseStop[];
   dayIndex: number;
+  showMap: boolean;
   totalDays: number;
   onStopClick: (stop: CourseStop) => void;
   editMode: boolean;
@@ -477,7 +499,7 @@ function DayStops({
         <Emoji3D emoji="📍" size={14} shadow={false} />
         {totalDays > 1 ? `${dayIndex + 1}일차 동선` : "동선"} · {day.length}곳
       </div>
-      {!editMode ? <CourseRouteMap stops={day} /> : null}
+      {!editMode && showMap ? <CourseRouteMap stops={day} /> : null}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         {day.map((stop, stopIndex) => (
           <div
@@ -504,7 +526,7 @@ function DayStops({
                 ⠿
               </button>
             ) : null}
-            <StopThumbnail category={stop.category} imageUrl={stop.imageUrl} badge={stopIndex + 1} />
+            <StopThumbnail category={stop.category} placeId={stop.placeId} imageUrl={stop.imageUrl} badge={stopIndex + 1} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-ink">{stop.name}</div>
               <div className="mt-0.5 text-xs text-ink-muted">

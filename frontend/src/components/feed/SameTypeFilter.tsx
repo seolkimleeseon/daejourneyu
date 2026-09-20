@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { cn } from "@/lib/cn";
 
 interface SameTypeFilterProps {
@@ -15,33 +17,45 @@ interface SameTypeFilterProps {
  * 유형을 가진 건 **반려동물**이지 보호자가 아니다(루트 CLAUDE.md 도메인 용어).
  * 예전 문구 "같은 OOO 보호자 코스만 보기"는 유형을 사람에게 붙여 읽혀서 바꿨다.
  *
- * 기준이 될 유형이 없으면(반려동물 미등록·MBTI 미검사) 누를 수 없게 막는다 —
- * 필터가 걸릴 수 없는 상태라, 눌리기만 하고 아무 일도 안 일어나는 게 제일 나쁘다.
+ * 기준이 될 유형이 없으면(반려동물 미등록·MBTI 미검사) 필터로는 못 쓰지만, 눌렀을 때 아무 일도
+ * 안 일어나는 대신 MBTI 검사로 바로 보낸다 — 필터를 켤 수 있게 만드는 길을 눌러서 찾게 한다.
  */
 export function SameTypeFilter({ active, petTypeName, onToggle }: SameTypeFilterProps) {
+  const router = useRouter();
   const usable = petTypeName !== null;
+
+  const handleClick = () => {
+    if (usable) {
+      onToggle();
+    } else {
+      router.push("/schedule/course/new/mbti");
+    }
+  };
 
   return (
     <button
       type="button"
-      onClick={onToggle}
-      disabled={!usable}
+      onClick={handleClick}
       aria-pressed={active}
       className={cn(
         "flex w-full items-center gap-2 rounded-2xl px-3.5 py-2.5 text-left text-[11px] transition-colors",
         // 꺼져 있을 때도 옅은 민트를 깔아 "누를 수 있는 줄"로 보이게 한다 — 회색 바탕은
         // 주변 카드 배경과 구분이 안 돼 안내 문구처럼 읽혔다.
         !usable
-          ? "bg-surface text-ink-muted opacity-60"
+          ? "bg-surface text-ink-muted"
           : active
             ? "bg-accent-purple-light font-semibold text-accent-purple"
             : "bg-brand-50 text-brand-700"
       )}
     >
-      <span aria-hidden>{usable ? (active ? "✓" : "○") : "🐾"}</span>
+      {usable ? (
+        <span aria-hidden>{active ? "✓" : "○"}</span>
+      ) : (
+        <Emoji3D emoji="🐾" size={15} shadow={false} />
+      )}
       {usable
         ? `우리 아이와 같은 유형 · ${petTypeName} 코스만 보기`
-        : "MBTI를 검사하면 같은 유형 코스만 모아볼 수 있어요"}
+        : "MBTI를 검사하면 같은 유형 코스만 모아볼 수 있어요 · 검사하러 가기 ›"}
     </button>
   );
 }

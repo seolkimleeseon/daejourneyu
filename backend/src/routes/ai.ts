@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ApiError, Type } from "@google/genai";
 import { gemini, GEMINI_MODEL } from "../lib/gemini";
+import { bakeryBrandKey } from "../lib/bakeries";
 
 type Transport = "자차" | "대중교통";
 const TRANSPORTS: Transport[] = ["자차", "대중교통"];
@@ -12,7 +13,53 @@ type CandidatePlace = {
   district: string;
   condition: string;
   petFriendly: boolean;
+  lat?: number;
+  lng?: number;
 };
+
+const MAX_DAY_ROUTE_KM = 16;
+const MAX_LEG_KM = 10;
+
+function distanceKm(a: CandidatePlace, b: CandidatePlace): number | null {
+  if (a.lat === undefined || a.lng === undefined || b.lat === undefined || b.lng === undefined) return null;
+  const rad = (degrees: number) => degrees * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+
+/** 장소가 최대 5곳이라 가능한 순서를 모두 비교할 수 있다. 좌표가 없으면 AI의 순서를 유지한다. */
+function shortestDayRoute(places: CandidatePlace[]): CandidatePlace[] {
+  if (places.some((place) => place.lat === undefined || place.lng === undefined)) return places;
+  let best = places;
+  let bestDistance = Infinity;
+  const visit = (route: CandidatePlace[], rest: CandidatePlace[], distance: number) => {
+    if (distance >= bestDistance) return;
+    if (rest.length === 0) {
+      best = route;
+      bestDistance = distance;
+      return;
+    }
+    rest.forEach((place, index) => visit(
+      [...route, place], [...rest.slice(0, index), ...rest.slice(index + 1)],
+      distance + (route.length ? distanceKm(route[route.length - 1], place)! : 0)
+    ));
+  };
+  visit([], places, 0);
+  return best;
+}
+
+function routeIsNear(route: CandidatePlace[]): boolean {
+  let total = 0;
+  for (let i = 1; i < route.length; i++) {
+    const leg = distanceKm(route[i - 1], route[i]);
+    if (leg === null) continue;
+    if (leg > MAX_LEG_KM) return false;
+    total += leg;
+  }
+  return total <= MAX_DAY_ROUTE_KM;
+}
 
 function isValidCandidatePlace(p: unknown): p is CandidatePlace {
   return (
@@ -23,7 +70,9 @@ function isValidCandidatePlace(p: unknown): p is CandidatePlace {
     typeof (p as CandidatePlace).category === "string" &&
     typeof (p as CandidatePlace).district === "string" &&
     typeof (p as CandidatePlace).condition === "string" &&
-    typeof (p as CandidatePlace).petFriendly === "boolean"
+    typeof (p as CandidatePlace).petFriendly === "boolean" &&
+    ((p as CandidatePlace).lat === undefined && (p as CandidatePlace).lng === undefined ||
+      Number.isFinite((p as CandidatePlace).lat) && Number.isFinite((p as CandidatePlace).lng))
   );
 }
 
@@ -38,10 +87,31 @@ function validateRequest(body: unknown): body is SuggestionRequest {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
   if (typeof b.prompt !== "string" || b.prompt.trim().length === 0) return false;
-  if (typeof b.nights !== "number" || b.nights < 0) return false;
+  if (!Number.isInteger(b.nights) || (b.nights as number) < 0 || (b.nights as number) > 4) return false;
   if (!TRANSPORTS.includes(b.transport as Transport)) return false;
   if (!Array.isArray(b.candidatePlaces) || b.candidatePlaces.length === 0) return false;
-  return b.candidatePlaces.every(isValidCandidatePlace);
+  return b.candidatePlaces.length <= 80 && b.candidatePlaces.every(isValidCandidatePlace) &&
+    b.candidatePlaces.filter((place: CandidatePlace) => place.petFriendly).length >= 2;
+}
+
+function isAllowedForPrompt(place: CandidatePlace, prompt: string): boolean {
+  return place.petFriendly || (/빵지순례|빵집|베이커리|제과점/.test(prompt) &&
+    place.id.startsWith("bakery-") && place.condition.includes("동반 가능 여부는 방문 전 매장에 확인해주세요"));
+}
+
+function matchesCourseIntent(days: string[][], byId: Map<string, CandidatePlace>, prompt: string): boolean {
+  const bakeryIntent = /빵지순례|빵집|베이커리|제과점/.test(prompt);
+  if (bakeryIntent) return days.every((day) =>
+    new Set(day.filter((id) => id.startsWith("bakery-")).map((id) => bakeryBrandKey(byId.get(id)!.name))).size >= 2 &&
+    day.some((id) => {
+      const place = byId.get(id);
+      return place?.petFriendly && (place.category === "산책" || place.category === "놀이터");
+    })
+  );
+
+  // 한 종류만 명시한 요청은 그대로 존중한다. 일반 코스는 가능한 한 매일 식사 장소를 포함한다.
+  if (/(?:산책|놀이터|문화|맛집|카페)(?:만|만으로|만 해|만 보여)/.test(prompt)) return true;
+  return days.every((day) => day.some((id) => byId.get(id)?.category === "맛집"));
 }
 
 interface ParsedSuggestion {
@@ -53,16 +123,23 @@ interface ParsedSuggestion {
 function sanitizeSuggestion(raw: unknown, validIds: Set<string>, dayCount: number): ParsedSuggestion | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
-  if (typeof r.label !== "string" || !Array.isArray(r.days)) return null;
+  if (typeof r.label !== "string" || !r.label.trim() || !Array.isArray(r.days) || r.days.length !== dayCount) return null;
 
-  const days = r.days
-    .filter((day): day is unknown[] => Array.isArray(day))
-    .map((day) => day.filter((id): id is string => typeof id === "string" && validIds.has(id)))
-    .filter((day) => day.length >= 2)
-    .slice(0, dayCount);
-
-  if (days.length === 0) return null;
-  return { label: r.label, days };
+  const used = new Set<string>();
+  const days: string[][] = [];
+  for (const rawDay of r.days) {
+    if (!Array.isArray(rawDay)) return null;
+    const day: string[] = [];
+    for (const id of rawDay) {
+      if (typeof id !== "string" || !validIds.has(id) || used.has(id)) continue;
+      used.add(id);
+      day.push(id);
+      if (day.length === 5) break;
+    }
+    if (day.length < 2) return null;
+    days.push(day);
+  }
+  return { label: r.label.trim(), days };
 }
 
 type ParsedResponse = { responseType: "chat"; message: string } | { responseType: "course"; suggestion: ParsedSuggestion };
@@ -98,7 +175,7 @@ router.post("/course-suggestion", async (req, res) => {
   }
   const { prompt, nights, transport, candidatePlaces } = req.body;
 
-  const placeIds = candidatePlaces.map((place) => place.id);
+  const placeIds = [...new Set(candidatePlaces.filter((place: CandidatePlace) => isAllowedForPrompt(place, prompt)).map((place: CandidatePlace) => place.id))];
   const validIds = new Set(placeIds);
   const dayCount = nights + 1;
 
@@ -135,10 +212,10 @@ router.post("/course-suggestion", async (req, res) => {
     required: ["responseType"],
   };
 
-  const placesDescription = candidatePlaces
+  const placesDescription = candidatePlaces.filter((place: CandidatePlace) => isAllowedForPrompt(place, prompt))
     .map(
       (place) =>
-        `- ${place.id}: ${place.name} (${place.district} · ${place.category} · ${place.petFriendly ? "동반가능" : "동반불가"} · ${place.condition})`
+        `- ${place.id}: ${place.name} (${place.district} · ${place.category} · ${place.petFriendly ? "동반가능" : "동반 여부 미확인"} · ${place.condition}${place.lat === undefined ? "" : ` · ${place.lat},${place.lng}`})`
     )
     .join("\n");
 
@@ -155,7 +232,12 @@ router.post("/course-suggestion", async (req, res) => {
           "반드시 responseType을 chat으로 하고 message에 짧고 친근하게 답해 — 이때는 절대 코스를 지어내지 마. " +
           "사용자가 실제로 갈 곳이나 코스를 원할 때만 responseType을 course로 하고, " +
           "아래 후보 장소 목록에 있는 id만 사용해서 하루 2~5곳씩 동선을 짜. " +
-          "목록에 없는 장소를 지어내면 안 돼. 같은 날엔 가까운 지역끼리 묶어서 동선이 자연스럽게 해줘.",
+          "목록에 없는 장소를 지어내면 안 돼. 여러 날에 같은 장소를 반복하지 마. " +
+          "하루 이동은 직선거리 합계 16km 이내, 한 구간은 10km 이내로 묶어. " +
+          "산책 코스나 문화 코스처럼 테마가 있어도 산책·놀이터·맛집·문화를 가능한 범위에서 섞고, 매일 식사할 곳을 포함해. " +
+          "사용자가 명시적으로 한 종류의 장소만 요청한 경우에는 그 요청을 우선해. " +
+          "빵지순례 요청이면 bakery- id인 빵집 2~3곳을 가까운 산책 장소와 함께 고르고, 빵집의 반려동물 동반 여부는 반드시 확인 필요하다고 안내해. " +
+          "사용자의 취향과 방문 조건을 먼저 지켜줘.",
         responseMimeType: "application/json",
         responseSchema,
       },
@@ -176,9 +258,15 @@ router.post("/course-suggestion", async (req, res) => {
     }
 
     const byId = new Map(candidatePlaces.map((place) => [place.id, place]));
-    const days = parsed.suggestion.days.map((day) =>
-      day.map((placeId) => {
-        const place = byId.get(placeId)!;
+    if (!matchesCourseIntent(parsed.suggestion.days, byId, prompt)) {
+      return res.status(502).json({ error: "요청한 테마에 맞는 코스를 만들지 못했어요. 다시 시도해주세요" });
+    }
+    const routedDays = parsed.suggestion.days.map((day) => shortestDayRoute(day.map((placeId) => byId.get(placeId)!)));
+    if (routedDays.some((day) => !routeIsNear(day))) {
+      return res.status(502).json({ error: "가까운 장소로 코스를 만들지 못했어요. 지역이나 조건을 바꿔 다시 시도해주세요" });
+    }
+    const days = routedDays.map((day) =>
+      day.map((place) => {
         return {
           placeId: place.id,
           name: place.name,

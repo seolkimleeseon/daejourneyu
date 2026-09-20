@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearestNeighborRoute, routeDistanceKm } from "@/lib/nearestNeighborRoute";
+import { nearestNeighborRoute, routeDistanceKm, shortestRoute } from "@/lib/nearestNeighborRoute";
 
 /** 대전 시내 좌표 몇 곳 — 서→동으로 갈수록 lng이 커진다. */
 const 서구 = { id: "서구", lat: 36.351, lng: 127.384 };
@@ -74,5 +74,14 @@ describe("routeDistanceKm", () => {
     const backward = routeDistanceKm([중구, 유성구, 서구]);
 
     expect(forward).toBeCloseTo(backward, 6);
+  });
+});
+
+describe("shortestRoute", () => {
+  it("시작점까지 바꿔 가장 짧은 방문 순서를 고른다", () => {
+    const places = [동구, 서구, 유성구, 중구];
+    const route = shortestRoute(places);
+    expect(routeDistanceKm(route)).toBeLessThanOrEqual(routeDistanceKm(nearestNeighborRoute(places)));
+    expect(new Set(route.map((place) => place.id)).size).toBe(4);
   });
 });

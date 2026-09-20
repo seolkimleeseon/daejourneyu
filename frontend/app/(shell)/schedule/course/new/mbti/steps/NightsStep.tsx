@@ -11,12 +11,15 @@ interface NightsStepProps {
   nights: number;
   onChangeNights: (nights: number) => void;
   onNext: () => void;
+  /** 실제 장소 데이터를 아직 불러오는 중이면 true — 이 상태에서 생성하면 실데이터 없이
+   * 목데이터만으로 코스가 만들어질 수 있어 로딩이 끝날 때까지 다음 단계로 못 넘어가게 막는다. */
+  placesLoading?: boolean;
 }
 
 const QUICK_OPTIONS = [0, 1, 2];
 const MAX_NIGHTS = 4;
 
-export function NightsStep({ theme, nights, onChangeNights, onNext }: NightsStepProps) {
+export function NightsStep({ theme, nights, onChangeNights, onNext, placesLoading }: NightsStepProps) {
   const clamp = (value: number) => Math.max(0, Math.min(MAX_NIGHTS, value));
 
   return (
@@ -58,8 +61,8 @@ export function NightsStep({ theme, nights, onChangeNights, onNext }: NightsStep
         <br />
         저장 후 [일정을 추가하기]에서 고르면 돼요
       </div>
-      <Button className="mt-4" onClick={onNext}>
-        다음
+      <Button className="mt-4" onClick={onNext} disabled={placesLoading}>
+        {placesLoading ? "장소 정보를 불러오는 중..." : "다음"}
       </Button>
     </div>
   );

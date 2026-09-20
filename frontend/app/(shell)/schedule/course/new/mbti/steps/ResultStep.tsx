@@ -31,7 +31,9 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
             <span>DAEJEONIYU</span>
           </div>
 
-          <MbtiCharacter code={code} name={type.name} size={112} />
+          <div className="flex justify-center">
+            <MbtiCharacter code={code} name={type.name} size={112} />
+          </div>
 
           <div className="text-xl font-extrabold tracking-wide text-accent-purple">{code}</div>
           <div className="mb-1.5 text-sm font-bold text-ink">{type.name}</div>
@@ -50,7 +52,7 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
         </div>
 
         <div className="p-4 text-center">
-          <div className="mb-4 rounded-xl bg-surface p-3">
+          <div className="mb-4 rounded-xl border border-line bg-surface p-3">
             <div className="mb-2 text-left text-xs font-bold text-ink-muted">성향 그래프</div>
             <TraitStatBar label="사교성" value={type.stats.social} />
             <TraitStatBar label="탐험성" value={type.stats.explore} />
@@ -58,7 +60,7 @@ export function ResultStep({ code, onContinue, onRetake }: ResultStepProps) {
             <TraitStatBar label={structureAxisLabel(code)} value={structureAxisValue(code, type.stats)} />
           </div>
 
-          <div className="mb-4 rounded-xl bg-surface p-3 text-left">
+          <div className="mb-4 rounded-xl border border-line bg-surface p-3 text-left">
             <div className="mb-1 flex items-center gap-1 text-xs font-bold text-ink">
               <Emoji3D emoji="🐾" size={14} shadow={false} />찰떡 코스
             </div>

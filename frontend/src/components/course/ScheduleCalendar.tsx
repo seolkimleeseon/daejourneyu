@@ -34,6 +34,13 @@ function toYmd(year: number, month0: number, day: number) {
   return `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
 }
 
+/** YYYY-MM-DD에서 days만큼 지난 날짜(YYYY-MM-DD). 월 넘어가는 계산은 Date에 맡긴다. */
+function addDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const date = new Date(y, m - 1, d + days);
+  return toYmd(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 /**
  * 내 여정(SCHEDULE) 탭의 '캘린더' 세그. 홈의 축제 캘린더(app/(shell)/home/festival)와 달 그리드
  * 구조는 동일하지만, 표시 대상이 축제가 아니라 내가 코스에 등록한 일정(CourseSchedule)이다.
@@ -94,6 +101,29 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
   const selectedSchedules = schedules.filter((schedule) => schedule.date === selectedDate);
 
+  /** 당일치기(0박)는 점 하나로 표시한다. */
+  const dotDates = useMemo(() => {
+    const set = new Set<string>();
+    schedules.forEach((schedule) => {
+      const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
+      if (nights === 0) set.add(schedule.date);
+    });
+    return set;
+  }, [schedules, courses]);
+
+  /** 1박 이상은 시작일부터 박수만큼 이어지는 기간에 속한 날짜마다 짧은 선을 표시한다. */
+  const overnightDates = useMemo(() => {
+    const set = new Set<string>();
+    schedules.forEach((schedule) => {
+      const nights = courses.find((course) => course.id === schedule.courseId)?.nights ?? 0;
+      if (nights === 0) return;
+      for (let offset = 0; offset <= nights; offset++) {
+        set.add(addDays(schedule.date, offset));
+      }
+    });
+    return set;
+  }, [schedules, courses]);
+
   return (
     <div className="px-4 pb-6 pt-4">
       <div className="mb-2 flex items-center justify-between">
@@ -119,7 +149,8 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
       <div className="grid grid-cols-7 gap-1">
         {cells.map((cell, i) => {
           if (!cell) return <div key={`empty-${i}`} />;
-          const hasSchedule = schedules.some((schedule) => schedule.date === cell.date);
+          const hasDot = dotDates.has(cell.date);
+          const hasOvernight = !hasDot && overnightDates.has(cell.date);
           const isToday = cell.date === todayYmd;
           const isSelected = cell.date === selectedDate;
           return (
@@ -128,20 +159,26 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
               type="button"
               onClick={() => setSelectedDate(cell.date)}
               className={cn(
-                "flex aspect-square flex-col items-center justify-start gap-1 rounded-lg border border-line pt-1 text-[10px] text-ink",
+                "relative flex aspect-square flex-col items-center justify-start rounded-lg border border-line pt-1 text-[10px] text-ink",
                 isSelected && "border-brand-400 bg-brand-100",
                 isToday && !isSelected && "border-brand"
               )}
             >
               <span>{cell.day}</span>
-              {hasSchedule ? <span className="h-1 w-1 rounded-full bg-brand" /> : null}
+              {hasDot ? <span className="mt-1 h-1 w-1 rounded-full bg-brand" /> : null}
+              {hasOvernight ? <span className="mt-1 h-[3px] w-2.5 rounded-full bg-accent-coral" /> : null}
             </button>
           );
         })}
       </div>
 
-      <div className="mt-2 flex items-center gap-1.5 text-[10px] text-ink-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 예정된 일정
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-ink-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 당일치기
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-[3px] w-2.5 rounded-full bg-accent-coral" /> 1박 이상
+        </span>
       </div>
 
       <div className="mb-1 mt-5 flex items-center justify-between px-1">

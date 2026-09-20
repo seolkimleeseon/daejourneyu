@@ -33,6 +33,11 @@ function dayCell(day: string): HTMLElement {
   return screen.getAllByRole("button").find((button) => button.textContent === day)!;
 }
 
+/** 1박 이상 일정에 속한 날짜 칸 아래에 뜨는 짧은 선 표시가 있는지. */
+function hasOvernightMark(day: string): boolean {
+  return dayCell(day).querySelector(".bg-accent-coral") !== null;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -70,11 +75,42 @@ describe("달 그리드", () => {
   });
 
   it("일정이 있는 날에 점을 찍는다", () => {
-    useCourseStore.setState({ schedules: [makeSchedule({ id: "s1", date: "2026-09-20" })] });
+    useCourseStore.setState({
+      courses: [makeCourse({ id: "course-1", nights: 0 })],
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-20" })],
+    });
     render(<ScheduleCalendar />);
 
     expect(dayCell("20").querySelector(".rounded-full")).toBeTruthy();
     expect(dayCell("21").querySelector(".rounded-full")).toBeNull();
+  });
+
+  it("여러 박이면 묵는 날짜마다 짧은 선을 표시한다 — 2박3일이 하루짜리 점처럼 보이지 않게", () => {
+    useCourseStore.setState({
+      courses: [makeCourse({ id: "course-1", nights: 2 })],
+      // 2026-09-20(일)~22(화) — 한 주 안에 다 들어간다.
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-20" })],
+    });
+    render(<ScheduleCalendar />);
+
+    expect(hasOvernightMark("20")).toBe(true);
+    expect(hasOvernightMark("21")).toBe(true);
+    expect(hasOvernightMark("22")).toBe(true);
+    expect(hasOvernightMark("19")).toBe(false);
+    expect(hasOvernightMark("23")).toBe(false);
+  });
+
+  it("주를 넘어가는 일정도 묵는 기간의 날짜마다 빠짐없이 표시한다", () => {
+    useCourseStore.setState({
+      courses: [makeCourse({ id: "course-1", nights: 2 })],
+      // 2026-09-26(토)~27(일)~28(월) — 주 경계를 넘어간다.
+      schedules: [makeSchedule({ id: "s1", courseId: "course-1", date: "2026-09-26" })],
+    });
+    render(<ScheduleCalendar />);
+
+    expect(hasOvernightMark("26")).toBe(true);
+    expect(hasOvernightMark("27")).toBe(true);
+    expect(hasOvernightMark("28")).toBe(true);
   });
 
   it("날짜를 누르면 그 날 일정으로 바꾼다", async () => {

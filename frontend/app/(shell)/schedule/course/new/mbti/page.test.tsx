@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MBTI_QUESTIONS, MBTI_TYPES, scoreAnswers } from "@/lib/mbti";
+import { MBTI_QUESTIONS, MBTI_TYPES, scoreAnswers, topTheme } from "@/lib/mbti";
 import type { PickablePlace } from "@/lib/petTourMapper";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
@@ -240,13 +240,20 @@ describe("코스 만들기", () => {
     expect(screen.getByText("산책형 코스로 추천해드려요")).toBeTruthy();
   });
 
-  it("당일치기는 한 날에 3곳을 담는다", async () => {
+  it("당일치기는 가까운 곳에서 네 카테고리를 모두 담는다", async () => {
     const { container, user } = setup();
     await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
 
     await user.click(screen.getByRole("button", { name: "다음" }));
 
-    expect(generatedDays(container)).toEqual([["유성맛집1", "유성산책1", "유성산책2"]]);
+    const days = generatedDays(container);
+    expect(days).toHaveLength(1);
+    expect(days[0]).toHaveLength(4);
+    expect(days[0].some((name) => name.startsWith("유성맛집"))).toBe(true);
+    expect(days[0].filter((name) => name.includes("맛집"))).toHaveLength(1);
+    expect(days[0].some((name) => name.includes("산책"))).toBe(true);
+    expect(days[0].some((name) => name.includes("놀이터"))).toBe(true);
+    expect(days[0].some((name) => name.includes("문화"))).toBe(true);
   });
 
   it("여러 날이면 날마다 다른 구를 배정한다 — 하루 동선이 대전 전역으로 흩어지지 않게", async () => {
@@ -256,10 +263,46 @@ describe("코스 만들기", () => {
 
     await user.click(screen.getByRole("button", { name: "다음" }));
 
-    expect(generatedDays(container)).toEqual([
-      ["유성맛집1", "유성산책1"],
-      ["서구맛집1", "서구산책1"],
-    ]);
+    const days = generatedDays(container);
+    expect(days).toHaveLength(2);
+    expect(days[0]).toHaveLength(3);
+    expect(days[1]).toHaveLength(3);
+    expect(days[0].some((name) => name.startsWith("유성맛집"))).toBe(true);
+    expect(days[1].some((name) => name.startsWith("서구맛집"))).toBe(true);
+    expect(days.flat().some((name) => name.includes("놀이터"))).toBe(true);
+    expect(days.flat().some((name) => name.includes("문화"))).toBe(true);
+  });
+
+  it("다른 코스를 요청하면 첫 지역과 동선을 바꾼다", async () => {
+    const { container, user } = setup();
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
+    await user.click(screen.getByRole("button", { name: "다음" }));
+
+    expect(generatedDays(container)[0].some((name) => name.startsWith("유성맛집"))).toBe(true);
+    await user.click(screen.getByRole("button", { name: "다른 코스 추천받기" }));
+    expect(generatedDays(container)[0].some((name) => name.startsWith("서구맛집"))).toBe(true);
+  });
+
+  it("생성할 때마다 뽑히는 장소가 달라질 수 있다 — 매번 똑같은 코스만 나오지 않게", async () => {
+    // 유성구 산책 후보가 3곳이라 여러 번 생성해보면 다른 산책 장소가 나와야 한다(운 나쁘게 계속 같은 조합만
+    // 나올 확률은 사실상 0에 가깝다).
+    const { container, user } = setup();
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
+
+    const walkNamesAt = async () => {
+      await user.click(screen.getByRole("button", { name: "다음" }));
+      const names = generatedDays(container)[0].filter((name) => name.includes("산책")).sort();
+      await user.click(screen.getByRole("button", { name: "‹ 뒤로" }));
+      return names;
+    };
+
+    const first = await walkNamesAt();
+    const results = [first];
+    for (let i = 0; i < 15; i++) {
+      results.push(await walkNamesAt());
+    }
+
+    expect(results.some((names) => names.join(",") !== first.join(","))).toBe(true);
   });
 
   it("테마가 맛집이 아니어도 날마다 맛집을 한 곳 넣는다 — 밥 먹을 곳은 있어야 한다", async () => {
@@ -284,6 +327,28 @@ describe("코스 만들기", () => {
     const all = generatedDays(container).flat();
     expect(new Set(all).size).toBe(all.length);
   });
+
+  it("맛집형은 가까운 식사 장소 두 곳과 다른 활동을 함께 담는다", async () => {
+    const code = Object.keys(MBTI_TYPES).find((key) => topTheme(MBTI_TYPES[key]) === "맛집")!;
+    enterWithSavedResult(code);
+    const { container, user } = setup();
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
+    await user.click(screen.getByRole("button", { name: "다음" }));
+    const names = generatedDays(container)[0];
+    expect(names.filter((name) => name.includes("맛집"))).toHaveLength(2);
+    expect(names.some((name) => name.includes("산책"))).toBe(true);
+  });
+
+  it("같은 구에 있어도 이동 반경 밖인 장소는 끼워 넣지 않는다", async () => {
+    pickable.usePickablePlaces.mockReturnValue({ data: [
+      ...pool.filter((place) => place.id !== "uc1"),
+      pick({ id: "remote", name: "멀리 있는 문화", district: "유성구", category: "문화", lat: 36.8, lng: 127.9 }),
+    ] });
+    const { container, user } = setup();
+    await user.click(screen.getByRole("button", { name: /이 성향으로 코스 만들기/ }));
+    await user.click(screen.getByRole("button", { name: "다음" }));
+    expect(generatedDays(container).flat()).not.toContain("멀리 있는 문화");
+  });
 });
 
 describe("저장과 뒤로가기", () => {
@@ -304,7 +369,7 @@ describe("저장과 뒤로가기", () => {
 
     expect(addCourse).toHaveBeenCalledWith(
       expect.objectContaining({
-        label: "청량 힐링 산책 데이",
+        label: "유성구 청량 힐링 산책 데이",
         nights: 0,
         transport: "자차",
         source: "ai",
@@ -314,15 +379,15 @@ describe("저장과 뒤로가기", () => {
     expect(nav.push).toHaveBeenCalledWith("/schedule");
   });
 
-  it("실 API가 빈손이어도 목데이터로 채워 빈 코스를 내놓지 않는다", async () => {
+  it("실 API가 빈손이면 예시 장소로 코스를 지어내지 않고 저장을 막는다", async () => {
     pickable.usePickablePlaces.mockReturnValue({ data: [] });
     const { container, user } = setup();
 
     await generate(user);
 
-    expect(generatedDays(container)[0].length).toBeGreaterThan(0);
+    expect(generatedDays(container)[0]).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "코스 저장하기" }));
-    expect(addCourse).toHaveBeenCalled();
+    expect(addCourse).not.toHaveBeenCalled();
   });
 
   it("비로그인이면 저장하지 않고 로그인부터 받는다", async () => {

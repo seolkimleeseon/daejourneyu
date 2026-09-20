@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Pet } from "@/types";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { cn } from "@/lib/cn";
 
 interface PetSwitcherProps {
@@ -68,8 +69,9 @@ export function PetSwitcher({ pets, activeIndex, onSwitch, onAddPet }: PetSwitch
               open ? "border-brand" : "border-brand-300"
             )}
           >
-            <span className="truncate">
-              {activePet.emoji} {activePet.name}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Emoji3D emoji={activePet.emoji} size={16} shadow={false} />
+              <span className="truncate">{activePet.name}</span>
             </span>
             <span
               aria-hidden
@@ -97,8 +99,9 @@ export function PetSwitcher({ pets, activeIndex, onSwitch, onAddPet }: PetSwitch
                       index === activeIndex ? "bg-brand-100 text-brand-700" : "text-ink"
                     )}
                   >
-                    <span className="truncate">
-                      {pet.emoji} {pet.name}
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Emoji3D emoji={pet.emoji} size={16} shadow={false} />
+                      <span className="truncate">{pet.name}</span>
                     </span>
                     {index === activeIndex ? (
                       <span aria-hidden className="shrink-0 text-[11px]">

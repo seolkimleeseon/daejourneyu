@@ -22,6 +22,7 @@ import { PET_ACP_FACILITIES } from "./petAcpFacilities";
 import { DAEJEON_DOG_PARKS } from "./daejeonDogParks";
 import { assertKakaoRestKey, fetchPlaceImage } from "./kakaoLocal";
 import { mapWithConcurrency } from "./concurrency";
+import { stableId } from "./stableId";
 
 export type PlaceCategory = "산책" | "놀이터" | "맛집" | "문화";
 const DISTRICTS = ["유성구", "중구", "동구", "대덕구", "서구"];
@@ -229,7 +230,7 @@ const PETACP_CATEGORY: Record<string, PlaceCategory> = {
 
 function loadPetAcpFacilities(): AggregatedPlace[] {
   const rows: AggregatedPlace[] = [];
-  PET_ACP_FACILITIES.forEach((entry, index) => {
+  PET_ACP_FACILITIES.forEach((entry) => {
     const category = PETACP_CATEGORY[entry.category];
     if (!category || !DISTRICTS.includes(entry.district) || !isFinitePoint(entry.lat, entry.lng)) return;
 
@@ -246,7 +247,7 @@ function loadPetAcpFacilities(): AggregatedPlace[] {
       : "문화체육관광부 반려동물 동반가능 시설 현황(2023) 조사 · 반려동물 동반 불가로 확인됨";
 
     rows.push({
-      id: `petacp-${index}`,
+      id: stableId("petacp", entry.name, entry.district),
       name: entry.name,
       category,
       district: entry.district,
@@ -309,6 +310,8 @@ const IMAGE_SEARCH_HINT: Record<PlaceCategory, string> = {
 
 /** 이미지 보강 동시 요청 상한 — 레이트리밋 방지(kakaoLocal.ts의 다른 호출부와 동일 값). */
 const IMAGE_BACKFILL_CONCURRENCY = 8;
+/** 목록 로딩을 수백 건의 이미지 검색이 막지 않도록 보강 대상을 제한한다. */
+const IMAGE_BACKFILL_LIMIT = 24;
 
 /** 소스별 fetch 단계에서 이미지를 못 채운 행을 dedupe 이후 한 번 더 훑어 카카오 이미지 검색으로 채운다. */
 async function backfillMissingImages(rows: AggregatedPlace[]): Promise<void> {
@@ -319,7 +322,7 @@ async function backfillMissingImages(rows: AggregatedPlace[]): Promise<void> {
     return;
   }
 
-  const missing = rows.filter((row) => !row.imageUrl);
+  const missing = rows.filter((row) => !row.imageUrl).slice(0, IMAGE_BACKFILL_LIMIT);
   if (!missing.length) return;
 
   const images = await mapWithConcurrency(missing, IMAGE_BACKFILL_CONCURRENCY, (row) =>

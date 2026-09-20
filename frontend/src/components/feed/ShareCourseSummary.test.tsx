@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ShareCourseSummary } from "@/components/feed/ShareCourseSummary";
 import { makeCourse, makeStop } from "@/test/fixtures";
+import { icon3D } from "@/test/icon3d";
 
 describe("ShareCourseSummary", () => {
   it("코스 이름과 일정 길이·이동수단·전체 장소 수, 출처를 보여준다", () => {
@@ -22,9 +23,9 @@ describe("ShareCourseSummary", () => {
 
   it("고른 이모지가 없으면 출처별 기본 이모지를 쓴다", () => {
     const { rerender } = render(<ShareCourseSummary course={makeCourse({ emoji: null, source: "saved" })} />);
-    expect(screen.getByText("🔖")).toBeTruthy();
+    expect(icon3D("bookmark_3d.png")).toBeTruthy();
 
     rerender(<ShareCourseSummary course={makeCourse({ emoji: "🌲", source: "saved" })} />);
-    expect(screen.getByText("🌲")).toBeTruthy();
+    expect(icon3D("evergreen_tree_3d.png")).toBeTruthy();
   });
 });

@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { FeedSegments, type FeedSegment } from "@/components/feed/FeedSegments";
 import { FeedSortSelect } from "@/components/feed/FeedSortSelect";
 import { FeedSearchBar } from "@/components/feed/FeedSearchBar";
@@ -35,7 +36,7 @@ const ARTICLE_SORT_OPTIONS: { value: ArticleSortMode; label: string }[] = [
  * 쓰는 이유는, 아티클이 목록의 끝(둘러보기 탭의 마지막 섹션)이라 스크롤이 계속 늘어나면
  * 페이지 바닥에 닿을 수가 없기 때문이다 — 더 볼지는 사용자가 정한다.
  */
-const ARTICLE_PAGE_SIZE = 4;
+const ARTICLE_PAGE_SIZE = 10;
 
 export default function FeedPage() {
   return (
@@ -139,6 +140,20 @@ function FeedTabContent() {
     replaceQuery({ tab: next, sort: articleSort });
   };
 
+  /**
+   * "새 코스 자랑하기"가 예전엔 '내 글' 탭 안에만 있어서, 그 탭에 들어가 보기 전엔 글을 쓸 수
+   * 있다는 것 자체를 몰랐다는 피드백이 있었다 — '코스'·'아티클' 탭에서도 바로 쓸 수 있게 떠
+   * 있는 버튼을 하나 더 둔다('내 글' 탭은 이미 상단에 같은 버튼이 있어 중복이라 뺀다).
+   */
+  const handleWriteClick = () => {
+    if (!hydrated) return;
+    if (!isLoggedIn) {
+      setLoginOpen(true);
+      return;
+    }
+    router.push("/schedule/vault");
+  };
+
   return (
     <>
       <TopBar title="둘러보기" />
@@ -174,13 +189,18 @@ function FeedTabContent() {
                     0건일 때는 아래 빈 상태 안내가 같은 말을 하므로 숫자는 접는다. */}
                 <div className="flex items-center gap-2 px-0.5">
                   {courseTotal > 0 ? (
-                    <p className="text-[11px] text-ink-muted">
+                    <p className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
                       {searching ? (
                         <>
-                          🔍 전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
+                          <Emoji3D emoji="🔍" size={12} shadow={false} />
+                          <span>
+                            전체 코스에서 <b className="text-ink">&lsquo;{keyword}&rsquo;</b> 검색 ·{" "}
+                          </span>
                         </>
                       ) : null}
-                      총 <b className="text-ink">{courseTotal}</b>개
+                      <span>
+                        총 <b className="text-ink">{courseTotal}</b>개
+                      </span>
                     </p>
                   ) : null}
                   <FeedSortSelect
@@ -268,9 +288,10 @@ function FeedTabContent() {
             {/* 코스 작성 화면은 포팅 대상이 아니므로(PLAN.md §1) 보관함에서 공유할 코스를 고르게 한다. */}
             <Link
               href="/schedule/vault"
-              className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand text-sm font-extrabold text-white shadow-md"
+              className="flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-brand-500 to-brand text-sm font-extrabold text-white shadow-md"
             >
-              ✎ 새 코스 자랑하기
+              <Emoji3D emoji="✍️" size={18} shadow={false} />
+              새 코스 자랑하기
             </Link>
 
             {myPostsLoading ? (
@@ -306,6 +327,18 @@ function FeedTabContent() {
           </div>
         ) : null}
       </div>
+
+      {segment !== "mine" ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[92px] z-20 mx-auto flex w-full max-w-[480px] justify-end px-4">
+          <button
+            type="button"
+            onClick={handleWriteClick}
+            className="pointer-events-auto flex h-12 items-center gap-1.5 rounded-full bg-gradient-to-br from-brand-500 to-brand px-4 text-sm font-extrabold text-white shadow-lg active:scale-95"
+          >
+            ✎ 코스 자랑하기
+          </button>
+        </div>
+      ) : null}
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>

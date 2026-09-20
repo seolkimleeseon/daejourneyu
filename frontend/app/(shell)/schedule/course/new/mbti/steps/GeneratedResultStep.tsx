@@ -19,7 +19,10 @@ interface GeneratedResultStepProps {
   transport: Transport;
   days: Place[][];
   courseTitle: string;
+  routeLabel?: string;
+  bakeryMode?: boolean;
   onReorderDay: (dayIndex: number, next: Place[]) => void;
+  onRegenerate: () => void;
   onSave: () => void;
   onGoHome: () => void;
 }
@@ -30,7 +33,10 @@ export function GeneratedResultStep({
   transport,
   days,
   courseTitle,
+  routeLabel,
+  bakeryMode = false,
   onReorderDay,
+  onRegenerate,
   onSave,
   onGoHome,
 }: GeneratedResultStepProps) {
@@ -41,8 +47,14 @@ export function GeneratedResultStep({
     <div className="px-5 pb-6 pt-1">
       <div className="rounded-2xl bg-surface p-2">
         <div className="mb-4 rounded-2xl bg-brand-100 p-4 text-center">
-          <div className="text-sm font-extrabold text-brand-700">오늘의 &lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
+          <div className="text-sm font-extrabold text-brand-700">&lsquo;{courseTitle}&rsquo;가 완성됐어요!</div>
           <div className="mt-2 flex flex-wrap justify-center gap-1">
+            {bakeryMode ? (
+              <Tag tone="neutral" className="cursor-default border border-line bg-card">
+                🔍 빵집 반려견 동반여부 확인 필요
+              </Tag>
+            ) : (
+              <>
             <Tag tone="brand" className="cursor-default border border-line bg-card">
               {nights > 0 ? (
                 <span className="inline-flex items-center gap-1">
@@ -56,13 +68,18 @@ export function GeneratedResultStep({
             <Tag tone="purple" className="cursor-default border border-line bg-card">
               {transport === "자차" ? "🚗" : "🚌"} {transport}
             </Tag>
-            <Tag tone="brand" className="flex cursor-default items-center gap-1 border border-line bg-card">
-              <Emoji3D emoji="🐾" size={12} shadow={false} />동반 가능
+            <Tag tone={days.some((day) => day.some((place) => !place.petFriendly)) ? "neutral" : "brand"} className="flex cursor-default items-center gap-1 border border-line bg-card">
+              {days.some((day) => day.some((place) => !place.petFriendly)) ? "🔍 동반 여부 확인 필요" : <><Emoji3D emoji="🐾" size={12} shadow={false} />동반 가능</>}
             </Tag>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="mb-2 flex items-center justify-end px-1">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <button type="button" onClick={onRegenerate} className="rounded-full border border-brand-300 bg-brand-100 px-3 py-1 text-[11px] font-bold text-brand-700">
+            다른 코스 추천받기
+          </button>
           <button
             type="button"
             onClick={() => setEditMode((prev) => !prev)}
@@ -80,7 +97,7 @@ export function GeneratedResultStep({
           <div key={dayIndex} className="mb-4 last:mb-0">
             <div className="mb-2 flex items-center gap-1 px-1 text-xs font-bold text-ink-muted">
               <Emoji3D emoji="📍" size={14} shadow={false} />
-              {days.length > 1 ? `${dayIndex + 1}일차 동선` : `${theme}형 동선`} · {day.length}곳
+              {days.length > 1 ? `${dayIndex + 1}일차 동선` : routeLabel ?? `${theme}형 동선`} · {day.length}곳
             </div>
             {day.length > 0 ? <CourseRouteMap places={day} /> : null}
             <div className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
@@ -100,7 +117,7 @@ export function GeneratedResultStep({
                         ⠿
                       </button>
                     ) : null}
-                    <StopThumbnail category={place.category} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
+                    <StopThumbnail category={place.category} placeId={place.id} imageUrl={resolvePlaceImageUrl(place)} badge={index + 1} />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-bold text-ink">{place.name}</div>
                       <div className="mt-0.5 text-xs text-ink-muted">
@@ -152,7 +169,7 @@ export function GeneratedResultStep({
         <div ref={shareCardRef}>
           <CourseShareCard
             title={courseTitle}
-            tags={[nightsLabel(nights), `${theme}형`, transport]}
+            tags={[nightsLabel(nights), routeLabel ?? `${theme}형`, transport]}
             days={days}
           />
         </div>
@@ -163,7 +180,7 @@ export function GeneratedResultStep({
         captureRef={shareCardRef}
         fileName={`대저니유-${courseTitle}`}
         kakaoTitle={courseTitle}
-        kakaoDescription={`${nightsLabel(nights)} · ${theme}형 코스 · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
+        kakaoDescription={`${nightsLabel(nights)} · ${routeLabel ?? `${theme}형 코스`} · 대저니유에서 만든 반려동물 여행 코스예요 🐾`}
       />
 
       <div className="mb-4 rounded-lg bg-surface p-4 text-xs leading-relaxed text-ink-muted">

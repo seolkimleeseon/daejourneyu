@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { TopBar } from "@/components/shell/TopBar";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
@@ -114,8 +115,8 @@ export default function FeedPostDetailPage() {
       />
       <div className="px-4 pb-8 pt-3">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xl">
-            {post.authorEmoji}
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-100">
+            <Emoji3D emoji={post.authorEmoji} size={26} shadow={false} />
           </span>
           <div className="min-w-0 flex-1">
             <span className="block truncate text-sm font-bold text-ink">{post.authorName}</span>
@@ -224,6 +225,7 @@ export default function FeedPostDetailPage() {
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         emoji="🗑"
+        icon3D
         title="이 글을 삭제할까요?"
         description="삭제하면 되돌릴 수 없어요"
       >

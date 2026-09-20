@@ -1,6 +1,7 @@
 "use client";
 
 import type { Badge } from "@/lib/badges";
+import { Emoji3D } from "@/components/ui/Emoji3D";
 
 interface BadgeNearlineProps {
   badge: Badge | null;
@@ -29,8 +30,8 @@ export function BadgeNearline({ badge, message, onGo }: BadgeNearlineProps) {
 
   return (
     <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-brand-300 bg-brand-100 px-2.5 py-2">
-      <span className="min-w-0 text-[11px] font-bold text-brand-700">
-        <span aria-hidden="true">{badge.emoji} </span>
+      <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold text-brand-700">
+        <Emoji3D emoji={badge.emoji} size={15} shadow={false} />
         {message}
       </span>
       {href ? (

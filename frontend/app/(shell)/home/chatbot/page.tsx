@@ -10,7 +10,9 @@ import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/cn";
 import { apiUrl } from "@/lib/api/authFetch";
-import { mockPlaces } from "@/mocks";
+import { usePickablePlaces } from "@/hooks/usePickablePlaces";
+import { pickChatCandidates } from "@/lib/chatCandidates";
+import type { PickablePlace } from "@/lib/petTourMapper";
 import type { Course, CourseStop } from "@/types";
 
 type CourseSuggestion = Omit<Course, "id">;
@@ -38,7 +40,9 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     q: "이 앱은 뭐 하는 곳이야?",
     a: "대전 5개 구의 반려동물 동반 여행지를 소개하고, 그걸 묶어 여행 코스로 만들어주는 앱이에요 🐾",
-    keywords: ["뭐 하는", "뭐하는", "무슨 서비스", "무슨 앱", "서비스 설명", "앱 설명", "서비스 소개", "앱 소개", "설명해줘", "소개해줘", "뭐야"],
+    // "뭐야"는 "유성구 맛집 뭐야?"처럼 실제 장소 질문에도 걸려 FAQ로 가로채버려서 뺐다
+    // (장소 질문은 AI 코스 추천으로 흘러야 한다).
+    keywords: ["뭐 하는", "뭐하는", "무슨 서비스", "무슨 앱", "서비스 설명", "앱 설명", "서비스 소개", "앱 소개", "설명해줘", "소개해줘"],
   },
   {
     q: "코스는 어떻게 만들어?",
@@ -56,7 +60,7 @@ const FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
-const QUICK_PROMPTS = ["조용히 산책하기 좋은 곳", "당일치기 코스 추천해줘", "실내 카페 위주로", "소형견도 갈 수 있는 곳"];
+const QUICK_PROMPTS = ["🥐 빵지순례 코스 추천해줘", "조용히 산책하기 좋은 곳", "당일치기 코스 추천해줘", "실내 카페 위주로", "소형견도 갈 수 있는 곳"];
 
 const THINKING_PHRASES = ["킁킁 냄새 맡는 중...", "지도를 펼치는 중...", "발자국 따라가는 중...", "코스를 그리는 중..."];
 
@@ -99,6 +103,7 @@ export default function ChatbotPage() {
   const showToast = useToastStore((state) => state.show);
   const addCourse = useCourseStore((state) => state.addCourse);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const { data: apiPlaces } = usePickablePlaces();
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [pendingCourse, setPendingCourse] = useState<CourseSuggestion | null>(null);
@@ -128,13 +133,30 @@ export default function ChatbotPage() {
     // 응답이 너무 오래 걸리면(기본 fetch는 브라우저 기본 타임아웃까지 무한정 기다린다) 안내
     // 메시지로 대신 끊는다 — 사용자가 "생각하는 중..." 애니메이션만 하염없이 보는 걸 막는다.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), /빵지순례|빵집|베이커리|제과점/.test(prompt) ? 45000 : 15000);
 
     try {
+      if (!apiPlaces?.length) {
+        replacePending(pendingId, { text: "장소 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요" });
+        return;
+      }
+      let places: PickablePlace[] = apiPlaces;
+      if (/빵지순례|빵집|베이커리|제과점/.test(prompt)) {
+        const district = ["대덕구", "동구", "유성구", "중구", "서구"].find((name) => prompt.includes(name));
+        const query = district ? `?district=${encodeURIComponent(district)}` : "";
+        const bakeryRes = await fetch(apiUrl(`/api/places/bakeries${query}`), { signal: controller.signal });
+        const bakeries = bakeryRes.ok ? (await bakeryRes.json()) as PickablePlace[] : [];
+        if (bakeries.length === 0) {
+          replacePending(pendingId, { text: "빵집 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요" });
+          return;
+        }
+        places = [...places, ...bakeries];
+      }
+      const candidatePlaces = pickChatCandidates(places, prompt);
       const res = await fetch(apiUrl("/api/ai/course-suggestion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces: mockPlaces }),
+        body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces }),
         signal: controller.signal,
       });
       // 코스 추천 요청이어도 AI가 판단해서 잡담/설명이면 chat으로, 실제 코스 요청이면 course로 답한다
@@ -191,6 +213,7 @@ export default function ChatbotPage() {
     requestCourseSuggestion(text);
   };
 
+
   const handleSaveCourse = (course: CourseSuggestion) => {
     if (!isLoggedIn) {
       setPendingCourse(course);
@@ -241,17 +264,19 @@ export default function ChatbotPage() {
                     <button
                       key={stop.placeId}
                       type="button"
-                      onClick={() => router.push(`/place/${encodeURIComponent(stop.name)}`)}
+                      onClick={() => {
+                        if (!stop.placeId.startsWith("bakery-")) router.push(`/place/${encodeURIComponent(stop.name)}`);
+                      }}
                       className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-2 text-left"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-xs font-bold text-ink">{stop.name}</div>
                         <div className="mt-0.5 truncate text-[10px] text-ink-muted">
-                          {stop.district} · {stop.category}
+                          {stop.district} · {stop.category}{stop.placeId.startsWith("bakery-") ? " · 동반 가능 여부 확인 필요" : ""}
                         </div>
                       </div>
                       <span className="shrink-0 text-xs">
-                        {stop.petFriendly ? <Emoji3D emoji="🐾" size={16} shadow={false} /> : "🚫"}
+                        {stop.placeId.startsWith("bakery-") ? "확인 필요" : stop.petFriendly ? <Emoji3D emoji="🐾" size={16} shadow={false} /> : "🚫"}
                       </span>
                     </button>
                   ))}
