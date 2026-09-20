@@ -42,6 +42,13 @@ describe("useReviews", () => {
     expect(fetchReviewsApi).toHaveBeenCalledWith("place-1");
     expect(client.getQueryData(["reviews", "place-1"])).toEqual([]);
   });
+
+  it("enabled가 false면 요청을 보내지 않는다", async () => {
+    const { result } = renderWithClient(() => useReviews(undefined, { enabled: false }));
+
+    expect(fetchReviewsApi).not.toHaveBeenCalled();
+    expect(result.current.fetchStatus).toBe("idle");
+  });
 });
 
 describe("후기 작성·삭제", () => {

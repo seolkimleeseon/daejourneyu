@@ -5,8 +5,13 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { makePlace, makeReview } from "@/test/fixtures";
 import PlaceDetailPage from "./page";
 
+const search = vi.hoisted(() => ({ params: new URLSearchParams() }));
 const nav = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/place/한밭수목원" }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => nav,
+  usePathname: () => "/place/한밭수목원",
+  useSearchParams: () => search.params,
+}));
 
 const hooks = vi.hoisted(() => ({ usePlaces: vi.fn(), useReviews: vi.fn() }));
 vi.mock("@/hooks/usePlaces", () => ({ usePlaces: hooks.usePlaces }));
@@ -43,6 +48,7 @@ function loginModalOpen(): boolean {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  search.params = new URLSearchParams();
   hooks.usePlaces.mockReturnValue({ data: [한밭수목원], isLoading: false });
   hooks.useReviews.mockReturnValue({ data: [], isLoading: false });
   useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: null });
@@ -129,7 +135,15 @@ describe("후기", () => {
   it("그 장소의 후기만 불러온다", () => {
     setup();
 
-    expect(hooks.useReviews).toHaveBeenLastCalledWith("p1");
+    expect(hooks.useReviews).toHaveBeenLastCalledWith("p1", { enabled: true });
+  });
+
+  it("장소를 아직 못 찾았으면 후기를 요청하지 않는다 — 전체 후기가 뜨는 걸 막는다", () => {
+    hooks.usePlaces.mockReturnValue({ data: undefined, isLoading: true });
+
+    setup();
+
+    expect(hooks.useReviews).toHaveBeenLastCalledWith(undefined, { enabled: false });
   });
 
   it("아직 없으면 첫 후기를 남겨보라고 한다", () => {
@@ -179,12 +193,12 @@ describe("후기", () => {
 });
 
 describe("후기 쓰기", () => {
-  it("로그인했으면 작성 화면으로 보낸다", async () => {
+  it("로그인했으면 작성 화면으로 보낸다 — 동명 장소 대응을 위해 id도 함께 넘긴다", async () => {
     const { user } = setup();
 
     await user.click(screen.getByRole("button", { name: "후기 쓰기 ›" }));
 
-    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review");
+    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review?id=p1");
   });
 
   it("비로그인이면 작성 화면 대신 로그인 창을 연다", async () => {
@@ -202,6 +216,18 @@ describe("후기 쓰기", () => {
 
     await user.click(screen.getByRole("button", { name: "후기 쓰기" }));
 
-    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review");
+    expect(nav.push).toHaveBeenCalledWith("/place/%ED%95%9C%EB%B0%AD%EC%88%98%EB%AA%A9%EC%9B%90/review?id=p1");
+  });
+});
+
+describe("동명 장소", () => {
+  it("주소에 id가 있으면 이름이 같아도 그 id의 장소를 보여준다", () => {
+    const 다른구_한밭수목원 = makePlace({ id: "p2", name: "한밭수목원", district: "유성구", category: "맛집" });
+    hooks.usePlaces.mockReturnValue({ data: [한밭수목원, 다른구_한밭수목원], isLoading: false });
+    search.params = new URLSearchParams("id=p2");
+
+    setup();
+
+    expect(screen.getByText("유성구")).toBeTruthy();
   });
 });
