@@ -19,6 +19,7 @@ const maxed = makeBadge({
   category: "발도장",
   rarity: 3,
   description: "5개 구 완주",
+  earned: "대전 5개 구를 모두 다녀왔어요",
   how: "대전 5개 구를 모두 다녀오면 도장판이 완성돼요",
   got: true,
   level: 1,
@@ -34,6 +35,7 @@ const leveling = makeBadge({
   name: "후기왕 Lv.2",
   category: "단계형",
   description: "쓴 후기",
+  earned: "다녀온 장소에 후기를 10개 남겼어요",
   how: "다녀온 장소에 후기를 남기면 쌓여요",
   got: true,
   level: 2,
@@ -105,13 +107,14 @@ describe("여행 뱃지 전체 목록", () => {
     render(<MyBadgesPage />);
 
     expect(screen.getByText("대전 한바퀴").closest("button")).toBeNull();
-    expect(screen.getByText("5개 구 완주")).toBeTruthy();
+    expect(screen.getByText("대전 5개 구를 모두 다녀왔어요")).toBeTruthy();
     expect(screen.getByText("획득")).toBeTruthy();
   });
 
   it("단계형은 딴 뒤에도 다음 단계까지의 거리를 말하고 해당 화면으로 보낸다", async () => {
     render(<MyBadgesPage />);
 
+    expect(screen.getByText("다녀온 장소에 후기를 10개 남겼어요")).toBeTruthy();
     expect(screen.getByText("Lv.3까지 20개 더")).toBeTruthy();
     expect(screen.getByText("10/30")).toBeTruthy();
 

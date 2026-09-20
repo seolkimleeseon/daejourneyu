@@ -63,6 +63,15 @@ describe("computeMyBadges — 카탈로그", () => {
     expect(badges.every((badge) => BADGE_CATEGORIES.includes(badge.category))).toBe(true);
   });
 
+  it("모든 뱃지가 받은 뒤 설명을 문장으로 갖는다", () => {
+    // 타일 라벨(description)은 "하루에 3개 구"처럼 줄여 쓴 말이라 그것만으로는 무엇을 해서
+    // 받았는지 읽히지 않는다. 목록·상세에 나가는 earned는 반드시 문장이어야 한다.
+    for (const badge of compute()) {
+      expect(badge.earned.length, badge.id).toBeGreaterThan(badge.description.length);
+      expect(badge.earned.endsWith("요"), badge.id).toBe(true);
+    }
+  });
+
   it("아무것도 안 했으면 로그인 뱃지 외에는 하나도 없다", () => {
     expect(compute().filter((badge) => badge.got)).toEqual([]);
     expect(compute({ isLoggedIn: true }).filter((badge) => badge.got).map((b) => b.id)).toEqual([
@@ -119,6 +128,15 @@ describe("computeMyBadges — 단계형", () => {
       target: 30,
       tileLabel: "Lv.2",
     });
+  });
+
+  it("단계형 설명은 임계값이 아니라 실제로 쌓은 개수를 말한다", () => {
+    // 만렙(30)을 넘겨 45개를 쓴 상태 — 진행도 바도 다음 단계 안내도 사라지는 자리라
+    // 설명이 "후기 수예요"로 끝나면 가리킬 숫자가 화면에 없다.
+    const reviews = Array.from({ length: 45 }, (_, i) => makeReview({ id: `r${i}`, isMine: true }));
+    const badge = badgeById(compute({ reviews }), "review-king");
+    expect(badge.earned).toBe("다녀온 장소에 후기를 45개 남겼어요");
+    expect(badge.current).toBe(30);
   });
 
   it("만렙이면 마지막 임계값을 목표로 두고 남은 걸음은 0이다", () => {

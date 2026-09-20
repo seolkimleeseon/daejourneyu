@@ -170,6 +170,7 @@ export function makeBadge(overrides: Partial<Badge> = {}): Badge {
     category: "단계형",
     rarity: 1,
     description: "다녀온 일정",
+    earned: "코스에 날짜를 붙여 1번 다녀왔어요",
     how: "코스에 날짜를 붙여 다녀오면 쌓여요",
     got: false,
     level: 0,

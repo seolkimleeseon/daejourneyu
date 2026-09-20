@@ -138,8 +138,14 @@ export interface Badge {
   name: string;
   category: BadgeCategory;
   rarity: BadgeRarity;
-  /** 획득분에 보여줄 짧은 라벨 */
+  /** 4열 타일처럼 한 줄뿐인 자리에 넣을 짧은 라벨 */
   description: string;
+  /**
+   * 받은 뒤에 보여줄 설명. 타일 라벨("하루에 3개 구")은 조건을 줄여 쓴 말이라 그것만 읽고는
+   * 무엇을 해서 받았는지 알기 어렵다 — 줄 길이에 여유가 있는 목록·상세에서는 이 문장을 쓴다.
+   * 단계형은 여기에 실제 개수가 박혀 나온다("후기를 45개 남겼어요").
+   */
+  earned: string;
   /** 아직 못 받은 뱃지에 보여줄 획득 조건. 그 자체로 할 일이 되므로 문장으로 쓴다. */
   how: string;
   got: boolean;
@@ -191,6 +197,12 @@ interface BadgeDef {
   category: BadgeCategory;
   rarity: BadgeRarity;
   description: string;
+  /**
+   * 단계형처럼 "몇 개"가 곧 뱃지인 경우에는 함수로 둔다 — 만렙이면 다음 단계 안내도, 진행도
+   * 바도 사라져서 "후기 수예요" 같은 문장만 숫자 없이 덩그러니 남기 때문이다.
+   * 받는 값은 임계값으로 자르지 않은 실측치라 마지막 단계를 넘겨서 쌓은 만큼 그대로 말한다.
+   */
+  earned: string | ((count: number) => string);
   how: string;
   hidden?: boolean;
   href?: string;
@@ -266,6 +278,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "발도장",
     rarity: 3,
     description: "5개 구 완주",
+    earned: "대전 5개 구를 모두 다녀왔어요",
     how: "대전 5개 구를 모두 다녀오면 도장판이 완성돼요",
     href: "/map",
     tiers: [5],
@@ -278,6 +291,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "발도장",
     rarity: 1,
     description: "유성 명소",
+    earned: "유성구 갑천 산책로를 다녀왔어요",
     how: "유성구 갑천 산책로를 다녀와보세요",
     tiers: [1],
     measure: (facts) => visitedLandmark(facts, "gapcheon"),
@@ -289,6 +303,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "발도장",
     rarity: 2,
     description: "대덕 명소",
+    earned: "대덕구 계족산 황톳길을 다녀왔어요",
     how: "대덕구 계족산 황톳길을 다녀와보세요",
     tiers: [1],
     measure: (facts) => visitedLandmark(facts, "gyejoksan"),
@@ -300,6 +315,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "발도장",
     rarity: 2,
     description: "중구 명소",
+    earned: "중구 뿌리공원을 다녀왔어요",
     how: "중구 뿌리공원을 다녀와보세요",
     tiers: [1],
     measure: (facts) => visitedLandmark(facts, "ppurigongwon"),
@@ -311,6 +327,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "발도장",
     rarity: 3,
     description: "서구 명소",
+    earned: "서구 장태산 자연휴양림을 다녀왔어요",
     how: "서구 장태산 자연휴양림을 다녀와보세요",
     tiers: [1],
     measure: (facts) => visitedLandmark(facts, "jangtaesan"),
@@ -322,6 +339,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "발도장",
     rarity: 3,
     description: "동구 명소",
+    earned: "동구 식장산을 다녀왔어요",
     how: "동구 식장산에 올라보세요",
     tiers: [1],
     measure: (facts) => visitedLandmark(facts, "sikjangsan"),
@@ -332,7 +350,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "하루 원정대",
     category: "발도장",
     rarity: 3,
-    description: "하루 3개 구",
+    description: "하루에 3개 구",
+    earned: "하루 일정 안에서 서로 다른 구를 세 곳 다녀왔어요",
     how: "하루 코스에 서로 다른 구를 세 곳 담아 다녀와보세요",
     tiers: [3],
     measure: (facts) =>
@@ -350,6 +369,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "발도장",
     rarity: 4,
     description: "5개 구 2회씩",
+    earned: "대전 5개 구를 각각 두 번 이상 다녀왔어요",
     how: "대전 5개 구를 각각 두 번 이상 다녀와보세요",
     tiers: [5],
     measure: (facts) =>
@@ -364,6 +384,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "단계형",
     rarity: 1,
     description: "다녀온 일정",
+    earned: (count) => `코스에 날짜를 붙여 ${count}번 다녀왔어요`,
     how: "코스에 날짜를 붙여 다녀오면 쌓여요",
     href: "/schedule",
     tiers: [1, 5, 15, 30, 50],
@@ -376,6 +397,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "단계형",
     rarity: 1,
     description: "직접 만든 코스",
+    earned: (count) => `내 여정에서 코스를 ${count}개 직접 만들었어요`,
     how: "내 여정에서 코스를 직접 만들어보세요",
     href: "/schedule",
     tiers: [1, 5, 15],
@@ -388,6 +410,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "단계형",
     rarity: 2,
     description: "보관한 코스",
+    earned: (count) => `남의 코스를 보관함에 ${count}개 담아뒀어요`,
     how: "마음에 드는 남의 코스를 보관함에 담아보세요",
     href: "/feed",
     tiers: [3, 10, 30],
@@ -400,6 +423,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "단계형",
     rarity: 3,
     description: "받은 좋아요",
+    earned: (count) => `둘러보기에 공유한 코스가 좋아요를 ${count}개 받았어요`,
     how: "둘러보기에 공유한 코스가 좋아요를 받으면 쌓여요",
     href: "/feed",
     tiers: [10, 50, 200],
@@ -415,6 +439,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "단계형",
     rarity: 1,
     description: "쓴 후기",
+    earned: (count) => `다녀온 장소에 후기를 ${count}개 남겼어요`,
     how: "다녀온 장소에 후기를 남기면 쌓여요",
     href: "/my/reviews",
     tiers: [1, 10, 30],
@@ -427,6 +452,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "단계형",
     rarity: 2,
     description: "사진 붙인 후기",
+    earned: (count) => `사진을 붙인 후기를 ${count}개 올렸어요`,
     how: "후기에 사진을 함께 올리면 쌓여요",
     href: "/my/reviews",
     tiers: [1, 10, 30],
@@ -439,6 +465,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "단계형",
     rarity: 1,
     description: "누른 좋아요",
+    earned: (count) => `남의 게시물에 좋아요를 ${count}번 눌렀어요`,
     how: "둘러보기에서 남의 게시물에 좋아요를 눌러보세요",
     href: "/feed",
     tiers: [10, 50, 200],
@@ -453,6 +480,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "취향",
     rarity: 2,
     description: "4종 제패",
+    earned: "산책·놀이터·맛집·문화를 모두 다녀왔어요",
     how: "산책·놀이터·맛집·문화를 모두 다녀와보세요",
     tiers: [4],
     measure: (facts) => facts.categoryCount.size,
@@ -464,6 +492,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "취향",
     rarity: 2,
     description: "산책 10곳",
+    earned: "산책 장소를 열 곳 다녀왔어요",
     how: "산책 장소를 열 곳 다녀와보세요",
     tiers: [10],
     measure: (facts) => facts.categoryCount.get("산책") ?? 0,
@@ -475,6 +504,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "취향",
     rarity: 2,
     description: "맛집 10곳",
+    earned: "반려동물 동반 맛집을 열 곳 다녀왔어요",
     how: "반려동물 동반 맛집을 열 곳 다녀와보세요",
     tiers: [10],
     measure: (facts) => facts.categoryCount.get("맛집") ?? 0,
@@ -486,6 +516,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "취향",
     rarity: 2,
     description: "놀이터 5곳",
+    earned: "반려동물 놀이터를 다섯 곳 다녀왔어요",
     how: "반려동물 놀이터를 다섯 곳 다녀와보세요",
     tiers: [5],
     measure: (facts) => facts.categoryCount.get("놀이터") ?? 0,
@@ -497,6 +528,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "취향",
     rarity: 3,
     description: "문화 5곳",
+    earned: "동반 가능한 문화 공간을 다섯 곳 다녀왔어요",
     how: "동반 가능한 문화 공간을 다섯 곳 다녀와보세요",
     tiers: [5],
     measure: (facts) => facts.categoryCount.get("문화") ?? 0,
@@ -508,6 +540,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "취향",
     rarity: 3,
     description: "소형견 전용 3곳",
+    earned: "소형견 전용 조건이 붙은 장소를 세 곳 다녀왔어요",
     how: "소형견 전용 조건이 붙은 장소를 세 곳 다녀와보세요",
     tiers: [3],
     measure: (facts) =>
@@ -524,6 +557,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "취향",
     rarity: 2,
     description: "제한 없는 5곳",
+    earned: "견종 제한이 없는 장소를 다섯 곳 다녀왔어요",
     how: "견종 제한이 없는 장소를 다섯 곳 다녀와보세요",
     tiers: [5],
     // 구조화된 필드가 smallDogOnly뿐이라 그것으로만 가른다. condition 문자열을 파싱하면
@@ -547,6 +581,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "여행법",
     rarity: 1,
     description: "자차 5회",
+    earned: "자차로 움직이는 코스를 다섯 번 다녀왔어요",
     how: "자차 코스로 다섯 번 다녀와보세요",
     tiers: [5],
     measure: (facts) => facts.visited.filter((entry) => entry.course.transport === "자차").length,
@@ -558,6 +593,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "여행법",
     rarity: 3,
     description: "대중교통 5회",
+    earned: "대중교통으로 움직이는 코스를 다섯 번 다녀왔어요",
     how: "대중교통 코스로 다섯 번 다녀와보세요",
     tiers: [5],
     measure: (facts) =>
@@ -570,6 +606,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "여행법",
     rarity: 2,
     description: "1박 이상",
+    earned: "하룻밤 이상 묵는 코스를 다녀왔어요",
     how: "1박 이상 코스를 다녀와보세요",
     tiers: [1],
     measure: (facts) => anyVisitedCourse(facts, (course) => course.nights >= 1),
@@ -581,6 +618,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "여행법",
     rarity: 3,
     description: "하루 5곳",
+    earned: "하루에 다섯 곳 이상 담은 코스를 다녀왔어요",
     how: "하루에 다섯 곳 이상 담은 코스를 다녀와보세요",
     tiers: [1],
     measure: (facts) =>
@@ -593,6 +631,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "여행법",
     rarity: 2,
     description: "하루 2곳 이하",
+    earned: "하루를 두 곳 이하로 여유 있게 보낸 코스를 다녀왔어요",
     how: "하루 두 곳 이하로 여유 있게 다녀와보세요",
     tiers: [1],
     measure: (facts) =>
@@ -607,6 +646,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "여행법",
     rarity: 3,
     description: "30일 전 예약",
+    earned: "30일 이상 앞서 잡아둔 일정을 실제로 다녀왔어요",
     how: "30일 이상 앞서 잡아둔 일정을 실제로 다녀와보세요",
     tiers: [1],
     // TODO(api): Course·CourseSchedule에 createdAt이 없어 '언제 잡았는지'를 알 수 없다.
@@ -622,6 +662,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "반려동물",
     rarity: 1,
     description: "성향 완료",
+    earned: "반려동물 MBTI 퀴즈를 끝까지 풀었어요",
     how: "반려동물 MBTI 퀴즈를 끝까지 풀어보세요",
     href: "/schedule/course/new/mbti",
     tiers: [1],
@@ -634,6 +675,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "반려동물",
     rarity: 3,
     description: "2마리 진단",
+    earned: "반려동물 두 마리 이상의 MBTI를 진단했어요",
     how: "반려동물 두 마리 이상의 MBTI를 진단해보세요",
     tiers: [2],
     measure: (facts) => facts.pets.filter((pet) => !!pet.mbti).length,
@@ -644,7 +686,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "유형대로",
     category: "반려동물",
     rarity: 2,
-    description: "추천 테마 완주",
+    description: "추천 테마 방문",
+    earned: "MBTI가 추천한 테마의 장소를 다녀왔어요",
     how: "MBTI가 추천한 테마의 장소를 다녀와보세요",
     tiers: [1],
     measure: (facts) => {
@@ -660,6 +703,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "반려동물",
     rarity: 1,
     description: "정보 다 채움",
+    earned: "반려동물의 이름·견종·몸무게·나이·이모지를 모두 채웠어요",
     how: "이름·견종·몸무게·나이·이모지를 모두 채워보세요",
     tiers: [1],
     measure: (facts) => {
@@ -683,6 +727,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "시작",
     rarity: 1,
     description: "가입 완료",
+    earned: "대저니유에 가입했어요",
     how: "대저니유에 가입하면 바로 받아요",
     tiers: [1],
     measure: (facts) => (facts.isLoggedIn ? 1 : 0),
@@ -693,7 +738,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "멍친구",
     category: "시작",
     rarity: 2,
-    description: "2마리+",
+    description: "2마리 등록",
+    earned: "반려동물을 두 마리 이상 등록했어요",
     how: "반려동물을 두 마리 이상 등록해보세요",
     href: "/onboarding/pet-register?from=my",
     tiers: [2],
@@ -706,6 +752,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "시작",
     rarity: 1,
     description: "일정 등록",
+    earned: "코스에 날짜를 붙여 내 여정에 등록했어요",
     how: "코스에 날짜를 붙여 내 여정에 등록해보세요",
     href: "/schedule",
     tiers: [1],
@@ -719,7 +766,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "0시축제 2026",
     category: "한정",
     rarity: 3,
-    description: "시즌 한정",
+    description: "축제 기간 방문",
+    earned: "0시축제 기간에 중구 일정을 다녀왔어요",
     how: "0시축제 기간에 중구 일정을 다녀와보세요",
     tiers: [1],
     measure: (facts) =>
@@ -737,7 +785,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "사이언스 페스티벌",
     category: "한정",
     rarity: 3,
-    description: "시즌 한정",
+    description: "축제 기간 방문",
+    earned: "사이언스 페스티벌 기간에 유성구 일정을 다녀왔어요",
     how: "사이언스 페스티벌 기간에 유성구 일정을 다녀와보세요",
     tiers: [1],
     measure: (facts) =>
@@ -755,7 +804,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "봄 벚꽃",
     category: "한정",
     rarity: 2,
-    description: "시즌 한정",
+    description: "4월 산책",
+    earned: "벚꽃이 피는 4월에 산책 장소를 다녀왔어요",
     how: "4월에 산책 장소를 다녀와보세요",
     tiers: [1],
     measure: (facts) =>
@@ -774,6 +824,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "한정",
     rarity: 2,
     description: "시즌 한정",
+    earned: "9~11월에 대덕구 일정을 다녀왔어요",
     how: "9~11월에 대덕구 일정을 다녀와보세요",
     tiers: [1],
     measure: (facts) =>
@@ -794,7 +845,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "겨울 산책러",
     category: "한정",
     rarity: 3,
-    description: "시즌 한정",
+    description: "겨울 산책",
+    earned: "12~2월 추운 날에 산책 장소를 다녀왔어요",
     how: "12~2월에 산책 장소를 다녀와보세요",
     tiers: [1],
     measure: (facts) =>
@@ -815,6 +867,7 @@ const BADGE_DEFS: BadgeDef[] = [
     category: "한정",
     rarity: 4,
     description: "오픈 기념일",
+    earned: "대저니유 오픈 기념일에 접속했어요",
     how: "대저니유 오픈 기념일에 접속해보세요",
     tiers: [1],
     measure: (facts) =>
@@ -828,7 +881,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "야행성 산책러",
     category: "히든",
     rarity: 4,
-    description: "조건 비공개",
+    description: "야간 산책 후기",
+    earned: "밤에 다녀온 산책 장소에 후기를 남겼어요",
     how: "조건은 비밀이에요",
     hidden: true,
     tiers: [1],
@@ -841,7 +895,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "발도장 100",
     category: "히든",
     rarity: 4,
-    description: "조건 비공개",
+    description: "발도장 100개",
+    earned: (count) => `다녀온 장소 도장을 ${count}개 모았어요`,
     how: "조건은 비밀이에요",
     hidden: true,
     tiers: [100],
@@ -853,7 +908,8 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "비와도 간다",
     category: "히든",
     rarity: 4,
-    description: "조건 비공개",
+    description: "비 오는 날 방문",
+    earned: "비가 오는 날에도 일정을 다녀왔어요",
     how: "조건은 비밀이에요",
     hidden: true,
     tiers: [1],
@@ -889,6 +945,9 @@ function toBadge(def: BadgeDef, facts: BadgeFacts): Badge {
     category: def.category,
     rarity: def.rarity,
     description: def.description,
+    // 개수를 말하는 뱃지는 임계값으로 자르지 않은 value로 문장을 만든다 — 만렙을 넘겨 쌓은
+    // 분량(후기 45개)을 target(30)으로 줄여 말하면 화면의 다른 숫자와 어긋난다.
+    earned: typeof def.earned === "function" ? def.earned(value) : def.earned,
     how: def.how,
     got,
     level,

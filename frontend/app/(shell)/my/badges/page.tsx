@@ -86,7 +86,9 @@ function BadgeRow({ badge, onGo }: BadgeRowProps) {
     badge.got && badge.maxLevel > 1 && !maxed
       ? `Lv.${badge.level + 1}까지 ${badge.target - badge.current}개 더`
       : null;
-  const subtitle = badge.got ? (levelHint ?? badge.description) : badge.how;
+  // 받은 뱃지도 조건을 줄인 라벨 대신 한 문장으로 말해준다. 단계형의 "다음 단계까지 몇 개"는
+  // 그 문장을 밀어내지 않도록 아래에 따로 한 줄을 잡는다.
+  const subtitle = badge.got ? badge.earned : badge.how;
 
   const body = (
     <>
@@ -106,6 +108,9 @@ function BadgeRow({ badge, onGo }: BadgeRowProps) {
         </div>
         {/* 받은 뱃지에는 무엇으로 받았는지를, 아직인 뱃지에는 조건을 보여준다. */}
         <div className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">{subtitle}</div>
+        {levelHint ? (
+          <div className="mt-0.5 text-[11px] font-bold text-brand-700">{levelHint}</div>
+        ) : null}
         {/* 조건만 적어두면 거기서 끊기므로 갈 곳을 한 줄 더 붙인다. 조건 문장에 이어 붙이면
             줄바꿈이 지저분해져서 따로 뗀다. */}
         {href ? (
