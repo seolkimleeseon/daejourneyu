@@ -67,7 +67,8 @@ export function HomeStatusCard({
             {greeting}
           </span>
           {isLoggedIn && pet ? (
-            <span className="ml-auto shrink-0 rounded-full border border-brand-300 bg-card px-2.5 py-1 text-[10px] font-bold text-brand-700">
+            <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full border border-brand-300 bg-card px-2.5 py-1 text-[10px] font-bold text-brand-700">
+              <span aria-hidden>{pet.emoji}</span>
               {pet.name}
             </span>
           ) : null}
