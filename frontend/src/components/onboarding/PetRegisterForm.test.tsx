@@ -139,10 +139,10 @@ describe("등록(create)", () => {
     const { user } = renderCreate();
 
     await fillRequired(user);
-    await user.click(screen.getByRole("button", { name: "🐈" }));
+    await user.click(screen.getByRole("button", { name: "🐩" }));
     await user.click(screen.getByRole("button", { name: "등록하기" }));
 
-    expect(addPet).toHaveBeenCalledWith(expect.objectContaining({ emoji: "🐈" }));
+    expect(addPet).toHaveBeenCalledWith(expect.objectContaining({ emoji: "🐩" }));
   });
 
   it("등록 화면에는 삭제 버튼이 없다", () => {
