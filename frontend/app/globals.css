@@ -130,6 +130,38 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Tailwind v4 Preflight가 button·[role="button"]의 커서를 default로 고정해 버려서 마우스를
+   올려도 손가락 커서가 뜨지 않았다 — 클릭 가능한 요소는 전역에서 pointer로 되돌린다.
+   (비활성 버튼은 눌리지 않는다는 걸 커서로도 알리려고 not-allowed)
+
+   IMPORTANT: 반드시 @layer base 안에 둔다. 레이어 없는 규칙은 명시도와 무관하게 Tailwind
+   유틸리티(utilities 레이어)를 이기기 때문에, 장식용 칩처럼 일부러 `cursor-default`를 준
+   버튼까지 손가락 커서로 만들어 버린다. base에 넣어야 유틸리티로 개별 예외를 줄 수 있다. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="option"],
+  a[href],
+  label[for],
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="file"]::file-selector-button {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  select:disabled {
+    cursor: not-allowed;
+  }
+}
+
 html,
 body {
   background: var(--color-surface);
