@@ -9,7 +9,8 @@ import { LoginModal } from "@/components/my/LoginModal";
 import { useArticle } from "@/hooks/useArticles";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useFeedStore } from "@/stores/useFeedStore";
+import { useArticleLikes, useToggleArticleLike } from "@/hooks/useArticleLikes";
+import { useToastStore } from "@/stores/useToastStore";
 import { parseArticleBody, resolveArticleLike } from "@/lib/feed";
 import { cn } from "@/lib/cn";
 
@@ -40,8 +41,9 @@ export default function ArticleDetailPage() {
   const router = useRouter();
   const { data: article, isLoading } = useArticle(articleId);
   const { data: places = [] } = usePlaces();
-  const override = useFeedStore((state) => state.articleLikes[articleId]);
-  const toggleArticleLike = useFeedStore((state) => state.toggleArticleLike);
+  const showToast = useToastStore((state) => state.show);
+  const { data: likeState } = useArticleLikes();
+  const toggleArticleLike = useToggleArticleLike();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   /** 세션 복구 전에는 로그인 여부를 알 수 없다 — 이때 막으면 로그인 사용자도 게이팅에 걸린다. */
   const authHydrated = useAuthStore((state) => state.hydrated);
@@ -81,7 +83,7 @@ export default function ArticleDetailPage() {
     );
   }
 
-  const { liked, likes } = resolveArticleLike(article, override);
+  const { liked, likes } = resolveArticleLike(article, likeState);
   const bodyBlocks = parseArticleBody(article.body);
   const inlineImages = article.images ?? [];
 
@@ -92,7 +94,11 @@ export default function ArticleDetailPage() {
       setLoginOpen(true);
       return;
     }
-    toggleArticleLike(articleId, !liked);
+    if (toggleArticleLike.isPending) return;
+    toggleArticleLike.mutate(
+      { articleId, next: !liked },
+      { onError: (error) => showToast(error.message) }
+    );
   };
 
   return (

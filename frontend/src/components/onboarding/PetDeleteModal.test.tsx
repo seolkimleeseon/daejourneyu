@@ -33,7 +33,7 @@ describe("PetDeleteModal", () => {
   it("되돌릴 수 없다는 걸 이름과 함께 알린다", () => {
     setup();
 
-    expect(screen.getByText("콩이을(를) 삭제할까요?")).toBeTruthy();
+    expect(screen.getByText("콩이를 삭제할까요?")).toBeTruthy();
     expect(screen.getByText(/되돌릴 수 없어요/)).toBeTruthy();
   });
 

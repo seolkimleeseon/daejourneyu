@@ -21,14 +21,25 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+/** 진행 중인 세션 확인. 마운트·포그라운드 복귀가 겹쳐도 /api/auth/me를 한 번만 쏜다. */
+let hydrateInFlight: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>((set) => ({
   isLoggedIn: false,
   user: null,
   hydrated: false,
 
-  hydrate: async () => {
-    const result = await meRequest();
-    set(result.ok ? { isLoggedIn: true, user: result.user, hydrated: true } : { hydrated: true });
+  hydrate: () => {
+    if (hydrateInFlight) return hydrateInFlight;
+    hydrateInFlight = (async () => {
+      try {
+        const result = await meRequest();
+        set(result.ok ? { isLoggedIn: true, user: result.user, hydrated: true } : { hydrated: true });
+      } finally {
+        hydrateInFlight = null;
+      }
+    })();
+    return hydrateInFlight;
   },
 
   signup: async (input) => {

@@ -82,3 +82,28 @@ export function pickChatCandidates(places: CandidateSource[], prompt: string, ca
   }
   return result;
 }
+
+export interface TripConditions {
+  nights: number;
+  transport: "자차" | "대중교통";
+}
+
+/** AI 코스 추천 API가 받는 박 수 상한(backend/src/routes/ai.ts). */
+const MAX_NIGHTS = 4;
+
+/**
+ * 챗봇 질문에서 여행 기간·이동수단을 짐작한다. 예전엔 항상 당일치기·자차로 고정해서
+ * "1박 2일 코스 추천해줘"도 당일 코스가 나왔다. 말하지 않았으면 기본값(당일치기·자차)을 쓴다.
+ * "1박 2일"·"2박"처럼 박이 나오면 그 숫자를, "3일 코스"처럼 일만 나오면 일 수 - 1을 박 수로 본다.
+ */
+export function parseTripConditions(prompt: string): TripConditions {
+  const nightsMatch = prompt.match(/(\d)\s*박/);
+  const daysMatch = prompt.match(/(\d)\s*일(?!정)/);
+  let nights = 0;
+  if (nightsMatch) nights = Number(nightsMatch[1]);
+  else if (/당일/.test(prompt)) nights = 0;
+  else if (daysMatch && Number(daysMatch[1]) >= 2) nights = Number(daysMatch[1]) - 1;
+
+  const transport = /대중교통|버스|지하철|뚜벅이|기차/.test(prompt) ? "대중교통" : "자차";
+  return { nights: Math.min(nights, MAX_NIGHTS), transport };
+}

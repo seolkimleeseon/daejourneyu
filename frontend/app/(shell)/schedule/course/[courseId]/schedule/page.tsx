@@ -8,13 +8,17 @@ import { Card } from "@/components/ui/Card";
 import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
 import { MonthCalendarGrid } from "@/components/course/MonthCalendarGrid";
 import { Emoji3D } from "@/components/ui/Emoji3D";
+import { Modal } from "@/components/ui/Modal";
+import { Button as UiButton } from "@/components/ui/Button";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
 import { useToastStore } from "@/stores/useToastStore";
 
+/** 오늘 날짜(로컬). toISOString은 UTC라 한국에서 0~9시엔 전날로 나온다. */
 function todayYmd(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
 function pad2(n: number): string {
@@ -64,6 +68,7 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
 
   const [date, setDate] = useState(todayYmd());
   const [saving, setSaving] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; date: string } | null>(null);
 
   if (!isLoggedIn) {
     return (
@@ -133,7 +138,7 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
                   <button
                     type="button"
                     disabled={saving}
-                    onClick={() => handleRemove(s.id)}
+                    onClick={() => setCancelTarget({ id: s.id, date: s.date })}
                     className="text-xs font-semibold text-accent-coral disabled:opacity-40"
                   >
                     취소
@@ -172,6 +177,29 @@ export default function CourseScheduleAddPage({ params }: { params: { courseId: 
           <Emoji3D emoji="📅" size={16} shadow={false} />일정 등록하기
         </Button>
       </div>
+
+      <Modal
+        open={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        emoji="📅"
+        icon3D
+        title="이 일정을 취소할까요?"
+        description={cancelTarget ? `${cancelTarget.date} 일정이 캘린더에서 사라져요` : undefined}
+      >
+        <UiButton
+          variant="primary"
+          className="bg-accent-coral active:bg-accent-coral"
+          onClick={() => {
+            if (cancelTarget) void handleRemove(cancelTarget.id);
+            setCancelTarget(null);
+          }}
+        >
+          일정 취소하기
+        </UiButton>
+        <UiButton variant="text" onClick={() => setCancelTarget(null)}>
+          그대로 두기
+        </UiButton>
+      </Modal>
     </>
   );
 }

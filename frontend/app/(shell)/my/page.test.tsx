@@ -58,6 +58,7 @@ beforeEach(() => {
     total: 2,
     nearest: makeBadge({ id: "dj-full-round", emoji: "🐾", href: "/map" }),
     nearestMessage: "중구만 가면 대전 한바퀴 완성",
+    ready: true,
   });
 
   useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: makeUser() });
@@ -200,6 +201,21 @@ describe("마이 — 로그인", () => {
     await userEvent.setup().click(screen.getByText("내가 쓴 후기"));
 
     expect(nav.push).toHaveBeenCalledWith("/my/reviews");
+  });
+
+  it("후기를 받아오는 사이에는 개수 대신 화살표만 둔다 — 9개였다가 10개로 바뀌는 걸 보이지 않게", () => {
+    hooks.useReviews.mockReturnValue({ data: undefined, isLoading: true });
+    renderMyPage();
+
+    expect(screen.queryByText(/개 ›/)).toBeNull();
+  });
+
+  it("뱃지 집계가 끝나기 전에는 숫자 대신 자리만 잡는다", () => {
+    hooks.useMyBadges.mockReturnValue({ ...hooks.useMyBadges(), ready: false });
+    renderMyPage();
+
+    expect(screen.queryByText("대전 한바퀴")).toBeNull();
+    expect(document.querySelector(".animate-pulse")).toBeTruthy();
   });
 
   it("알림 설정은 준비 중 토스트를 띄운다", async () => {

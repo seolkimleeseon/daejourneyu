@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
-import { makeCourse, makeSchedule } from "@/test/fixtures";
+import { makeCourse, makePet, makeSchedule } from "@/test/fixtures";
 
 const api = vi.hoisted(() => ({
   createCourseApi: vi.fn(),
@@ -33,7 +34,7 @@ beforeEach(() => {
   api.createCourseApi.mockResolvedValue(serverCourse);
   api.updateCourseApi.mockResolvedValue(undefined);
   api.deleteCourseApi.mockResolvedValue(undefined);
-  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), pendingNewScheduleIds: new Set(), courseIdAliases: {} });
+  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), pendingNewScheduleIds: new Set(), removedScheduleIds: new Set(), courseIdAliases: {} });
 });
 
 describe("setCourses", () => {
@@ -91,6 +92,33 @@ describe("setCourses", () => {
     useCourseStore.getState().setCourses([]);
 
     expect(useCourseStore.getState().courses.map((c) => c.id)).toEqual(["server-1"]);
+  });
+});
+
+describe("addCourse — 반려동물 연결", () => {
+  beforeEach(() => {
+    usePetStore.setState({ pets: [makePet({ id: "pet-1" }), makePet({ id: "pet-2" })], activePetIndex: 1 });
+  });
+
+  it("지금 활성인 반려동물을 코스에 붙여 서버에도 보낸다", () => {
+    const created = useCourseStore.getState().addCourse(newCourseInput());
+
+    expect(created.petId).toBe("pet-2");
+    expect(api.createCourseApi).toHaveBeenCalledWith(expect.objectContaining({ petId: "pet-2" }));
+  });
+
+  it("호출부가 반려동물을 정해 보냈으면 그대로 둔다", () => {
+    const created = useCourseStore.getState().addCourse({ ...newCourseInput(), petId: "pet-1" });
+
+    expect(created.petId).toBe("pet-1");
+  });
+
+  it("반려동물이 없으면(비로그인 직후 등) 비워 둔다", () => {
+    usePetStore.setState({ pets: [], activePetIndex: 0 });
+
+    const created = useCourseStore.getState().addCourse(newCourseInput());
+
+    expect(created.petId).toBeNull();
   });
 });
 
@@ -223,6 +251,25 @@ describe("setSchedules", () => {
     expect(useCourseStore.getState().schedules).toEqual([]);
   });
 
+  it("취소한 일정은 취소 전 스냅샷을 든 낡은 서버 목록이 와도 되살아나지 않는다", () => {
+    const cancelled = makeSchedule({ id: "s-cancelled" });
+    useCourseStore.setState({ schedules: [], removedScheduleIds: new Set(["s-cancelled"]) });
+
+    useCourseStore.getState().setSchedules([cancelled]);
+
+    expect(useCourseStore.getState().schedules).toEqual([]);
+  });
+
+  it("서버 목록에서 실제로 사라진 게 확인되면 취소 기록을 푼다", () => {
+    const cancelled = makeSchedule({ id: "s-cancelled" });
+    useCourseStore.setState({ removedScheduleIds: new Set(["s-cancelled"]) });
+
+    useCourseStore.getState().setSchedules([]);
+    useCourseStore.getState().setSchedules([cancelled]);
+
+    expect(useCourseStore.getState().schedules.map((s) => s.id)).toEqual(["s-cancelled"]);
+  });
+
   it("서버 목록에 있는 항목은 중복으로 두지 않는다", () => {
     const schedule = makeSchedule({ id: "s1" });
     useCourseStore.setState({ schedules: [schedule], pendingNewScheduleIds: new Set(["s1"]) });
@@ -281,6 +328,18 @@ describe("addSchedule / removeSchedule", () => {
     await useCourseStore.getState().removeSchedule("s1");
 
     expect(api.deleteScheduleApi).toHaveBeenCalledWith("s1");
+    expect(useCourseStore.getState().schedules.map((s) => s.id)).toEqual(["s2"]);
+  });
+
+  it("취소한 직후 도착한 낡은 서버 목록이 취소한 일정을 되살리지 않는다", async () => {
+    api.deleteScheduleApi.mockResolvedValue(undefined);
+    const s1 = makeSchedule({ id: "s1" });
+    const s2 = makeSchedule({ id: "s2" });
+    useCourseStore.setState({ schedules: [s1, s2] });
+
+    await useCourseStore.getState().removeSchedule("s1");
+    useCourseStore.getState().setSchedules([s1, s2]);
+
     expect(useCourseStore.getState().schedules.map((s) => s.id)).toEqual(["s2"]);
   });
 

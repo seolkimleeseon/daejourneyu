@@ -2,12 +2,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Badge } from "@/lib/badges";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { makeBadge } from "@/test/fixtures";
 import { icon3D } from "@/test/icon3d";
 import MyBadgesPage from "./page";
 
 const nav = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => nav }));
+vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/my/badges" }));
 
 const hooks = vi.hoisted(() => ({ useMyBadges: vi.fn() }));
 vi.mock("@/hooks/useMyBadges", () => ({ useMyBadges: hooks.useMyBadges }));
@@ -77,12 +78,40 @@ function mockBadges(badges: Badge[]) {
     total: badges.length,
     nearest: null,
     nearestMessage: "",
+    ready: true,
   });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockBadges([maxed, leveling, notStarted, secret]);
+  useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: null });
+});
+
+describe("들어갈 수 있는지", () => {
+  it("세션을 확인하기 전엔 숫자를 그리지 않는다 — 게스트 값이 잠깐 보였다 바뀌지 않게", () => {
+    useAuthStore.setState({ hydrated: false, isLoggedIn: false });
+    render(<MyBadgesPage />);
+
+    expect(screen.getByText("불러오는 중…")).toBeTruthy();
+    expect(screen.queryByText("모은 뱃지")).toBeNull();
+  });
+
+  it("코스·후기를 받아오는 중이면 숫자 대신 불러오는 중을 보여준다", () => {
+    hooks.useMyBadges.mockReturnValue({ ...hooks.useMyBadges(), ready: false });
+    render(<MyBadgesPage />);
+
+    expect(screen.getByText("불러오는 중…")).toBeTruthy();
+    expect(screen.queryByText("모은 뱃지")).toBeNull();
+  });
+
+  it("비로그인이면 뱃지 대신 로그인 안내를 보여준다", () => {
+    useAuthStore.setState({ hydrated: true, isLoggedIn: false });
+    render(<MyBadgesPage />);
+
+    expect(screen.getByText("뱃지는 로그인해야 모을 수 있어요")).toBeTruthy();
+    expect(screen.queryByText("모은 뱃지")).toBeNull();
+  });
 });
 
 describe("여행 뱃지 전체 목록", () => {

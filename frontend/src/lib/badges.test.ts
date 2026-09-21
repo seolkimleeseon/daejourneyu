@@ -146,20 +146,34 @@ describe("computeMyBadges — 단계형", () => {
     expect(remainingSteps(badge)).toBe(0);
   });
 
-  it("사진 붙인 후기·받은 좋아요·누른 좋아요를 각자 센다", () => {
+  it("사진 붙인 후기·받은 담기·누른 도움돼요를 각자 센다", () => {
     const badges = compute({
       reviews: [makeReview({ photoUrl: "data:image/png;base64,AAA" }), makeReview({ id: "r2" })],
       posts: [
-        makePost({ id: "mine-1", isMine: true, likes: 6 }),
-        makePost({ id: "mine-2", isMine: true, likes: 4 }),
-        ...Array.from({ length: 10 }, (_, i) =>
-          makePost({ id: `other-${i}`, isMine: false, liked: true })
-        ),
+        makePost({ id: "mine-1", isMine: true, saves: 3 }),
+        makePost({ id: "mine-2", isMine: true, saves: 2 }),
+        // 남의 글에 담긴 수는 내 것이 아니다.
+        makePost({ id: "other-1", isMine: false, saves: 99 }),
       ],
+      articleLikeCount: 3,
     });
     expect(badgeById(badges, "photographer").current).toBe(1);
-    expect(badgeById(badges, "popular-course").got).toBe(true);
-    expect(badgeById(badges, "neighbor-love").got).toBe(true);
+    expect(badgeById(badges, "popular-course")).toMatchObject({ got: true, current: 5 });
+    expect(badgeById(badges, "neighbor-love")).toMatchObject({ got: true, current: 3 });
+  });
+
+  it("아티클에 도움돼요를 누르지 않았으면 이웃사랑은 못 받는다", () => {
+    const badge = badgeById(compute({ articleLikeCount: 0 }), "neighbor-love");
+    expect(badge.got).toBe(false);
+  });
+
+  it("내 코스가 담기지 않았으면 인기 코스는 못 받는다", () => {
+    const badge = badgeById(
+      compute({ posts: [makePost({ id: "mine-1", isMine: true, saves: 4 })] }),
+      "popular-course"
+    );
+    expect(badge.got).toBe(false);
+    expect(badge.current).toBe(4);
   });
 
   it("직접 만든 코스와 보관한 코스를 출처로 가른다", () => {

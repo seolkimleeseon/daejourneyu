@@ -57,13 +57,18 @@ export function parseArticleBody(body: string): ArticleBodyBlock[] {
     );
 }
 
-/** 아티클 좋아요 — 게시물과 동일하게 원본 값 + 토글 오버라이드로 표시값을 계산한다. */
+/**
+ * 아티클 도움돼요 표시값. 목데이터 아티클의 likes는 "실제 사용자가 누르기 전의 기본 수"라서,
+ * 서버가 센 실제 수를 더하고 내가 눌렀는지는 서버 목록으로 안다.
+ */
 export function resolveArticleLike(
-  article: { likes: number; liked: boolean },
-  override: boolean | undefined
+  article: { id: string; likes: number },
+  state: { counts: Record<string, number>; likedIds: string[] } | undefined
 ): { liked: boolean; likes: number } {
-  const liked = override ?? article.liked;
-  return { liked, likes: article.likes + (liked === article.liked ? 0 : liked ? 1 : -1) };
+  return {
+    liked: state?.likedIds.includes(article.id) ?? false,
+    likes: article.likes + (state?.counts[article.id] ?? 0),
+  };
 }
 
 /** 코스 탭 정렬 — 프로토타입의 jyBrowseSort('담긴순' | '최신순')에 대응 */
@@ -86,14 +91,15 @@ export function formatFeedDate(date: string): string {
 }
 
 /**
- * 게시물 카드의 등록일 표기 — createdAt은 ISO 문자열이라 날짜 부분만 잘라 쓴다.
+ * 게시물 카드의 등록일 표기 — createdAt은 ISO(UTC) 문자열이라 날짜 부분을 잘라 쓰면 한국 시간 0~9시에
+ * 쓴 글이 전날로 찍힌다. Date로 읽어 보는 사람의 로컬 날짜로 바꾼다.
  * 같은 해면 아티클과 똑같이 "8월 12일", 해가 넘어간 글만 연도를 붙여 구분한다.
  */
 export function formatPostDate(createdAt: string): string {
-  const [year, month, day] = createdAt.slice(0, 10).split("-");
-  if (!year || !month || !day) return "";
-  const label = `${Number(month)}월 ${Number(day)}일`;
-  return Number(year) === new Date().getFullYear() ? label : `${year}년 ${label}`;
+  const date = new Date(createdAt);
+  if (createdAt === "" || Number.isNaN(date.getTime())) return "";
+  const label = `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  return date.getFullYear() === new Date().getFullYear() ? label : `${date.getFullYear()}년 ${label}`;
 }
 
 /** 자랑하기 글에 자동으로 붙는 태그 — 코스를 훑어볼 때 필요한 일정 길이와 자치구만 넣는다. */

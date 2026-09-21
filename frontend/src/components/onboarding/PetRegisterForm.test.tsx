@@ -259,6 +259,6 @@ describe("수정(edit)", () => {
 
     await user.click(screen.getByRole("button", { name: "삭제하기" }));
 
-    expect(screen.getByText("콩이을(를) 삭제할까요?")).toBeTruthy();
+    expect(screen.getByText("콩이를 삭제할까요?")).toBeTruthy();
   });
 });

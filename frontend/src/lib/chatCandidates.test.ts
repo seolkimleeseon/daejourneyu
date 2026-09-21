@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickChatCandidates } from "./chatCandidates";
+import { parseTripConditions, pickChatCandidates } from "./chatCandidates";
 import { makePlace } from "@/test/fixtures";
 
 describe("pickChatCandidates", () => {
@@ -103,5 +103,36 @@ describe("pickChatCandidates", () => {
       { ...makePlace({ id: "foodsafety-1", category: "맛집" }), sourceTier: 1, source: "foodsafety", imageUrl: "https://img/test.jpg" },
     ];
     expect(pickChatCandidates(places, "맛집 추천해줘", 1).map((place) => place.id)).toEqual(["foodsafety-1"]);
+  });
+});
+
+describe("parseTripConditions", () => {
+  it("말하지 않았으면 당일치기·자차로 본다", () => {
+    expect(parseTripConditions("유성구에서 산책하기 좋은 곳 알려줘")).toEqual({ nights: 0, transport: "자차" });
+  });
+
+  it("'N박'이 나오면 그 숫자를 박 수로 쓴다", () => {
+    expect(parseTripConditions("대덕구에서 1박 2일 코스 추천해줘").nights).toBe(1);
+    expect(parseTripConditions("2박3일 코스").nights).toBe(2);
+    expect(parseTripConditions("1 박 여행").nights).toBe(1);
+  });
+
+  it("일만 나오면 일 수 - 1을 박 수로 본다", () => {
+    expect(parseTripConditions("3일 코스 짜줘").nights).toBe(2);
+  });
+
+  it("당일치기는 0박이고, '일정' 같은 단어의 '일'은 기간으로 읽지 않는다", () => {
+    expect(parseTripConditions("당일치기 코스 추천해줘").nights).toBe(0);
+    expect(parseTripConditions("5일정 코스").nights).toBe(0);
+  });
+
+  it("API 상한(4박)을 넘기지 않는다", () => {
+    expect(parseTripConditions("9박 10일 여행").nights).toBe(4);
+  });
+
+  it("대중교통 언급이 있으면 대중교통으로 본다", () => {
+    expect(parseTripConditions("지하철로 갈 수 있는 코스").transport).toBe("대중교통");
+    expect(parseTripConditions("뚜벅이 코스 추천").transport).toBe("대중교통");
+    expect(parseTripConditions("차 가지고 갈 수 있는 곳").transport).toBe("자차");
   });
 });

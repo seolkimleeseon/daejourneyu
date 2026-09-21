@@ -3,12 +3,24 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ArticleCard } from "@/components/feed/ArticleCard";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useFeedStore } from "@/stores/useFeedStore";
 import { makeArticle, makeUser } from "@/test/fixtures";
 import { icon3D } from "@/test/icon3d";
 
+// 도움돼요는 서버가 정본이라 훅을 통째로 대신한다 — 누르면 무엇을 요청하는지와, 서버 상태를 어떻게 그리는지만 본다.
+const likes = vi.hoisted(() => ({
+  state: { counts: {} as Record<string, number>, likedIds: [] as string[] },
+  mutate: vi.fn(),
+  isPending: false,
+}));
+vi.mock("@/hooks/useArticleLikes", () => ({
+  useArticleLikes: () => ({ data: likes.state }),
+  useToggleArticleLike: () => ({ mutate: likes.mutate, isPending: likes.isPending }),
+}));
+
 beforeEach(() => {
-  useFeedStore.setState({ overrides: {}, articleLikes: {} });
+  vi.clearAllMocks();
+  likes.state = { counts: {}, likedIds: [] };
+  likes.isPending = false;
   useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: makeUser() });
 });
 
@@ -32,7 +44,7 @@ describe("ArticleCard", () => {
     expect(container.querySelector("a")?.getAttribute("href")).toBe("/article/a1");
   });
 
-  it("좋아요를 누르면 수와 상태가 바뀌고 스토어에 기록된다", async () => {
+  it("좋아요를 누르면 서버에 누른 것으로 요청한다", async () => {
     const user = userEvent.setup();
     render(<ArticleCard article={makeArticle({ id: "a1", likes: 5, liked: false })} />);
     const button = screen.getByRole("button");
@@ -42,13 +54,32 @@ describe("ArticleCard", () => {
     expect(button.getAttribute("aria-pressed")).toBe("false");
 
     await user.click(button);
+
+    expect(likes.mutate).toHaveBeenCalledWith({ articleId: "a1", next: true }, expect.anything());
+  });
+
+  it("서버에서 이미 누른 아티클이면 눌린 모양이고, 다시 누르면 취소를 요청한다", async () => {
+    likes.state = { counts: { a1: 1 }, likedIds: ["a1"] };
+    const user = userEvent.setup();
+    render(<ArticleCard article={makeArticle({ id: "a1", likes: 5, liked: false })} />);
+    const button = screen.getByRole("button");
+
     expect(button.textContent).toBe("6");
     expect(icon3D("red_heart_3d.png", button)).toBeTruthy();
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(useFeedStore.getState().articleLikes).toEqual({ a1: true });
 
     await user.click(button);
-    expect(button.textContent).toBe("5");
+
+    expect(likes.mutate).toHaveBeenCalledWith({ articleId: "a1", next: false }, expect.anything());
+  });
+
+  it("요청이 진행 중일 때 연타해도 한 번만 보낸다", async () => {
+    likes.isPending = true;
+    render(<ArticleCard article={makeArticle({ id: "a1", likes: 5 })} />);
+
+    await userEvent.setup().click(screen.getByRole("button"));
+
+    expect(likes.mutate).not.toHaveBeenCalled();
   });
 
   it("비로그인 상태에서는 좋아요를 기록하지 않고 로그인부터 안내한다", async () => {
@@ -64,7 +95,7 @@ describe("ArticleCard", () => {
     await userEvent.setup().click(screen.getByRole("button"));
 
     expect(onRequireLogin).toHaveBeenCalledTimes(1);
-    expect(useFeedStore.getState().articleLikes).toEqual({});
+    expect(likes.mutate).not.toHaveBeenCalled();
   });
 
   it("세션 복구 전에는 아무 판단도 하지 않는다 — 로그인 사용자를 막으면 안 된다", async () => {
@@ -80,6 +111,6 @@ describe("ArticleCard", () => {
     await userEvent.setup().click(screen.getByRole("button"));
 
     expect(onRequireLogin).not.toHaveBeenCalled();
-    expect(useFeedStore.getState().articleLikes).toEqual({});
+    expect(likes.mutate).not.toHaveBeenCalled();
   });
 });

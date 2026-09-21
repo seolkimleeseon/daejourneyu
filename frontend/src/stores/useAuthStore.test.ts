@@ -40,6 +40,29 @@ describe("hydrate", () => {
   });
 });
 
+describe("hydrate 중복 호출", () => {
+  it("동시에 여러 번 불러도 세션 확인 요청은 한 번만 나간다", async () => {
+    api.meRequest.mockResolvedValue({ ok: true, user });
+
+    await Promise.all([
+      useAuthStore.getState().hydrate(),
+      useAuthStore.getState().hydrate(),
+      useAuthStore.getState().hydrate(),
+    ]);
+
+    expect(api.meRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("끝난 뒤에는 다시 불러 세션을 새로 확인한다 — 포그라운드 복귀 때 필요하다", async () => {
+    api.meRequest.mockResolvedValue({ ok: false });
+
+    await useAuthStore.getState().hydrate();
+    await useAuthStore.getState().hydrate();
+
+    expect(api.meRequest).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("login / signup", () => {
   it("성공하면 로그인 상태로 두고 결과를 그대로 돌려준다", async () => {
     api.loginRequest.mockResolvedValue({ ok: true, user });

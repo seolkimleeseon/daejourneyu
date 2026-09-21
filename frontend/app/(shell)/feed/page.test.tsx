@@ -30,6 +30,12 @@ vi.mock("@/hooks/usePosts", () => ({
 }));
 vi.mock("@/hooks/useArticles", () => ({ useArticles: hooks.useArticles }));
 
+const articleLikes = vi.hoisted(() => ({ mutate: vi.fn() }));
+vi.mock("@/hooks/useArticleLikes", () => ({
+  useArticleLikes: () => ({ data: { counts: {}, likedIds: [] } }),
+  useToggleArticleLike: () => ({ mutate: articleLikes.mutate, isPending: false }),
+}));
+
 const LOGIN_DESCRIPTION = "로그인하면 반려동물 여권과 내 활동을 볼 수 있어요.";
 
 let coursePosts: FeedPost[];
@@ -98,7 +104,7 @@ beforeEach(() => {
 
   useAuthStore.setState({ isLoggedIn: false, hydrated: true, user: null });
   usePetStore.setState({ pets: [], activePetIndex: 0 });
-  useFeedStore.setState({ overrides: {}, articleLikes: {} });
+  useFeedStore.setState({ overrides: {} });
 });
 
 describe("둘러보기 — 코스 탭", () => {
@@ -368,7 +374,7 @@ describe("둘러보기 — 아티클 탭", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: "3" }));
 
     expect(loginModalOpen()).toBe(true);
-    expect(useFeedStore.getState().articleLikes).toEqual({});
+    expect(articleLikes.mutate).not.toHaveBeenCalled();
   });
 });
 

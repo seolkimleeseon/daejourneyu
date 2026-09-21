@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/shell/TopBar";
 import { Emoji3D } from "@/components/ui/Emoji3D";
+import { LoginRequiredGate } from "@/components/course/LoginRequiredGate";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useMyBadges } from "@/hooks/useMyBadges";
 import { groupBadgesByCategory, RARITY_LABEL, type Badge } from "@/lib/badges";
 import { cn } from "@/lib/cn";
@@ -19,8 +21,39 @@ import { cn } from "@/lib/cn";
  */
 export default function MyBadgesPage() {
   const router = useRouter();
-  const { badges, gotCount, total } = useMyBadges();
+  const { badges, gotCount, total, ready } = useMyBadges();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hydrated = useAuthStore((state) => state.hydrated);
   const groups = groupBadgesByCategory(badges);
+
+  // 세션을 확인하기 전엔 게스트 값이 잠깐 보였다가 실제 값으로 바뀌므로 숫자를 그리지 않고,
+  // 게스트에겐 마이탭·보관함처럼 로그인 안내를 보여준다(뱃지는 내 기록이라 게스트에겐 의미가 없다).
+  if (!hydrated) {
+    return (
+      <>
+        <TopBar title="여행 뱃지" showBack />
+        <div className="py-16 text-center text-xs text-ink-muted">불러오는 중…</div>
+      </>
+    );
+  }
+  if (!isLoggedIn) {
+    return (
+      <>
+        <TopBar title="여행 뱃지" showBack />
+        <LoginRequiredGate message="뱃지는 로그인해야 모을 수 있어요" />
+      </>
+    );
+  }
+
+  // 코스·후기·글을 받아오는 사이엔 숫자가 계속 바뀌므로(1/44 → 12/44) 다 받을 때까지 그리지 않는다.
+  if (!ready) {
+    return (
+      <>
+        <TopBar title="여행 뱃지" showBack />
+        <div className="py-16 text-center text-xs text-ink-muted">불러오는 중…</div>
+      </>
+    );
+  }
 
   return (
     <>

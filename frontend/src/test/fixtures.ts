@@ -193,6 +193,7 @@ export function makeBadgeInput(overrides: Partial<BadgeInput> = {}): BadgeInput 
     reviews: [],
     posts: [],
     places: [],
+    articleLikeCount: 0,
     today: "2026-09-14",
     ...overrides,
   };
