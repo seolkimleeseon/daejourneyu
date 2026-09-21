@@ -27,8 +27,12 @@ export const GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.
  * 같이 써서 소용이 없다 — 키마다 다른 구글 프로젝트(또는 계정)에서 발급해야 한도가 늘어난다.
  */
 export function geminiApiKeys(): string[] {
-  const fromList = (process.env.GEMINI_API_KEYS ?? "").split(",");
-  const keys = [...fromList, process.env.GEMINI_API_KEY ?? ""].map((key) => key.trim()).filter(Boolean);
+  // 콤마뿐 아니라 줄바꿈·공백·세미콜론으로 이어 붙여도 읽고, 감싼 따옴표는 벗긴다 - 환경변수에 손으로 붙여 넣다
+  // 보면 자주 생기는 모양이다. 줄바꿈이 키 안에 남으면 헤더 값이 깨져(TypeError) 요청이 아예 나가지 못한다.
+  const fromList = (process.env.GEMINI_API_KEYS ?? "").split(/[\s,;]+/);
+  const keys = [...fromList, process.env.GEMINI_API_KEY ?? ""]
+    .map((key) => key.trim().replace(/^["'`]+|["'`]+$/g, ""))
+    .filter(Boolean);
   return [...new Set(keys)];
 }
 
@@ -109,8 +113,15 @@ export async function generateContentWithKeys(params: Omit<GenerateParams, "mode
       try {
         return await clientFor(key).models.generateContent({ ...params, model });
       } catch (error) {
-        if (!(error instanceof ApiError)) throw error;
+        if (!(error instanceof ApiError)) {
+          // 네트워크 오류나 깨진 키(헤더에 못 넣는 문자)처럼 그 키·요청 하나의 문제다. 서버 전체를 죽이지 않고 잠깐
+          // 쉬게 한 뒤 다른 키로 넘어간다. 아무도 성공하지 못하면 마지막에 그대로 던져 라우트가 502로 바꾼다.
+          cooldowns.set(cooldownKey(key, model), { until: Date.now() + COOLDOWN_MS.busy, reason: "busy" });
+          failures.push({ status: 0, error });
+          continue;
+        }
         const status = error.status;
+        const invalidKey = status === 400 && /API key not valid/i.test(error.message);
         if (status === 429 || status === 503) {
           const reason: CooldownReason = status === 429 ? "quota" : "busy";
           const wait =
@@ -118,7 +129,7 @@ export async function generateContentWithKeys(params: Omit<GenerateParams, "mode
               ? Math.min(Math.max(retryDelayMs(error) ?? COOLDOWN_MS.quota, MIN_QUOTA_COOLDOWN_MS), MAX_QUOTA_COOLDOWN_MS)
               : COOLDOWN_MS.busy;
           cooldowns.set(cooldownKey(key, model), { until: Date.now() + wait, reason });
-        } else if (status === 401 || status === 403) {
+        } else if (status === 401 || status === 403 || invalidKey) {
           // 잘못된 키는 어느 모델로 불러도 같으므로 그 키의 모든 모델을 쉬게 한다.
           for (const m of GEMINI_MODELS) {
             cooldowns.set(cooldownKey(key, m), { until: Date.now() + COOLDOWN_MS.badKey, reason: "badKey" });
@@ -132,7 +143,7 @@ export async function generateContentWithKeys(params: Omit<GenerateParams, "mode
   }
 
   const pick = (statuses: number[]) => failures.find((failure) => statuses.includes(failure.status));
-  const best = pick([429]) ?? pick([401, 403]) ?? pick([503]);
+  const best = pick([429]) ?? pick([401, 403]) ?? pick([503]) ?? pick([400, 0]);
   if (best) throw best.error;
 
   // 이번 요청에서 한 번도 시도하지 못했다 — 모든 조합이 쉬는 중이다. 쉬는 이유로 알맞은 오류를 만든다.
