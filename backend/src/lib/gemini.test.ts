@@ -79,6 +79,18 @@ describe("geminiApiKeys", () => {
     expect(geminiApiKeys()).toEqual(["k1", "k2", "k3", "k4"]);
   });
 
+  it("한글 입력기로 붙여 넣다 섞이는 전각 콤마·둥근 따옴표·보이지 않는 글자에도 키가 오염되지 않는다", () => {
+    process.env.GEMINI_API_KEYS = "“k1”，k2​, k3 k4";
+
+    expect(geminiApiKeys()).toEqual(["k1", "k2", "k3", "k4"]);
+  });
+
+  it("실제 키처럼 - 와 _ 가 든 값은 그대로 지킨다", () => {
+    process.env.GEMINI_API_KEYS = "AIzaSy-abc_DEF123,AQ.Ab8_x-y";
+
+    expect(geminiApiKeys()).toEqual(["AIzaSy-abc_DEF123", "AQ.Ab8_x-y"]);
+  });
+
   it("기존 GEMINI_API_KEY 하나만 있어도 그대로 쓴다", () => {
     process.env.GEMINI_API_KEY = "solo";
 

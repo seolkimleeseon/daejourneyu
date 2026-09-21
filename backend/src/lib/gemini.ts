@@ -27,13 +27,13 @@ export const GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.
  * 같이 써서 소용이 없다 — 키마다 다른 구글 프로젝트(또는 계정)에서 발급해야 한도가 늘어난다.
  */
 export function geminiApiKeys(): string[] {
-  // 콤마뿐 아니라 줄바꿈·공백·세미콜론으로 이어 붙여도 읽고, 감싼 따옴표는 벗긴다 - 환경변수에 손으로 붙여 넣다
-  // 보면 자주 생기는 모양이다. 줄바꿈이 키 안에 남으면 헤더 값이 깨져(TypeError) 요청이 아예 나가지 못한다.
-  const fromList = (process.env.GEMINI_API_KEYS ?? "").split(/[\s,;]+/);
-  const keys = [...fromList, process.env.GEMINI_API_KEY ?? ""]
-    .map((key) => key.trim().replace(/^["'`]+|["'`]+$/g, ""))
+  // 키에 들어갈 수 있는 글자(영문·숫자·_ - .)가 아닌 것은 전부 구분자로 본다. 콤마·줄바꿈·공백은 물론, 한글 입력기로
+  // 치면 섞이는 전각 콤마(，)·둥근 따옴표(“ ”)·보이지 않는 글자(ZWSP 등)도 키를 오염시키지 않고 잘라낸다.
+  // 그런 글자가 키에 남으면 요청 헤더에 못 들어가(TypeError) 어떤 키로도 호출이 나가지 못한다.
+  const tokens = `${process.env.GEMINI_API_KEYS ?? ""},${process.env.GEMINI_API_KEY ?? ""}`
+    .split(/[^A-Za-z0-9_.-]+/)
     .filter(Boolean);
-  return [...new Set(keys)];
+  return [...new Set(tokens)];
 }
 
 const clients = new Map<string, GoogleGenAI>();
@@ -116,6 +116,10 @@ export async function generateContentWithKeys(params: Omit<GenerateParams, "mode
         if (!(error instanceof ApiError)) {
           // 네트워크 오류나 깨진 키(헤더에 못 넣는 문자)처럼 그 키·요청 하나의 문제다. 서버 전체를 죽이지 않고 잠깐
           // 쉬게 한 뒤 다른 키로 넘어간다. 아무도 성공하지 못하면 마지막에 그대로 던져 라우트가 502로 바꾼다.
+          // 키 값은 오류 메시지에 그대로 실릴 수 있어 남기지 않는다 - 오류 종류와 키 개수·길이만 남긴다.
+          console.error(
+            `[gemini] ApiError가 아닌 오류(${error instanceof Error ? error.name : typeof error}) - 키 ${keys.length}개, 길이 [${keys.map((k) => k.length).join(",")}]`
+          );
           cooldowns.set(cooldownKey(key, model), { until: Date.now() + COOLDOWN_MS.busy, reason: "busy" });
           failures.push({ status: 0, error });
           continue;
