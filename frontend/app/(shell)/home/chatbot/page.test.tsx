@@ -109,6 +109,29 @@ describe("자주 묻는 질문", () => {
   });
 });
 
+describe("코스 요청은 FAQ가 가로채지 않는다", () => {
+  it.each(["코스짜줘", "강아지랑 산책할건데 코스 짜줘", "코스 만들어줘"])(
+    "\"%s\"는 AI에게 묻는다",
+    async (text) => {
+      const { user } = setup();
+
+      await user.type(sendBox(), `${text}{Enter}`);
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText(/내 여정 탭에서 MBTI 추천/)).toBeNull();
+    }
+  );
+
+  it("방법을 묻는 말은 여전히 안내문으로 답한다", async () => {
+    const { user } = setup();
+
+    await user.type(sendBox(), "코스 만드는 방법 알려줘{Enter}");
+
+    expect(screen.getByText(/내 여정 탭에서 MBTI 추천/)).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("보내기", () => {
   it("빈 칸은 보내지 않는다", async () => {
     const { user } = setup();
