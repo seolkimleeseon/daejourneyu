@@ -254,3 +254,26 @@ describe("코스 추가", () => {
     expect(screen.getByRole("button", { name: "추가" })).toBeTruthy();
   });
 });
+
+describe("코스가 사라진 일정", () => {
+  it("코스가 없는 일정은 점도 선도 찍지 않는다", () => {
+    useCourseStore.setState({
+      courses: [course],
+      schedules: [makeSchedule({ id: "ghost", courseId: "deleted-course", date: "2026-09-18" })],
+    });
+    render(<ScheduleCalendar />);
+
+    expect(dayCell("18").querySelector(".rounded-full")).toBeNull();
+    expect(hasOvernightMark("18")).toBe(false);
+  });
+
+  it("코스가 없는 일정만 있는 날은 빈 날처럼 안내한다", async () => {
+    useCourseStore.setState({
+      courses: [course],
+      schedules: [makeSchedule({ id: "ghost", courseId: "deleted-course", date: "2026-09-18" })],
+    });
+    render(<ScheduleCalendar initialDate="2026-09-18" />);
+
+    expect(screen.getByText("이 날엔 등록된 일정이 없어요.")).toBeTruthy();
+  });
+});

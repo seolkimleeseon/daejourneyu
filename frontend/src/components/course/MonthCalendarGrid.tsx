@@ -44,7 +44,9 @@ export function MonthCalendarGrid({
   markedDates,
   lineDates,
 }: MonthCalendarGridProps) {
-  const selected = new Date(selectedDate);
+  // new Date("YYYY-MM-DD")는 UTC 자정으로 읽혀 시간대에 따라 하루가 밀리므로 로컬 자정으로 만든다.
+  const [selectedY, selectedM, selectedD] = selectedDate.split("-").map(Number);
+  const selected = new Date(selectedY, selectedM - 1, selectedD);
   const [year, setYear] = useState(selected.getFullYear());
   const [month0, setMonth0] = useState(selected.getMonth());
 

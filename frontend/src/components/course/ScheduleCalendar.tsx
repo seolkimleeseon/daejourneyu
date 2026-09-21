@@ -34,6 +34,12 @@ function toYmd(year: number, month0: number, day: number) {
   return `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
 }
 
+/** YYYY-MM-DD를 로컬 자정으로 읽는다. new Date("YYYY-MM-DD")는 UTC 자정으로 읽혀 시간대에 따라 하루가 밀린다. */
+function parseYmd(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 /** YYYY-MM-DD에서 days만큼 지난 날짜(YYYY-MM-DD). 월 넘어가는 계산은 Date에 맡긴다. */
 function addDays(ymd: string, days: number): string {
   const [y, m, d] = ymd.split("-").map(Number);
@@ -55,12 +61,12 @@ function diffDays(from: string, to: string): number {
 export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
   const router = useRouter();
   const courses = useCourseStore((state) => state.courses);
-  const schedules = useCourseStore((state) => state.schedules);
+  const allSchedules = useCourseStore((state) => state.schedules);
   const addSchedule = useCourseStore((state) => state.addSchedule);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const showToast = useToastStore((state) => state.show);
   const today = new Date();
-  const initial = initialDate ? new Date(initialDate) : today;
+  const initial = initialDate ? parseYmd(initialDate) : today;
   const [year, setYear] = useState(initial.getFullYear());
   const [month0, setMonth0] = useState(initial.getMonth());
   const [selectedDate, setSelectedDate] = useState(
@@ -104,6 +110,16 @@ export function ScheduleCalendar({ initialDate }: { initialDate?: string }) {
     setMonth0(nextMonth);
     setYear(nextYear);
   };
+
+  /**
+   * 코스가 이미 없는 일정은 그리지 않는다. 코스를 지운 직후 30초 캐시에 남은 옛 일정 목록이 뒤늦게
+   * 스토어로 들어오면, 코스는 없는데 일정만 남아 달력엔 점이 찍히고 아래 목록엔 카드가 없는
+   * "일정 없는 점"이 생겼다. 점·선·목록이 같은 기준(코스가 있는 일정)을 보게 맞춘다.
+   */
+  const schedules = useMemo(
+    () => allSchedules.filter((schedule) => courses.some((course) => course.id === schedule.courseId)),
+    [allSchedules, courses]
+  );
 
   const todayYmd = toYmd(today.getFullYear(), today.getMonth(), today.getDate());
   const nightsOf = (courseId: string) => courses.find((course) => course.id === courseId)?.nights ?? 0;

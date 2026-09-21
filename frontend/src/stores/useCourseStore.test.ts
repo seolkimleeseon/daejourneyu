@@ -33,7 +33,7 @@ beforeEach(() => {
   api.createCourseApi.mockResolvedValue(serverCourse);
   api.updateCourseApi.mockResolvedValue(undefined);
   api.deleteCourseApi.mockResolvedValue(undefined);
-  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), courseIdAliases: {} });
+  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), pendingNewScheduleIds: new Set(), courseIdAliases: {} });
 });
 
 describe("setCourses", () => {
@@ -196,18 +196,36 @@ describe("setSchedules", () => {
     expect(useCourseStore.getState().schedules).toEqual([schedule]);
   });
 
-  it("서버에 아직 안 잡힌 로컬 일정은 지우지 않는다 — stale 캐시가 방금 등록한 걸 덮는다", () => {
+  it("방금 등록했는데 서버 목록엔 아직 안 잡힌 일정은 지우지 않는다 — stale 캐시가 방금 등록한 걸 덮는다", () => {
     const justAdded = makeSchedule({ id: "s-new" });
-    useCourseStore.setState({ schedules: [justAdded] });
+    useCourseStore.setState({ schedules: [justAdded], pendingNewScheduleIds: new Set(["s-new"]) });
 
     useCourseStore.getState().setSchedules([makeSchedule({ id: "s-old" })]);
 
     expect(useCourseStore.getState().schedules.map((s) => s.id)).toEqual(["s-old", "s-new"]);
   });
 
+  it("서버 목록에 없고 방금 등록한 것도 아닌 로컬 일정은 버린다 — 다른 기기에서 지운 일정이 남지 않게", () => {
+    useCourseStore.setState({ schedules: [makeSchedule({ id: "s-gone" })] });
+
+    useCourseStore.getState().setSchedules([makeSchedule({ id: "s-old" })]);
+
+    expect(useCourseStore.getState().schedules.map((s) => s.id)).toEqual(["s-old"]);
+  });
+
+  it("서버 목록에 나타나면 보호를 푼다 — 그 뒤 서버에서 사라지면 같이 사라진다", () => {
+    const schedule = makeSchedule({ id: "s-new" });
+    useCourseStore.setState({ schedules: [schedule], pendingNewScheduleIds: new Set(["s-new"]) });
+
+    useCourseStore.getState().setSchedules([schedule]);
+    useCourseStore.getState().setSchedules([]);
+
+    expect(useCourseStore.getState().schedules).toEqual([]);
+  });
+
   it("서버 목록에 있는 항목은 중복으로 두지 않는다", () => {
     const schedule = makeSchedule({ id: "s1" });
-    useCourseStore.setState({ schedules: [schedule] });
+    useCourseStore.setState({ schedules: [schedule], pendingNewScheduleIds: new Set(["s1"]) });
 
     useCourseStore.getState().setSchedules([schedule]);
 
@@ -223,6 +241,16 @@ describe("addSchedule / removeSchedule", () => {
     await useCourseStore.getState().addSchedule("server-1", "2026-10-01");
 
     expect(api.createScheduleApi).toHaveBeenCalledWith("server-1", "2026-10-01");
+    expect(useCourseStore.getState().schedules).toEqual([created]);
+  });
+
+  it("등록 직후 도착한 낡은 서버 목록이 방금 등록한 일정을 지우지 않는다", async () => {
+    const created = makeSchedule({ id: "s-created", courseId: "server-1", date: "2026-10-01" });
+    api.createScheduleApi.mockResolvedValue(created);
+
+    await useCourseStore.getState().addSchedule("server-1", "2026-10-01");
+    useCourseStore.getState().setSchedules([]);
+
     expect(useCourseStore.getState().schedules).toEqual([created]);
   });
 

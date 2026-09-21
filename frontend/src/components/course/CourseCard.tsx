@@ -14,6 +14,8 @@ interface CourseCardProps {
   onClick: () => void;
   /** "일정 추가하기" 줄만 따로 눌렀을 때 — 카드 클릭(상세 이동)과 분리해 바로 일정 등록 화면으로 보낸다. */
   onAddSchedule: () => void;
+  /** 주면 카드 오른쪽 아래에 휴지통 아이콘을 보인다. 스와이프를 못 하는 마우스 사용자와 스와이프를 발견하지 못한 사람을 위한 같은 삭제 진입점이다. */
+  onDelete?: () => void;
 }
 
 const GLOW_CLASS: Record<CourseSource, string> = {
@@ -23,7 +25,7 @@ const GLOW_CLASS: Record<CourseSource, string> = {
 };
 
 /** 코스 보관함의 티켓 카드. 흰 바탕 위주로 절제하고, 출처(ai/manual/saved)는 오른쪽 컬러 배지로 표시한다. */
-export function CourseCard({ course, scheduleCount = 0, onClick, onAddSchedule }: CourseCardProps) {
+export function CourseCard({ course, scheduleCount = 0, onClick, onAddSchedule, onDelete }: CourseCardProps) {
   const stopCount = course.days.reduce((sum, day) => sum + day.length, 0);
   const emoji = resolveCourseEmoji(course.emoji, course.source);
 
@@ -46,17 +48,32 @@ export function CourseCard({ course, scheduleCount = 0, onClick, onAddSchedule }
         <div className="mt-1.5 text-xs text-ink-muted">
           {nightsLabel(course.nights)} · {stopCount}곳{course.shared ? " · 공유됨" : ""}
         </div>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddSchedule();
-          }}
-          className="mt-2 flex items-center gap-1 text-xs font-semibold text-brand"
-        >
-          <Emoji3D emoji="📅" size={12} shadow={false} />
-          {scheduleCount > 0 ? `등록된 일정 ${scheduleCount}개 · 추가하기 ›` : "일정 추가하기 ›"}
-        </button>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddSchedule();
+            }}
+            className="flex items-center gap-1 text-xs font-semibold text-brand"
+          >
+            <Emoji3D emoji="📅" size={12} shadow={false} />
+            {scheduleCount > 0 ? `등록된 일정 ${scheduleCount}개 · 추가하기 ›` : "일정 추가하기 ›"}
+          </button>
+          {onDelete ? (
+            <button
+              type="button"
+              aria-label="코스 삭제"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete();
+              }}
+              className="-mr-1.5 -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-surface"
+            >
+              <Emoji3D emoji="🗑" size={16} shadow={false} />
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
