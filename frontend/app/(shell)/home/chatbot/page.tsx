@@ -8,6 +8,7 @@ import { Emoji3D } from "@/components/ui/Emoji3D";
 import { useToastStore } from "@/stores/useToastStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { usePetStore } from "@/stores/usePetStore";
 import { cn } from "@/lib/cn";
 import { authFetch } from "@/lib/api/authFetch";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
@@ -17,6 +18,14 @@ import type { Course, CourseStop } from "@/types";
 
 type CourseSuggestion = Omit<Course, "id">;
 
+/** 코스 답 아래 붙는 "이렇게 바꿔서 다시" 버튼. 누르면 label이 내 말풍선이 되고 prompt로 다시 묻는다. */
+interface FollowUp {
+  label: string;
+  prompt: string;
+  /** 이미 보여준 장소 — 같은 코스를 되풀이하지 않게 서버가 후보에서 뺀다. */
+  excludeIds?: string[];
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "bot";
@@ -24,7 +33,23 @@ interface ChatMessage {
   pending?: boolean;
   stops?: CourseStop[];
   course?: CourseSuggestion;
+  followUps?: FollowUp[];
   action?: { label: string; href: string };
+}
+
+/** AI가 코스 하나를 짜는 데 12~25초, 한 번 다시 짜면 그 두 배까지 걸린다. */
+const REQUEST_TIMEOUT_MS = 60_000;
+const BAKERY_REQUEST_TIMEOUT_MS = 75_000;
+/** 이 시간이 지나도 답이 없으면 멈춘 게 아니라는 안내를 덧붙인다. */
+const SLOW_HINT_AFTER_MS = 10_000;
+
+/** 방금 받은 코스에서 이어서 눌러볼 만한 변형. 이미 그 조건이면 그 버튼은 뺀다. */
+function buildFollowUps(prompt: string, course: CourseSuggestion): FollowUp[] {
+  const excludeIds = course.days.flat().map((stop) => stop.placeId);
+  const followUps: FollowUp[] = [{ label: "🔄 다른 곳으로 다시 짜줘", prompt, excludeIds }];
+  if (course.nights === 0) followUps.push({ label: "🌙 1박 2일로 늘려줘", prompt: `${prompt} 1박 2일`, excludeIds: [] });
+  if (course.transport === "자차") followUps.push({ label: "🚌 대중교통으로 짜줘", prompt: `${prompt} 대중교통으로`, excludeIds: [] });
+  return followUps;
 }
 
 interface FaqItem {
@@ -47,7 +72,9 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     q: "코스는 어떻게 만들어?",
     a: "내 여정 탭에서 MBTI 추천·AI 추천·직접 짓기 중 하나로 만들 수 있어요. 저장하면 보관함에 담겨요.",
-    keywords: ["코스 어떻게", "코스는 어떻게", "코스 만들", "코스 짜"],
+    // "코스 짜줘"·"코스 만들어줘"는 질문이 아니라 실제 코스 요청이라 여기서 가로채면 안 된다
+    // (AI 추천으로 흘러야 한다). 방법을 묻는 표현만 남긴다.
+    keywords: ["코스 어떻게", "코스는 어떻게", "코스 만드는 법", "코스 만드는 방법", "코스 짜는 법", "코스 짜는 방법"],
     actionLabel: "코스 만들러 가기",
     href: "/schedule",
   },
@@ -72,10 +99,15 @@ const THINKING_PHRASES = ["킁킁 냄새 맡는 중...", "지도를 펼치는 �
 /** "생각하는 중..." 고정 문구 대신 문구를 순환시키며 발바닥이 통통 튀는 로딩 인터랙션. */
 function ThinkingIndicator() {
   const [phraseIndex, setPhraseIndex] = useState(0);
+  const [slow, setSlow] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setPhraseIndex((prev) => (prev + 1) % THINKING_PHRASES.length), 1100);
-    return () => clearInterval(id);
+    const slowId = setTimeout(() => setSlow(true), SLOW_HINT_AFTER_MS);
+    return () => {
+      clearInterval(id);
+      clearTimeout(slowId);
+    };
   }, []);
 
   return (
@@ -87,7 +119,9 @@ function ThinkingIndicator() {
           </span>
         ))}
       </div>
-      <span className="text-xs text-ink-muted">{THINKING_PHRASES[phraseIndex]}</span>
+      <span className="text-xs text-ink-muted">
+        {slow ? "가까운 곳끼리 꼼꼼히 짜는 중이에요. 최대 1분 걸려요" : THINKING_PHRASES[phraseIndex]}
+      </span>
     </div>
   );
 }
@@ -115,7 +149,7 @@ export default function ChatbotPage() {
     {
       id: "greeting",
       role: "bot",
-      text: "안녕하세요! 대저니유 안내입니다 🐾\n반려동물이랑 갈 곳을 추천해드리거나, 코스로 짜드릴게요. 아래에서 골라보거나 편하게 물어보세요!",
+      text: "안녕하세요! 대저니유 안내입니다 🐾\n반려동물이랑 갈 곳을 추천해드리거나, 코스로 짜드릴게요. 아래에서 골라보거나 편하게 물어보세요!\n\n💡 구·기간·이동수단을 말해주면 더 정확해요.\n예) \"대덕구 1박 2일 대중교통 코스 짜줘\"",
     },
   ]);
   const [input, setInput] = useState("");
@@ -130,15 +164,18 @@ export default function ChatbotPage() {
   const replacePending = (id: string, patch: Partial<ChatMessage>) =>
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, pending: false, ...patch } : m)));
 
-  const requestCourseSuggestion = async (prompt: string) => {
+  const requestCourseSuggestion = async (prompt: string, excludeIds: string[] = []) => {
     const pendingId = makeId();
     appendMessage({ id: pendingId, role: "bot", text: "생각하는 중...", pending: true });
 
     // 응답이 너무 오래 걸리면(기본 fetch는 브라우저 기본 타임아웃까지 무한정 기다린다) 안내
     // 메시지로 대신 끊는다 — 사용자가 "생각하는 중..." 애니메이션만 하염없이 보는 걸 막는다.
-    // 25초는 백엔드가 Gemini 503(붐빔)에 재시도하는 시간까지 감안한 값이다(backend/src/routes/ai.ts).
+    // 백엔드는 검증에 걸리면 이유를 알려 한 번 더 짜므로(backend/src/routes/ai.ts) 그 시간까지 기다린다.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), /빵지순례|빵집|베이커리|제과점/.test(prompt) ? 45000 : 25000);
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      /빵지순례|빵집|베이커리|제과점/.test(prompt) ? BAKERY_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS
+    );
 
     try {
       if (!apiPlaces?.length) {
@@ -158,17 +195,22 @@ export default function ChatbotPage() {
         places = [...places, ...bakeries];
       }
       const candidatePlaces = pickChatCandidates(places, prompt);
+      // 함께 가는 아이의 크기·나이를 알려주면 소형견은 짧게, 대형견은 크기 제한 없는 곳으로 짠다.
+      const activePet = usePetStore.getState().activePet();
+      const pet = activePet
+        ? { name: activePet.name, breed: activePet.breed, size: activePet.size, ageYears: activePet.ageYears }
+        : undefined;
       const res = await authFetch("/api/ai/course-suggestion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, ...parseTripConditions(prompt), candidatePlaces }),
+        body: JSON.stringify({ prompt, ...parseTripConditions(prompt), candidatePlaces, pet, excludeIds }),
         signal: controller.signal,
       });
       // 코스 추천 요청이어도 AI가 판단해서 잡담/설명이면 chat으로, 실제 코스 요청이면 course로 답한다
       // (백엔드 /api/ai/course-suggestion 참고) — 매번 코스를 억지로 지어내지 않게 하기 위함.
       const data:
         | { responseType: "chat"; message: string }
-        | (CourseSuggestion & { responseType: "course" })
+        | (CourseSuggestion & { responseType: "course"; summary?: string })
         | { error: string } = await res.json();
       if (!res.ok || "error" in data) {
         replacePending(pendingId, {
@@ -181,10 +223,12 @@ export default function ChatbotPage() {
         return;
       }
       const stops = data.days.flat();
+      const { summary, ...course } = data;
       replacePending(pendingId, {
-        text: `말씀하신 조건에 맞춰 골라봤어요 🐾\n"${data.label}"`,
+        text: `말씀하신 조건에 맞춰 골라봤어요 🐾\n"${data.label}"${summary ? `\n\n${summary}` : ""}`,
         stops,
-        course: data,
+        course,
+        followUps: buildFollowUps(prompt, course),
       });
     } catch (error) {
       const timedOut = error instanceof DOMException && error.name === "AbortError";
@@ -196,6 +240,11 @@ export default function ChatbotPage() {
     } finally {
       clearTimeout(timeoutId);
     }
+  };
+
+  const handleFollowUp = (followUp: FollowUp) => {
+    appendMessage({ id: makeId(), role: "user", text: followUp.label.replace(/^\S+\s/, "") });
+    requestCourseSuggestion(followUp.prompt, followUp.excludeIds);
   };
 
   const handleSend = (presetText?: string) => {
@@ -318,6 +367,21 @@ export default function ChatbotPage() {
                 >
                   <Emoji3D emoji="🐾" size={16} shadow={false} />이 코스 저장하기
                 </button>
+              ) : null}
+
+              {message.followUps && message.followUps.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {message.followUps.map((followUp) => (
+                    <button
+                      key={followUp.label}
+                      type="button"
+                      onClick={() => handleFollowUp(followUp)}
+                      className="rounded-full border border-brand-300 bg-brand-100 px-2.5 py-1.5 text-[11px] font-semibold text-brand-700"
+                    >
+                      {followUp.label}
+                    </button>
+                  ))}
+                </div>
               ) : null}
 
               {message.action ? (

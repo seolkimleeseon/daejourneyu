@@ -4,6 +4,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCourseStore } from "@/stores/useCourseStore";
+import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { makePlace, makeStop } from "@/test/fixtures";
 import ChatbotPage from "./page";
@@ -109,6 +110,29 @@ describe("자주 묻는 질문", () => {
   });
 });
 
+describe("코스 요청은 FAQ가 가로채지 않는다", () => {
+  it.each(["코스짜줘", "강아지랑 산책할건데 코스 짜줘", "코스 만들어줘"])(
+    "\"%s\"는 AI에게 묻는다",
+    async (text) => {
+      const { user } = setup();
+
+      await user.type(sendBox(), `${text}{Enter}`);
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText(/내 여정 탭에서 MBTI 추천/)).toBeNull();
+    }
+  );
+
+  it("방법을 묻는 말은 여전히 안내문으로 답한다", async () => {
+    const { user } = setup();
+
+    await user.type(sendBox(), "코스 만드는 방법 알려줘{Enter}");
+
+    expect(screen.getByText(/내 여정 탭에서 MBTI 추천/)).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("보내기", () => {
   it("빈 칸은 보내지 않는다", async () => {
     const { user } = setup();
@@ -183,11 +207,85 @@ describe("답이 오기까지", () => {
     const { user } = setup();
     await user.type(sendBox(), "유성구 산책{Enter}");
 
-    act(() => vi.advanceTimersByTime(25000));
+    act(() => vi.advanceTimersByTime(60000));
 
     await waitFor(() =>
       expect(screen.getByText("지금은 답변하기 어려워요. 잠시 후 다시 시도해주세요")).toBeTruthy()
     );
+  });
+});
+
+describe("오래 걸릴 때", () => {
+  it("10초가 지나도 답이 없으면 멈춘 게 아니라고 알린다", async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    const { user } = setup();
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+
+    act(() => vi.advanceTimersByTime(10000));
+
+    expect(screen.getByText(/꼼꼼히 짜는 중이에요/)).toBeTruthy();
+  });
+});
+
+describe("코스를 받은 뒤", () => {
+  const reply = { ...courseReply, summary: "오전엔 산책하고 점심 뒤 카페로 이어져요" };
+
+  it("왜 이렇게 짰는지 설명을 함께 보여준다", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(reply));
+    const { user } = setup();
+
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+
+    await waitFor(() => expect(screen.getByText(/오전엔 산책하고 점심 뒤 카페로/)).toBeTruthy());
+  });
+
+  it("함께 가는 반려견의 크기·나이를 서버에 알려준다", async () => {
+    usePetStore.setState({
+      pets: [{ id: "pet1", name: "보리", breed: "말티즈", weightKg: 4, ageYears: 9, size: "소형견", emoji: "🐶" }],
+      activePetIndex: 0,
+    });
+    const { user } = setup();
+
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+
+    const body = JSON.parse(fetchMock.mock.lastCall?.[1].body as string);
+    expect(body.pet).toEqual({ name: "보리", breed: "말티즈", size: "소형견", ageYears: 9 });
+  });
+
+  it("'다른 곳으로 다시'를 누르면 보여준 장소를 빼고 같은 조건으로 다시 묻는다", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(reply));
+    const { user } = setup();
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+    await waitFor(() => expect(screen.getByRole("button", { name: /다른 곳으로 다시/ })).toBeTruthy());
+
+    await user.click(screen.getByRole("button", { name: /다른 곳으로 다시/ }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const body = JSON.parse(fetchMock.mock.lastCall?.[1].body as string);
+    expect(body).toMatchObject({ prompt: "유성구 코스 짜줘", excludeIds: ["a"] });
+  });
+
+  it("당일·자차 코스에는 1박 2일·대중교통 버튼을 주고, 눌러서 조건을 바꿔 묻는다", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(reply));
+    const { user } = setup();
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+    await waitFor(() => expect(screen.getByRole("button", { name: /1박 2일로 늘려줘/ })).toBeTruthy());
+
+    await user.click(screen.getByRole("button", { name: /1박 2일로 늘려줘/ }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const body = JSON.parse(fetchMock.mock.lastCall?.[1].body as string);
+    expect(body).toMatchObject({ nights: 1, excludeIds: [] });
+  });
+
+  it("이미 1박이고 대중교통인 코스에는 그 버튼을 다시 주지 않는다", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ...reply, nights: 1, transport: "대중교통" }));
+    const { user } = setup();
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+    await waitFor(() => expect(screen.getByRole("button", { name: /다른 곳으로 다시/ })).toBeTruthy());
+
+    expect(screen.queryByRole("button", { name: /1박 2일로 늘려줘/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /대중교통으로 짜줘/ })).toBeNull();
   });
 });
 
