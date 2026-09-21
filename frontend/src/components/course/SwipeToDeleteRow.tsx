@@ -5,6 +5,8 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNod
 const ACTION_WIDTH = 84;
 /** 이 거리(px) 넘게 움직여야 스와이프인지 세로 스크롤인지 가른다 — 가벼운 손떨림은 무시한다. */
 const DECIDE_DISTANCE = 8;
+/** 버튼을 카드 뒤로 이만큼 더 깔아둔다 — 카드의 둥근 오른쪽 모서리 뒤가 비어 보이는 틈을 주황색이 메운다. */
+const TUCK_UNDER_CARD = 24;
 
 interface SwipeToDeleteRowProps {
   children: ReactNode;
@@ -98,7 +100,13 @@ export function SwipeToDeleteRow({ children, onDelete, bottomGap = 14 }: SwipeTo
           onDelete();
         }}
         // 닫혀 있을 땐 카드의 둥근 모서리 뒤로 주황색이 비쳐 보이지 않게 투명하게 둔다.
-        style={{ width: ACTION_WIDTH, bottom: bottomGap, opacity: isOpen ? 1 : 0, transition: "opacity 200ms" }}
+        style={{
+          width: ACTION_WIDTH + TUCK_UNDER_CARD,
+          paddingLeft: TUCK_UNDER_CARD,
+          bottom: bottomGap,
+          opacity: isOpen ? 1 : 0,
+          transition: "opacity 200ms",
+        }}
         className="absolute right-0 top-0 rounded-r-2xl bg-accent-coral text-sm font-bold text-white"
       >
         삭제
