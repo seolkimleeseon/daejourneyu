@@ -332,6 +332,15 @@ describe("AI 쪽이 막혔을 때", () => {
     expect(response.status).toBe(502);
     expect(response.body.error).toContain("일시적인 문제");
   });
+  it("ApiError가 아닌 예상 밖 오류도 서버를 죽이지 않고 502로 알린다", async () => {
+    genai.generateContent.mockRejectedValue(new TypeError("invalid header value"));
+
+    const response = await post();
+
+    expect(response.status).toBe(502);
+    expect(response.body.error).toContain("연결하지 못했어요");
+  });
+
   it("모두 붐벼서 503이면 502로 알린다 - 답이 늦으면 화면이 먼저 포기하므로 붙잡지 않는다", async () => {
     genai.generateContent.mockRejectedValue(new ApiError({ message: "high demand", status: 503 }));
 

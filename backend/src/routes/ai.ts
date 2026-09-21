@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ApiError, Type } from "@google/genai";
 import { generateContentWithKeys, geminiApiKeys } from "../lib/gemini";
+import { asyncHandler } from "../lib/asyncHandler";
 import { bakeryBrandKey } from "../lib/bakeries";
 
 type Transport = "자차" | "대중교통";
@@ -177,7 +178,7 @@ const router = Router();
 // POST /api/ai/course-suggestion — 자연어 요청 + 후보 장소 목록을 받아 AI가 일차별 동선을 짜준다.
 // 후보 장소는 프론트가 이미 들고 있는 실데이터를 그대로 보낸다(백엔드 places.ts는 아직 스텁이라 미신뢰).
 // Gemini(무료 티어) 사용 — 발급: https://aistudio.google.com/apikey
-router.post("/course-suggestion", async (req, res) => {
+router.post("/course-suggestion", asyncHandler(async (req, res) => {
   if (geminiApiKeys().length === 0) {
     return res.status(500).json({ error: "GEMINI_API_KEY가 설정되지 않았어요. backend/.env를 확인해주세요" });
   }
@@ -309,8 +310,11 @@ router.post("/course-suggestion", async (req, res) => {
       console.error("AI 코스 추천 API 오류:", error.message);
       return res.status(502).json({ error: "AI 서비스에 일시적인 문제가 있어요. 잠시 후 다시 시도해주세요" });
     }
-    throw error;
+    // ApiError가 아닌 오류(네트워크 끊김·깨진 키 등)를 그대로 던지면 async 핸들러의 미처리 거부가 되어 서버 프로세스가
+    // 죽는다 - 요청 하나의 실패로 끝내고 502로 알린다.
+    console.error("AI 코스 추천 처리 중 예상치 못한 오류:", error);
+    return res.status(502).json({ error: "AI 서비스에 연결하지 못했어요. 잠시 후 다시 시도해주세요" });
   }
-});
+}));
 
 export default router;

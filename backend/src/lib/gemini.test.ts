@@ -73,6 +73,12 @@ describe("geminiApiKeys", () => {
     expect(geminiApiKeys()).toEqual(["k1", "k2", "k3"]);
   });
 
+  it("줄바꿈·공백·세미콜론으로 이어 붙여도 읽고, 감싼 따옴표는 벗긴다", () => {
+    process.env.GEMINI_API_KEYS = ['"k1",', " k2 ;`k3`", "k4"].join(String.fromCharCode(10));
+
+    expect(geminiApiKeys()).toEqual(["k1", "k2", "k3", "k4"]);
+  });
+
   it("기존 GEMINI_API_KEY 하나만 있어도 그대로 쓴다", () => {
     process.env.GEMINI_API_KEY = "solo";
 
@@ -231,6 +237,33 @@ describe("generateContentWithKeys", () => {
     await expect(generateContentWithKeys({ contents: "x" })).rejects.toMatchObject({ status: 429 });
 
     expect(calls.used).toHaveLength(0);
+  });
+
+  it("'API key not valid'(400)는 그 키만 버리고 다른 키로 계속한다", async () => {
+    process.env.GEMINI_API_KEYS = "bad,good";
+    calls.handler.mockImplementation((key: string) =>
+      key === "bad"
+        ? Promise.reject(new ApiError({ message: '{"error":{"message":"API key not valid. Please pass a valid API key."}}', status: 400 }))
+        : Promise.resolve(OK)
+    );
+
+    await expect(generateContentWithKeys({ contents: "x" })).resolves.toEqual(OK);
+  });
+
+  it("ApiError가 아닌 오류(깨진 키·네트워크)도 서버를 죽이지 않고 다른 키로 넘어간다", async () => {
+    process.env.GEMINI_API_KEYS = "broken,good";
+    calls.handler.mockImplementation((key: string) =>
+      key === "broken" ? Promise.reject(new TypeError("invalid header value")) : Promise.resolve(OK)
+    );
+
+    await expect(generateContentWithKeys({ contents: "x" })).resolves.toEqual(OK);
+  });
+
+  it("모든 키가 ApiError 아닌 오류로 실패하면 그 오류를 던진다 - 라우트가 502로 바꾼다", async () => {
+    process.env.GEMINI_API_KEYS = "k1";
+    calls.handler.mockRejectedValue(new TypeError("invalid header value"));
+
+    await expect(generateContentWithKeys({ contents: "x" })).rejects.toBeInstanceOf(TypeError);
   });
 
   it("다시 불러도 소용없는 오류(예: 400)는 돌리지 않고 바로 던진다", async () => {
