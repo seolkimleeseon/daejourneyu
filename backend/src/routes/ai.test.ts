@@ -10,9 +10,10 @@ import router from "./ai";
  * Gemini 호출 자체는 목으로 두고, 무엇을 걸러내고 어떤 실패를 어떤 상태 코드로 바꾸는지만 본다.
  */
 const genai = vi.hoisted(() => ({ generateContent: vi.fn() }));
+// 키·모델 돌려 쓰기는 lib/gemini.test.ts에서 따로 본다 — 여기선 그 함수가 돌려주거나 던지는 결과만 다룬다.
 vi.mock("../lib/gemini", () => ({
-  gemini: { models: { generateContent: genai.generateContent } },
-  GEMINI_MODELS: ["model-a", "model-b"],
+  generateContentWithKeys: genai.generateContent,
+  geminiApiKeys: () => (process.env.GEMINI_API_KEY ? [process.env.GEMINI_API_KEY] : []),
 }));
 
 const app = createTestApp("/api/ai", router);
@@ -331,27 +332,15 @@ describe("AI 쪽이 막혔을 때", () => {
     expect(response.status).toBe(502);
     expect(response.body.error).toContain("일시적인 문제");
   });
-  it("모델이 붐벼서 503이면 다음 모델로 갈아탄다", async () => {
-    genai.generateContent
-      .mockRejectedValueOnce(new ApiError({ message: "high demand", status: 503 }))
-      .mockResolvedValueOnce({ text: JSON.stringify({ responseType: "course", label: "유성 산책", days: [["p1", "p2"]] }) });
-
-    const response = await post();
-
-    expect(response.status).toBe(200);
-    expect(genai.generateContent.mock.calls.map((call) => call[0].model)).toEqual(["model-a", "model-b"]);
-  });
-
-  it("모든 모델이 붐비면 502로 알린다 — 답이 늦으면 화면이 먼저 포기하므로 붙잡지 않는다", async () => {
+  it("모두 붐벼서 503이면 502로 알린다 - 답이 늦으면 화면이 먼저 포기하므로 붙잡지 않는다", async () => {
     genai.generateContent.mockRejectedValue(new ApiError({ message: "high demand", status: 503 }));
 
     const response = await post();
 
     expect(response.status).toBe(502);
-    expect(genai.generateContent.mock.calls.map((call) => call[0].model)).toEqual(["model-a", "model-b"]);
+    expect(response.body.error).toContain("일시적인 문제");
   });
 });
-
 
 describe("AI에게 넘기는 것", () => {
   it("후보 장소를 동반 가능 여부·조건까지 붙여 알려준다 — 이름만 주면 아무 곳이나 고른다", async () => {

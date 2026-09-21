@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ApiError, Type } from "@google/genai";
-import { gemini, GEMINI_MODELS } from "../lib/gemini";
+import { generateContentWithKeys, geminiApiKeys } from "../lib/gemini";
 import { bakeryBrandKey } from "../lib/bakeries";
 
 type Transport = "자차" | "대중교통";
@@ -170,36 +170,7 @@ function sanitizeResponse(raw: unknown, validIds: Set<string>, dayCount: number)
   return null;
 }
 
-/**
- * 모델 하나가 막혔다고 바로 포기하지 않고 다음 모델로 갈아탄다. 두 가지를 넘긴다 —
- * 503(UNAVAILABLE, "high demand": 그 모델이 붐빔)과 429(RESOURCE_EXHAUSTED: 그 모델의 한도 초과).
- *
- * 429까지 갈아타는 이유: 무료 티어의 분당 요청 한도(RPM)는 프로젝트 단위로 세되 **모델 변형마다
- * 따로** 걸린다(ai.google.dev/gemini-api/docs/rate-limits). 그래서 3.5가 한도에 걸려도 3.6·3.7은
- * 아직 남아 있는 경우가 많고, 목록만큼 한도가 늘어나는 셈이 된다. 새 API 키를 발급하는 건 소용이
- * 없다 — 한도는 키가 아니라 프로젝트에 붙는다.
- *
- * 키 문제(401·403)는 다시 불러도 같은 답이라 그대로 던진다. 한 바퀴만 도는 것도 의도다 —
- * 답이 늦으면 화면이 먼저 포기한다(챗봇 25초).
- */
-type GenerateParams = Parameters<typeof gemini.models.generateContent>[0];
-
-async function generateWithFallback(params: Omit<GenerateParams, "model">) {
-  const models = [...GEMINI_MODELS];
-  for (let attempt = 0; attempt < models.length; attempt++) {
-    try {
-      return await gemini.models.generateContent({ ...params, model: models[attempt] });
-    } catch (error) {
-      const blocked = error instanceof ApiError && (error.status === 503 || error.status === 429);
-      if (!blocked || attempt === models.length - 1) throw error;
-    }
-  }
-  // GEMINI_MODELS가 비어 있을 수 없으므로 여기까지 오지 않는다 — 타입을 좁히기 위한 줄이다.
-  throw new Error("생성할 모델이 없습니다");
-}
-
-
-
+// 키·모델 돌려 쓰기(429·503 갈아타기, 키별 쿨다운)는 lib/gemini.ts의 generateContentWithKeys가 맡는다.
 
 const router = Router();
 
@@ -207,7 +178,7 @@ const router = Router();
 // 후보 장소는 프론트가 이미 들고 있는 실데이터를 그대로 보낸다(백엔드 places.ts는 아직 스텁이라 미신뢰).
 // Gemini(무료 티어) 사용 — 발급: https://aistudio.google.com/apikey
 router.post("/course-suggestion", async (req, res) => {
-  if (!process.env.GEMINI_API_KEY) {
+  if (geminiApiKeys().length === 0) {
     return res.status(500).json({ error: "GEMINI_API_KEY가 설정되지 않았어요. backend/.env를 확인해주세요" });
   }
   if (!validateRequest(req.body)) {
@@ -264,7 +235,7 @@ router.post("/course-suggestion", async (req, res) => {
        message에 인사말만 채워 보내는 식이다. 걸러낸 결과가 비면 오류를 보이기 전에 한 번 더 물어본다. */
     let parsed: ParsedResponse | null = null;
     for (let attempt = 0; attempt < 2 && parsed === null; attempt++) {
-      const response = await generateWithFallback({
+      const response = await generateContentWithKeys({
         contents: `요청: ${prompt}\n\n이동수단: ${transport}\n일수: ${dayCount}일\n\n후보 장소 목록:\n${placesDescription}`,
         config: {
           systemInstruction:

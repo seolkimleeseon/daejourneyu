@@ -72,6 +72,9 @@ GitHub App이 이 레포(또는 전체 레포)에 접근 허용돼 있는지 먼
    - `DATABASE_URL`, `DIRECT_URL` — 1번에서 만든 Supabase 값
    - `JWT_SECRET` — **로컬 `.env` 값을 재사용하지 말고 새로 발급**(`openssl rand -hex 32`)
    - `PUBLIC_DATA_API_KEY`, `GEMINI_API_KEY`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`
+   - (선택) `GEMINI_API_KEYS` — 키를 콤마로 여러 개 적으면(`키1,키2,키3`) 한 키의 무료 한도가 바닥날 때(429)
+     다음 키로 넘어간다. **키마다 다른 구글 프로젝트(계정)에서 발급해야 한다** — 무료 한도는 키가 아니라
+     프로젝트에 붙어서, 같은 프로젝트의 키를 여러 개 넣어도 한도가 늘지 않는다. `GEMINI_API_KEY`와 함께 써도 된다.
    - `FRONTEND_ORIGIN`, `KAKAO_REDIRECT_URI`는 3번(Vercel) 끝나고 도메인이 나온 뒤에 채운다(닭과
      달걀 관계 — 순서 문제일 뿐 지금 비워둬도 서버는 정상 기동한다)
 5. **Settings > Networking > Generate Domain**으로 공개 URL 발급.
