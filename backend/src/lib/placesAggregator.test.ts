@@ -50,7 +50,7 @@ vi.mock("./kakaoLocal", () => ({
   fetchPlaceImage: sources.fetchPlaceImage,
 }));
 
-import { fetchAggregatedPlaces } from "./placesAggregator";
+import { fetchAggregatedPlaces, hasReadableName } from "./placesAggregator";
 
 function petTourSpot(overrides: Record<string, unknown> = {}) {
   return {
@@ -118,6 +118,29 @@ describe("쓸 수 없는 좌표", () => {
     const places = await fetchAggregatedPlaces();
 
     expect(places).toEqual([]);
+  });
+});
+
+describe("이름이 깨진 항목", () => {
+  it("글자가 물음표로 깨진 이름은 목록에 넣지 않는다 — 화면과 AI 추천에 그대로 나온다", async () => {
+    sources.campgrounds.mockResolvedValue([
+      { id: "camp-1", name: "caf? 713", district: "유성구", lat: 36.4, lng: 127.4, imageUrl: null },
+      { id: "camp-2", name: "대청호캠핑장", district: "동구", lat: 36.4, lng: 127.4, imageUrl: null },
+    ]);
+
+    const places = await fetchAggregatedPlaces();
+
+    expect(places.map((place) => place.name)).toEqual(["대청호캠핑장"]);
+  });
+
+  it("대체 문자(U+FFFD)가 든 이름도 뺀다", () => {
+    expect(hasReadableName("카페\uFFFD 하나")).toBe(false);
+  });
+
+  it("정상 이름은 남긴다 — 끝의 물음표나 기호는 깨진 게 아니다", () => {
+    for (const name of ["cafe 713", "café 713", "성심당 본점", "뭐하니?", "A&B 카페"]) {
+      expect(hasReadableName(name)).toBe(true);
+    }
   });
 });
 

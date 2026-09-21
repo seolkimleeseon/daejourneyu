@@ -142,7 +142,7 @@ export default function ChatbotPage() {
   const showToast = useToastStore((state) => state.show);
   const addCourse = useCourseStore((state) => state.addCourse);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const { data: apiPlaces } = usePickablePlaces();
+  const { data: apiPlaces, refetch: refetchPlaces } = usePickablePlaces();
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -178,11 +178,16 @@ export default function ChatbotPage() {
     );
 
     try {
-      if (!apiPlaces?.length) {
+      // 페이지를 열자마자 물으면 장소 목록이 아직 오는 중일 수 있다. 오류로 답하지 말고 그 요청을
+      // 기다린다(이미 나간 요청은 cancelRefetch: false로 이어받는다).
+      const loadedPlaces = apiPlaces?.length
+        ? apiPlaces
+        : (await refetchPlaces({ cancelRefetch: false })).data;
+      if (!loadedPlaces?.length) {
         replacePending(pendingId, { text: "장소 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요" });
         return;
       }
-      let places: PickablePlace[] = apiPlaces;
+      let places: PickablePlace[] = loadedPlaces;
       if (/빵지순례|빵집|베이커리|제과점/.test(prompt)) {
         const district = ["대덕구", "동구", "유성구", "중구", "서구"].find((name) => prompt.includes(name));
         const query = district ? `?district=${encodeURIComponent(district)}` : "";
