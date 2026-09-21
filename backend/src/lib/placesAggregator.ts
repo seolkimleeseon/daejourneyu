@@ -283,6 +283,15 @@ function loadDaejeonDogParks(): AggregatedPlace[] {
   }));
 }
 
+/**
+ * 원본 공공데이터에서 인코딩이 깨져 글자가 물음표·대체문자로 바뀐 이름("caf? 713")은 화면과
+ * AI 추천에 그대로 노출되므로 목록에서 뺀다. 글자 사이에 낀 '?'만 깨진 것으로 본다 —
+ * 이름 끝의 '?'는 정상적인 상호일 수 있다.
+ */
+export function hasReadableName(name: string): boolean {
+  return !name.includes("\uFFFD") && !/[A-Za-z0-9가-힣]\?(?=[\sA-Za-z0-9가-힣])/.test(name);
+}
+
 /** 이름(공백 제거) 기준으로 중복을 골라내 신뢰도 티어가 더 높은(숫자가 작은) 쪽만 남긴다.
  * 동률이면 imageUrl이 있는 쪽을 우선한다. */
 function dedupeByName(rows: AggregatedPlace[]): AggregatedPlace[] {
@@ -358,7 +367,7 @@ export async function fetchAggregatedPlaces(): Promise<AggregatedPlace[]> {
     })
   );
 
-  const deduped = dedupeByName(results.flat());
+  const deduped = dedupeByName(results.flat().filter((place) => hasReadableName(place.name)));
   await backfillMissingImages(deduped);
   return deduped;
 }

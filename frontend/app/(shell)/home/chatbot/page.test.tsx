@@ -215,6 +215,32 @@ describe("답이 오기까지", () => {
   });
 });
 
+describe("장소 목록이 아직 오는 중일 때", () => {
+  const place = makePlace({ id: "a", name: "갑천", district: "유성구", category: "산책" });
+
+  it("오류로 답하지 않고 목록을 기다렸다가 그대로 요청한다", async () => {
+    const refetch = vi.fn().mockResolvedValue({ data: [place] });
+    pickable.usePickablePlaces.mockReturnValue({ data: undefined, refetch });
+    const { user } = setup();
+
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(refetch).toHaveBeenCalledWith({ cancelRefetch: false });
+    expect(screen.queryByText(/장소 정보를 불러오지 못했어요/)).toBeNull();
+  });
+
+  it("기다려도 목록이 없으면 그때 안내하고 AI는 부르지 않는다", async () => {
+    pickable.usePickablePlaces.mockReturnValue({ data: undefined, refetch: vi.fn().mockResolvedValue({ data: undefined }) });
+    const { user } = setup();
+
+    await user.type(sendBox(), "유성구 코스 짜줘{Enter}");
+
+    await waitFor(() => expect(screen.getByText(/장소 정보를 불러오지 못했어요/)).toBeTruthy());
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("오래 걸릴 때", () => {
   it("10초가 지나도 답이 없으면 멈춘 게 아니라고 알린다", async () => {
     fetchMock.mockReturnValue(new Promise(() => {}));
