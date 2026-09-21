@@ -142,6 +142,15 @@ describe("보내기", () => {
     const body = JSON.parse(fetchMock.mock.lastCall?.[1].body as string);
     expect(body).toMatchObject({ prompt: "유성구 산책", nights: 0, transport: "자차" });
   });
+
+  it("기간과 이동수단을 말하면 그대로 서버에 넘긴다 — 1박 2일을 당일 코스로 바꾸지 않는다", async () => {
+    const { user } = setup();
+
+    await user.type(sendBox(), "대덕구 1박 2일 지하철 코스{Enter}");
+
+    const body = JSON.parse(fetchMock.mock.lastCall?.[1].body as string);
+    expect(body).toMatchObject({ nights: 1, transport: "대중교통" });
+  });
 });
 
 describe("답이 오기까지", () => {

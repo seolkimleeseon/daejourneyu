@@ -51,13 +51,30 @@ describe("resolvePostInteraction", () => {
 });
 
 describe("resolveArticleLike", () => {
-  it("오버라이드가 없으면 원본 값을 쓴다", () => {
-    expect(resolveArticleLike({ likes: 3, liked: false }, undefined)).toEqual({ liked: false, likes: 3 });
+  const article = { id: "article-1", likes: 100 };
+
+  it("서버 정보가 없으면 목데이터 기본 수를 그대로 쓰고 누른 것으로 보지 않는다", () => {
+    expect(resolveArticleLike(article, undefined)).toEqual({ liked: false, likes: 100 });
   });
 
-  it("누르면 1 늘고, 이미 누른 걸 취소하면 1 줄어든다", () => {
-    expect(resolveArticleLike({ likes: 3, liked: false }, true)).toEqual({ liked: true, likes: 4 });
-    expect(resolveArticleLike({ likes: 3, liked: true }, false)).toEqual({ liked: false, likes: 2 });
+  it("실제 사용자가 누른 수를 기본 수에 더한다", () => {
+    expect(resolveArticleLike(article, { counts: { "article-1": 3 }, likedIds: [] })).toEqual({
+      liked: false,
+      likes: 103,
+    });
+  });
+
+  it("내가 누른 아티클이면 눌린 것으로 본다 — 수는 이미 서버 수에 들어 있다", () => {
+    expect(
+      resolveArticleLike(article, { counts: { "article-1": 3 }, likedIds: ["article-1", "article-2"] })
+    ).toEqual({ liked: true, likes: 103 });
+  });
+
+  it("다른 아티클의 수는 섞이지 않는다", () => {
+    expect(resolveArticleLike(article, { counts: { "article-2": 9 }, likedIds: ["article-2"] })).toEqual({
+      liked: false,
+      likes: 100,
+    });
   });
 });
 
@@ -132,13 +149,19 @@ describe("formatPostDate", () => {
   it("올해 글은 연도 없이 표기한다", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 8, 14, 12));
-    expect(formatPostDate("2026-08-12T09:00:00.000Z")).toBe("8월 12일");
+    expect(formatPostDate(new Date(2026, 7, 12, 12).toISOString())).toBe("8월 12일");
   });
 
   it("해가 넘어간 글은 연도를 붙인다", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 8, 14, 12));
-    expect(formatPostDate("2025-12-31T23:00:00.000Z")).toBe("2025년 12월 31일");
+    expect(formatPostDate(new Date(2025, 11, 31, 12).toISOString())).toBe("2025년 12월 31일");
+  });
+
+  it("한국 시간 새벽에 쓴 글도 전날로 찍히지 않는다 — UTC 날짜를 그대로 자르면 하루 밀린다", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 21, 12));
+    expect(formatPostDate(new Date(2026, 8, 21, 1).toISOString())).toBe("9월 21일");
   });
 
   it("날짜 형식이 아니면 빈 문자열을 돌려준다", () => {

@@ -94,4 +94,21 @@ describe("CourseCard", () => {
     expect(onAddSchedule).toHaveBeenCalledTimes(1);
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("onDelete가 없으면 휴지통을 그리지 않는다", () => {
+    setup();
+
+    expect(screen.queryByRole("button", { name: "코스 삭제" })).toBeNull();
+  });
+
+  it("휴지통은 카드 클릭과 분리한다 — 상세로 새면 안 된다", async () => {
+    const onDelete = vi.fn();
+    const onClick = vi.fn();
+    render(<CourseCard course={makeCourse()} onClick={onClick} onAddSchedule={vi.fn()} onDelete={onDelete} />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "코스 삭제" }));
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+  });
 });

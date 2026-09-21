@@ -11,7 +11,7 @@ import { useSchedules } from "./useSchedules";
 export function useSyncCoursesFromApi() {
   const setCourses = useCourseStore((state) => state.setCourses);
   const setSchedules = useCourseStore((state) => state.setSchedules);
-  const { data: apiCourses } = useCourses();
+  const { data: apiCourses, isError: coursesFailed } = useCourses();
   const { data: apiSchedules } = useSchedules();
 
   useEffect(() => {
@@ -21,4 +21,7 @@ export function useSyncCoursesFromApi() {
   useEffect(() => {
     if (apiSchedules) setSchedules(apiSchedules);
   }, [apiSchedules, setSchedules]);
+
+  /** 코스 목록을 못 받았는지. hasSynced는 성공해야만 켜져서, 실패하면 영영 로딩으로 남는 화면이 이걸 본다. */
+  return { coursesFailed };
 }

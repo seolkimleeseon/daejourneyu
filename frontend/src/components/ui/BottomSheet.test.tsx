@@ -91,4 +91,31 @@ describe("BottomSheet", () => {
 
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("닫혀 있으면 오버레이와 패널 모두 키보드 포커스를 받지 않는다", () => {
+    const { container } = render(<BottomSheet open={false} onClose={vi.fn()} />);
+    const { overlay, panel } = parts(container);
+
+    expect(overlay.className).toContain("invisible");
+    expect(panel.className).toContain("invisible");
+  });
+
+  it("열려 있으면 대화상자로 알려지고 ESC로 닫는다", async () => {
+    const onClose = vi.fn();
+    render(<BottomSheet open onClose={onClose} title="장소 고르기" />);
+
+    expect(screen.getByRole("dialog", { name: "장소 고르기" })).toBeTruthy();
+    await userEvent.setup().keyboard("{Escape}");
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("닫혀 있을 때는 ESC에 반응하지 않는다", async () => {
+    const onClose = vi.fn();
+    render(<BottomSheet open={false} onClose={onClose} />);
+
+    await userEvent.setup().keyboard("{Escape}");
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

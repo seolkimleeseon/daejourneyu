@@ -2,7 +2,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useFeedStore } from "@/stores/useFeedStore";
 import { makeArticle, makeUser } from "@/test/fixtures";
 import { icon3D } from "@/test/icon3d";
 import ArticleDetailPage from "./page";
@@ -13,6 +12,16 @@ vi.mock("next/navigation", () => ({
   useRouter: () => nav,
   // 좋아요 게이팅에 쓰는 LoginModal이 현재 경로를 next로 붙인다.
   usePathname: () => "/article/a1",
+}));
+
+const likes = vi.hoisted(() => ({
+  state: { counts: {} as Record<string, number>, likedIds: [] as string[] },
+  mutate: vi.fn(),
+  isPending: false,
+}));
+vi.mock("@/hooks/useArticleLikes", () => ({
+  useArticleLikes: () => ({ data: likes.state }),
+  useToggleArticleLike: () => ({ mutate: likes.mutate, isPending: likes.isPending }),
 }));
 
 const hooks = vi.hoisted(() => ({ useArticle: vi.fn(), usePlaces: vi.fn() }));
@@ -26,7 +35,8 @@ function setHistoryLength(length: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useFeedStore.setState({ overrides: {}, articleLikes: {} });
+  likes.state = { counts: {}, likedIds: [] };
+  likes.isPending = false;
   useAuthStore.setState({ isLoggedIn: true, hydrated: true, user: makeUser() });
   hooks.useArticle.mockReturnValue({
     data: makeArticle({
@@ -102,7 +112,7 @@ describe("아티클 상세", () => {
     expect(screen.queryByText("이 아티클에 나온 장소")).toBeNull();
   });
 
-  it("도움돼요를 누르면 수가 바뀌고 목록과 같은 스토어에 기록된다", async () => {
+  it("도움돼요를 누르면 서버에 누른 것으로 요청한다", async () => {
     const user = userEvent.setup();
     render(<ArticleDetailPage />);
     const button = screen.getByRole("button", { name: /도움돼요/ });
@@ -111,12 +121,10 @@ describe("아티클 상세", () => {
     expect(icon3D("white_heart_3d.png", button)).toBeTruthy();
     await user.click(button);
 
-    expect(button.textContent).toBe("도움돼요 6");
-    expect(icon3D("red_heart_3d.png", button)).toBeTruthy();
-    expect(useFeedStore.getState().articleLikes).toEqual({ a1: true });
+    expect(likes.mutate).toHaveBeenCalledWith({ articleId: "a1", next: true }, expect.anything());
   });
 
-  it("비로그인 상태에서는 도움돼요를 기록하지 않고 로그인 모달을 띄운다", async () => {
+  it("비로그인 상태에서는 도움돼요를 요청하지 않고 로그인 모달을 띄운다", async () => {
     useAuthStore.setState({ isLoggedIn: false, hydrated: true, user: null });
     render(<ArticleDetailPage />);
 
@@ -126,16 +134,20 @@ describe("아티클 상세", () => {
       .getByText("로그인하면 반려동물 여권과 내 활동을 볼 수 있어요.")
       .closest(".fixed");
     expect(loginModal?.className).toContain("opacity-100");
-    expect(useFeedStore.getState().articleLikes).toEqual({});
+    expect(likes.mutate).not.toHaveBeenCalled();
   });
 
-  it("목록에서 좋아요를 눌렀던 상태를 이어받는다", () => {
-    useFeedStore.setState({ articleLikes: { a1: true } });
+  it("서버에서 이미 누른 아티클이면 눌린 모양으로 열리고, 다시 누르면 취소를 요청한다", async () => {
+    likes.state = { counts: { a1: 1 }, likedIds: ["a1"] };
+    const user = userEvent.setup();
     render(<ArticleDetailPage />);
 
     const button = screen.getByRole("button", { name: /도움돼요/ });
     expect(button.textContent).toBe("도움돼요 6");
     expect(icon3D("red_heart_3d.png", button)).toBeTruthy();
+
+    await user.click(button);
+    expect(likes.mutate).toHaveBeenCalledWith({ articleId: "a1", next: false }, expect.anything());
   });
 
   it("되돌아갈 기록이 있으면 뒤로 가고, 새 탭으로 열었으면 아티클 목록으로 보낸다", async () => {

@@ -4,11 +4,14 @@ import { mockCourses } from "@/mocks";
 import { createCourseApi, deleteCourseApi, updateCourseApi, type CourseUpdateInput } from "@/lib/api/courses";
 import { createScheduleApi, deleteScheduleApi } from "@/lib/api/schedule";
 import { useToastStore } from "@/stores/useToastStore";
+import { usePetStore } from "@/stores/usePetStore";
 
 /** addCourse가 서버 응답을 받기 전 임시로 붙이는 id 접두사.
  * ⚠ mockCourses의 id("course-1", "course-2")와 겹치면 안 된다 — 겹치면 임시 id로 오인해
  * 서버 응답이 와도 실제 id로 안 바뀌는 버그가 생긴다. */
 const OPTIMISTIC_ID_PREFIX = "optimistic-";
+/** 취소한 일정을 기억해 두는 시간. 낡은 캐시(staleTime 30초)가 이보다 오래 뒤늦게 도착하는 일은 없다. */
+const REMOVED_TTL_MS = 2 * 60_000;
 let nextOptimisticId = 0;
 
 interface CourseState {
@@ -33,6 +36,13 @@ interface CourseState {
 
   /** 코스별 일정(CourseSchedule). 코스와 별개 개념이라 배열도 따로 둔다(루트 CLAUDE.md 도메인 용어). */
   schedules: CourseSchedule[];
+  /** addSchedule로 막 등록한 일정 id. setSchedules가 "서버 목록에 아직 없는 로컬 일정"을 이 집합에 든 것만 살려둔다.
+   * 예전엔 서버 목록에 없는 로컬 일정을 전부 남겨서, 다른 기기에서 지운 일정이 새로고침 전까지 유령처럼 남았다. */
+  pendingNewScheduleIds: Set<string>;
+  /** removeSchedule로 방금 취소한 일정 id → 취소한 시각(ms). 취소 전 스냅샷을 든 낡은 서버 목록(30초 캐시)이
+   * 뒤늦게 들어와도 취소한 일정이 되살아나지 않게 걸러낸다. 새 목록에 안 보인다고 바로 지우면 그 뒤에 온
+   * 더 오래된 목록이 다시 살리므로, 목록에서 사라졌어도 REMOVED_TTL_MS 동안은 들고 있는다. */
+  removedScheduleIds: Record<string, number>;
   setSchedules: (schedules: CourseSchedule[]) => void;
   /** 코스에 날짜를 붙여 새 일정으로 등록한다(같은 코스도 여러 날짜에 등록 가능). */
   addSchedule: (courseId: string, date: string) => Promise<void>;
@@ -68,7 +78,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
         ],
       };
     }),
-  addCourse: (course) => {
+  addCourse: (input) => {
+    // 만드는 순간 활성이던 반려동물을 코스에 붙인다 — 호출부마다 챙기지 않아도 뱃지를 반려동물별로 셀 수 있다.
+    const course = { ...input, petId: input.petId !== undefined ? input.petId : usePetStore.getState().activePet()?.id ?? null };
     const tempId = `${OPTIMISTIC_ID_PREFIX}${Date.now()}-${++nextOptimisticId}`;
     const newCourse: Course = { ...course, id: tempId };
     set((state) => ({
@@ -135,23 +147,53 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   },
 
   schedules: [],
+  pendingNewScheduleIds: new Set<string>(),
+  removedScheduleIds: {},
   // setCourses와 같은 이유(위 주석 참고) — useSchedules()의 react-query 캐시(staleTime 30초)가
   // 저장 이전 스냅샷을 들고 있으면, 저장 직후 다른 화면으로 이동했을 때 이 stale 응답이 방금
-  // addSchedule로 추가한 항목을 통째로 덮어써 지워버린다. 서버 목록에 없는 로컬 항목(막 추가되어
-  // 아직 이 캐시엔 안 잡힌 것)은 지우지 않고 같이 들고 있는다.
-  setSchedules: (schedules) =>
-    set((state) => ({
-      schedules: [
-        ...schedules,
-        ...state.schedules.filter((s) => !schedules.some((server) => server.id === s.id)),
-      ],
-    })),
+  // addSchedule로 추가한 항목을 통째로 덮어써 지워버린다. 그래서 "방금 추가했는데 서버 목록엔 아직
+  // 안 잡힌" 일정만 살려두고, 서버 목록에 나타나면 보호를 푼다. 그 밖의 로컬 일정은 서버가 정본이다.
+  setSchedules: (incoming) =>
+    set((state) => {
+      // 취소 기록은 아직 낡은 목록에 보이거나(=서버가 아직 안 지운 걸로 보이는 목록이 오고 있다) 취소한 지
+      // 얼마 안 됐으면 들고 있고, 둘 다 아니면 버린다.
+      const now = Date.now();
+      const removedScheduleIds = Object.fromEntries(
+        Object.entries(state.removedScheduleIds).filter(
+          ([id, removedAt]) => now - removedAt < REMOVED_TTL_MS || incoming.some((s) => s.id === id)
+        )
+      );
+      const schedules = incoming.filter((s) => !(s.id in removedScheduleIds));
+      const pendingNewScheduleIds = new Set(state.pendingNewScheduleIds);
+      schedules.forEach((s) => pendingNewScheduleIds.delete(s.id));
+      return {
+        pendingNewScheduleIds,
+        removedScheduleIds,
+        schedules: [
+          ...schedules,
+          ...state.schedules.filter(
+            (s) => pendingNewScheduleIds.has(s.id) && !schedules.some((server) => server.id === s.id)
+          ),
+        ],
+      };
+    }),
   addSchedule: async (courseId, date) => {
     const schedule = await createScheduleApi(courseId, date);
-    set({ schedules: [...get().schedules, schedule] });
+    set((state) => ({
+      schedules: [...state.schedules, schedule],
+      pendingNewScheduleIds: new Set(state.pendingNewScheduleIds).add(schedule.id),
+    }));
   },
   removeSchedule: async (scheduleId) => {
     await deleteScheduleApi(scheduleId);
-    set({ schedules: get().schedules.filter((s) => s.id !== scheduleId) });
+    set((state) => {
+      const pendingNewScheduleIds = new Set(state.pendingNewScheduleIds);
+      pendingNewScheduleIds.delete(scheduleId);
+      return {
+        schedules: state.schedules.filter((s) => s.id !== scheduleId),
+        pendingNewScheduleIds,
+        removedScheduleIds: { ...state.removedScheduleIds, [scheduleId]: Date.now() },
+      };
+    });
   },
 }));

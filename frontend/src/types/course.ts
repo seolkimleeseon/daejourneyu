@@ -26,6 +26,9 @@ export interface Course {
   transport: Transport;
   source: CourseSource;
   shared: boolean;
+  /** 코스를 만들 때 활성이던 반려동물 id. 반려동물 도입 전 코스·담기 사본은 없다(null/undefined) —
+   * 뱃지가 이런 코스는 어느 반려동물 몫인지 알 수 없어 모든 반려동물에게 세어 준다. */
+  petId?: string | null;
   /** 일차별 방문 장소. 당일치기 코스도 days.length === 1로 통일 */
   days: CourseStop[][];
 }

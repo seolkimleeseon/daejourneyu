@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import type { Course, CourseSchedule } from "@/types";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePetStore } from "@/stores/usePetStore";
 import { useCourseStore } from "@/stores/useCourseStore";
 import { useReviews } from "@/hooks/useReviews";
+import { useArticleLikes } from "@/hooks/useArticleLikes";
 import { useMyPosts } from "@/hooks/usePosts";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useSyncCoursesFromApi } from "@/hooks/useSyncCoursesFromApi";
@@ -15,6 +17,9 @@ import {
   type BadgeInput,
 } from "@/lib/badges";
 
+const EMPTY_COURSES: Course[] = [];
+const EMPTY_SCHEDULES: CourseSchedule[] = [];
+
 interface MyBadges {
   badges: Badge[];
   got: Badge[];
@@ -24,6 +29,11 @@ interface MyBadges {
   nearest: Badge | null;
   /** 그 뱃지를 두고 할 말. nearest가 null이면 빈 문자열 */
   nearestMessage: string;
+  /**
+   * 세어야 할 데이터(코스·후기·글·도움돼요)를 다 받았는지. 받는 사이에는 값이 계속 바뀌므로(1/44 → 12/44)
+   * 화면은 이 값이 true가 되기 전엔 숫자를 그리지 않고 자리만 잡아둔다. 비로그인은 셀 게 없어 바로 true다.
+   */
+  ready: boolean;
 }
 
 /**
@@ -34,16 +44,40 @@ export function useMyBadges(): MyBadges {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const pets = usePetStore((state) => state.pets);
   const activePet = usePetStore((state) => state.activePet());
-  const { data: reviews = [] } = useReviews();
-  // 뱃지가 보는 건 내 글이다(받은 좋아요 합계). 전체 목록은 서버 페이지 단위로 바뀌어 여기서 못 쓴다.
-  // TODO(api): '이웃사랑'은 내가 남의 글에 누른 좋아요라 좋아요 영속화 뒤 별도 소스가 필요하다.
-  const { data: posts } = useMyPosts("recent", isLoggedIn);
+  const hydrated = useAuthStore((state) => state.hydrated);
+  const { data: reviews = [], isLoading: reviewsLoading } = useReviews();
+  // 뱃지가 보는 건 내 글이다(받은 담기 합계). 전체 목록은 서버 페이지 단위로 바뀌어 여기서 못 쓴다.
+  const { data: posts, isLoading: postsLoading } = useMyPosts("recent", isLoggedIn);
+  const { data: articleLikes, isLoading: likesLoading } = useArticleLikes();
   // 취향 계열(소형견 전용·전 견종)은 CourseStop에 없는 조건을 Place에서 찾아야 한다.
-  const { data: places = [] } = usePlaces();
+  const { data: places = [], isLoading: placesLoading } = usePlaces();
   // 마이탭 진입이 SCHEDULE 탭을 거치지 않을 수 있으므로(딥링크 등) 여기서도 직접 동기화한다.
-  useSyncCoursesFromApi();
-  const courses = useCourseStore((state) => state.courses);
-  const schedules = useCourseStore((state) => state.schedules);
+  const sync = useSyncCoursesFromApi();
+  // 코스 목록을 받는 데 실패하면 hasSynced가 영영 안 켜진다 - 무한 로딩 대신 세 수 있는 만큼(코스 없이) 보여준다.
+  const coursesFailed = sync?.coursesFailed ?? false;
+  const storeCourses = useCourseStore((state) => state.courses);
+  const storeSchedules = useCourseStore((state) => state.schedules);
+  const hasSynced = useCourseStore((state) => state.hasSynced);
+  // 스토어의 courses 초기값은 화면을 바로 그리려는 목데이터(mockCourses)다. 서버 목록을 받기 전이나
+  // 비로그인 상태에서 그걸 세면 게스트에게 "코스를 1개 만들었어요" 같은 가짜 기록이 뜬다.
+  const counted = isLoggedIn && hasSynced;
+
+  // 반려동물별로 센다. 코스가 어느 반려동물과 만든 건지(petId)를 알면 그 반려동물 몫만 세고,
+  // 모르는 코스(반려동물 도입 전·담기 사본)는 모든 반려동물에게 세어 준다.
+  const petId = activePet?.id ?? null;
+  const courses = useMemo(
+    () =>
+      counted
+        ? storeCourses.filter((course) => !course.petId || petId === null || course.petId === petId)
+        : EMPTY_COURSES,
+    [counted, storeCourses, petId]
+  );
+  const schedules = useMemo(() => {
+    if (!counted) return EMPTY_SCHEDULES;
+    const ids = new Set(courses.map((course) => course.id));
+    return storeSchedules.filter((schedule) => ids.has(schedule.courseId));
+  }, [counted, storeSchedules, courses]);
+  const articleLikeCount = isLoggedIn ? articleLikes?.likedIds.length ?? 0 : 0;
 
   const input = useMemo<BadgeInput>(
     () => ({
@@ -55,9 +89,10 @@ export function useMyBadges(): MyBadges {
       reviews,
       posts,
       places,
+      articleLikeCount,
       today: todayString(),
     }),
-    [isLoggedIn, pets, activePet, courses, schedules, reviews, posts, places]
+    [isLoggedIn, pets, activePet, courses, schedules, reviews, posts, places, articleLikeCount]
   );
 
   const badges = useMemo(() => computeMyBadges(input), [input]);
@@ -71,5 +106,6 @@ export function useMyBadges(): MyBadges {
     total: badges.length,
     nearest,
     nearestMessage: nearest ? nearBadgeMessage(nearest, input) : "",
+    ready: hydrated && (!isLoggedIn || ((counted || coursesFailed) && !reviewsLoading && !postsLoading && !likesLoading && !placesLoading)),
   };
 }

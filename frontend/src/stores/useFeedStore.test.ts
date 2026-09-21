@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useFeedStore } from "@/stores/useFeedStore";
 
 beforeEach(() => {
-  useFeedStore.setState({ overrides: {}, articleLikes: {} });
+  useFeedStore.setState({ overrides: {} });
 });
 
 describe("useFeedStore", () => {
@@ -17,14 +17,5 @@ describe("useFeedStore", () => {
       "post-1": { liked: false },
       "post-2": { liked: false },
     });
-  });
-
-  it("아티클 좋아요는 게시물과 따로 불리언으로 기록한다", () => {
-    const { toggleArticleLike } = useFeedStore.getState();
-
-    toggleArticleLike("article-1", true);
-
-    expect(useFeedStore.getState().articleLikes).toEqual({ "article-1": true });
-    expect(useFeedStore.getState().overrides).toEqual({});
   });
 });

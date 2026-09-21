@@ -17,6 +17,7 @@ const { prisma } = vi.hoisted(() => ({
       delete: vi.fn(),
     },
     courseDay: { deleteMany: vi.fn() },
+    pet: { findFirst: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -62,6 +63,7 @@ function courseRow(overrides: Record<string, unknown> = {}) {
     transport: "자차",
     source: "manual",
     shared: false,
+    petId: null,
     days: [{ dayIndex: 0, stops: [{ ...STOP, order: 0, imageUrl: null }] }],
     ...overrides,
   };
@@ -217,6 +219,55 @@ describe("POST /api/courses", () => {
       .send({ ...VALID_INPUT, userId: "user-2" });
 
     expect(prisma.course.create.mock.lastCall?.[0].data.userId).toBe("user-1");
+  });
+
+  it("내 반려동물 id를 보내면 코스에 연결하고 응답에 돌려준다", async () => {
+    prisma.pet.findFirst.mockResolvedValue({ id: "pet-1" });
+    prisma.course.create.mockResolvedValue(courseRow({ petId: "pet-1" }));
+
+    const response = await request(app)
+      .post("/api/courses")
+      .set("Cookie", AS_USER_1)
+      .send({ ...VALID_INPUT, petId: "pet-1" });
+
+    expect(prisma.pet.findFirst).toHaveBeenCalledWith({
+      where: { id: "pet-1", userId: "user-1" },
+      select: { id: true },
+    });
+    expect(prisma.course.create.mock.lastCall?.[0].data.petId).toBe("pet-1");
+    expect(response.body.petId).toBe("pet-1");
+  });
+
+  it("내 것이 아니거나 없는 반려동물 id는 조용히 비우고 코스는 그대로 저장한다", async () => {
+    prisma.pet.findFirst.mockResolvedValue(null);
+    prisma.course.create.mockResolvedValue(courseRow());
+
+    const response = await request(app)
+      .post("/api/courses")
+      .set("Cookie", AS_USER_1)
+      .send({ ...VALID_INPUT, petId: "someone-elses-pet" });
+
+    expect(response.status).toBe(201);
+    expect(prisma.course.create.mock.lastCall?.[0].data.petId).toBeNull();
+  });
+
+  it("petId를 안 보내도 저장된다 — 반려동물 도입 전 클라이언트와 호환", async () => {
+    prisma.course.create.mockResolvedValue(courseRow());
+
+    const response = await request(app).post("/api/courses").set("Cookie", AS_USER_1).send(VALID_INPUT);
+
+    expect(response.status).toBe(201);
+    expect(prisma.pet.findFirst).not.toHaveBeenCalled();
+    expect(prisma.course.create.mock.lastCall?.[0].data.petId).toBeNull();
+  });
+
+  it("petId가 문자열이 아니면 400", async () => {
+    const response = await request(app)
+      .post("/api/courses")
+      .set("Cookie", AS_USER_1)
+      .send({ ...VALID_INPUT, petId: 123 });
+
+    expect(response.status).toBe(400);
   });
 
   it("일차와 순번을 자리 순서대로 매겨 저장한다 — 클라이언트가 보낸 번호를 쓰지 않는다", async () => {

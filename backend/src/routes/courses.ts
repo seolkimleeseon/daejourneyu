@@ -26,6 +26,8 @@ type Course = {
   transport: Transport;
   source: CourseSource;
   shared: boolean;
+  /** 코스를 만들 때 활성이던 반려동물 id. 없거나(옛 코스·담기 사본) 지워졌으면 null. */
+  petId: string | null;
   days: CourseStop[][];
 };
 
@@ -55,6 +57,7 @@ function toCourse(row: CourseRow): Course {
     transport: row.transport as Transport,
     source: row.source as CourseSource,
     shared: row.shared,
+    petId: row.petId,
     days: row.days.map((day) =>
       day.stops.map((s) => ({
         placeId: s.placeId,
@@ -124,7 +127,7 @@ function toStopData(stop: CourseStop, order: number) {
   };
 }
 
-function validateCourseInput(body: unknown): body is Omit<Course, "id"> {
+function validateCourseInput(body: unknown): body is Omit<Course, "id" | "petId"> & { petId?: string | null } {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
   if (typeof b.label !== "string" || b.label.trim().length === 0) return false;
@@ -133,6 +136,7 @@ function validateCourseInput(body: unknown): body is Omit<Course, "id"> {
   if (!TRANSPORTS.includes(b.transport as Transport)) return false;
   if (!SOURCES.includes(b.source as CourseSource)) return false;
   if (typeof b.shared !== "boolean") return false;
+  if (b.petId !== undefined && b.petId !== null && typeof b.petId !== "string") return false;
   return isValidDays(b.days);
 }
 
@@ -203,8 +207,14 @@ router.post(
     }
     const input = req.body;
 
+    // 보낸 반려동물이 내 것이 아니거나 이미 지워졌으면 조용히 비운다 — 코스 저장 자체를 막을 일은 아니다.
+    const owned = input.petId
+      ? await prisma.pet.findFirst({ where: { id: input.petId, userId: req.userId! }, select: { id: true } })
+      : null;
+
     const created = await prisma.course.create({
       data: {
+        petId: owned?.id ?? null,
         label: input.label,
         emoji: input.emoji ?? null,
         nights: input.nights,

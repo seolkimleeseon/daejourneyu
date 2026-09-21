@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { usePetStore } from "@/stores/usePetStore";
 import { useToastStore } from "@/stores/useToastStore";
+import { eulReul } from "@/lib/josa";
 
 interface PetDeleteModalProps {
   open: boolean;
@@ -46,7 +47,7 @@ export function PetDeleteModal({ open, onClose, petId, petName, onDeleted }: Pet
       open={open}
       onClose={onClose}
       emoji="🥲"
-      title={`${petName}을(를) 삭제할까요?`}
+      title={`${petName}${eulReul(petName)} 삭제할까요?`}
       description="등록한 정보와 여행 유형이 함께 사라지고, 되돌릴 수 없어요"
     >
       <Button

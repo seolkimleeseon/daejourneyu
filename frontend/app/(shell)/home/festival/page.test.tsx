@@ -158,7 +158,8 @@ describe("동반 가능 뱃지", () => {
   /** 선택한 날의 축제 카드에 붙은 뱃지 문구. */
   function petTag(): string {
     const card = screen.getByText("대전 반려동물 축제").closest(".flex.flex-wrap") as HTMLElement;
-    return within(card).getAllByRole("button")[0].textContent ?? "";
+    // 누를 곳이 없는 태그는 버튼이 아니라 span으로 그려진다.
+    return card.querySelector<HTMLElement>(".rounded-full")?.textContent ?? "";
   }
 
   it("확인된 곳은 동반 가능이라고 한다", () => {

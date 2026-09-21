@@ -30,3 +30,12 @@ export function ro(word: string): string {
   if (null === jongseong) return "로";
   return 0 === jongseong || JONGSEONG_RIEUL === jongseong ? "로" : "으로";
 }
+
+/**
+ * "콩이" → "를", "밤톨" → "을". 한글이 아닌 이름은 받침을 알 수 없어 '를'을 기본으로 둔다.
+ */
+export function eulReul(word: string): string {
+  const jongseong = jongseongOf(word);
+  if (null === jongseong) return "를";
+  return 0 === jongseong ? "를" : "을";
+}

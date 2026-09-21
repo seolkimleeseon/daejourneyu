@@ -11,7 +11,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/cn";
 import { authFetch } from "@/lib/api/authFetch";
 import { usePickablePlaces } from "@/hooks/usePickablePlaces";
-import { pickChatCandidates } from "@/lib/chatCandidates";
+import { parseTripConditions, pickChatCandidates } from "@/lib/chatCandidates";
 import type { PickablePlace } from "@/lib/petTourMapper";
 import type { Course, CourseStop } from "@/types";
 
@@ -161,7 +161,7 @@ export default function ChatbotPage() {
       const res = await authFetch("/api/ai/course-suggestion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, nights: 0, transport: "자차", candidatePlaces }),
+        body: JSON.stringify({ prompt, ...parseTripConditions(prompt), candidatePlaces }),
         signal: controller.signal,
       });
       // 코스 추천 요청이어도 AI가 판단해서 잡담/설명이면 chat으로, 실제 코스 요청이면 course로 답한다

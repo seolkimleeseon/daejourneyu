@@ -174,6 +174,8 @@ export interface BadgeInput {
   reviews: Review[];
   posts: FeedPost[];
   places: Place[];
+  /** 내가 아티클에 눌러 둔 '도움돼요' 수(서버 기록). */
+  articleLikeCount: number;
   /** YYYY-MM-DD. 날짜가 지난 일정만 '다녀온' 것으로 친다 */
   today: string;
 }
@@ -422,15 +424,16 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "인기 코스",
     category: "단계형",
     rarity: 3,
-    description: "받은 좋아요",
-    earned: (count) => `둘러보기에 공유한 코스가 좋아요를 ${count}개 받았어요`,
-    how: "둘러보기에 공유한 코스가 좋아요를 받으면 쌓여요",
+    description: "담아간 사람",
+    earned: (count) => `둘러보기에 공유한 코스를 ${count}명이 보관함에 담아갔어요`,
+    how: "둘러보기에 공유한 코스를 다른 사람이 담아가면 쌓여요",
     href: "/feed",
-    tiers: [10, 50, 200],
+    tiers: [5, 20, 50],
+    // 코스 카드에는 좋아요가 없고 '담기'가 반응의 전부다 — 담긴 수는 서버가 세는 값이라 어디서든 같다.
     measure: (facts) =>
       facts.posts
         .filter((post) => post.isMine)
-        .reduce((sum, post) => sum + post.likes, 0),
+        .reduce((sum, post) => sum + post.saves, 0),
   },
   {
     id: "review-king",
@@ -464,12 +467,12 @@ const BADGE_DEFS: BadgeDef[] = [
     name: "이웃사랑",
     category: "단계형",
     rarity: 1,
-    description: "누른 좋아요",
-    earned: (count) => `남의 게시물에 좋아요를 ${count}번 눌렀어요`,
-    how: "둘러보기에서 남의 게시물에 좋아요를 눌러보세요",
-    href: "/feed",
-    tiers: [10, 50, 200],
-    measure: (facts) => facts.posts.filter((post) => !post.isMine && post.liked).length,
+    description: "누른 도움돼요",
+    earned: (count) => `아티클에 도움돼요를 ${count}번 눌렀어요`,
+    how: "아티클을 읽고 도움이 됐다면 도움돼요를 눌러보세요",
+    href: "/feed?tab=article",
+    tiers: [3, 10, 30],
+    measure: (facts) => facts.articleLikeCount,
   },
 
   // ===== 취향 — 어떤 장소를 좋아하는지가 뱃지가 된다 =====

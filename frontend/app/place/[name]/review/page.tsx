@@ -176,6 +176,7 @@ function ReviewWritePageContent({ params }: { params: { name: string } }) {
                     key={tag.code}
                     tone={category === "CAUTION" ? "amber" : "brand"}
                     active={selectedCodes.includes(tag.code)}
+                    aria-pressed={selectedCodes.includes(tag.code)}
                     onClick={() => toggleTag(tag.code)}
                   >
                     {tag.label}

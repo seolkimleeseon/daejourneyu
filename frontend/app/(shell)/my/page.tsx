@@ -30,7 +30,7 @@ export default function MyPage() {
   const switchActivePet = usePetStore((state) => state.switchActivePet);
   const activePet = usePetStore((state) => state.activePet());
   const showToast = useToastStore((state) => state.show);
-  const { data: reviews = [] } = useReviews();
+  const { data: reviews = [], isLoading: reviewsLoading } = useReviews();
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -38,7 +38,7 @@ export default function MyPage() {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [easterEggOpen, setEasterEggOpen] = useState(false);
 
-  const { badges, nearest, nearestMessage } = useMyBadges();
+  const { badges, nearest, nearestMessage, ready: badgesReady } = useMyBadges();
 
   /**
    * 버전 문구를 5번 연속 탭하면 이스터에그를 띄운다. 띄엄띄엄 누른 것까지 세면 안 되니
@@ -111,7 +111,11 @@ export default function MyPage() {
           />
         ) : null}
 
-        {isLoggedIn ? (
+        {isLoggedIn && !badgesReady ? (
+          // 받아오는 사이 숫자가 계속 바뀌는 걸 그리지 않고 자리만 잡아 둔다.
+          <div className="mt-2 h-40 animate-pulse rounded-xl bg-surface" aria-hidden="true" />
+        ) : null}
+        {isLoggedIn && badgesReady ? (
           <div className="mt-2">
             <BadgeGrid
               badges={badges}
@@ -134,7 +138,7 @@ export default function MyPage() {
           <MenuItem
             label="내가 쓴 후기"
             icon="✍️"
-            trailing={isLoggedIn ? `${myReviewCount}개 ›` : "›"}
+            trailing={isLoggedIn && !reviewsLoading ? `${myReviewCount}개 ›` : "›"}
             onClick={handleReviewsClick}
           />
           <MenuItem

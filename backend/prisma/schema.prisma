@@ -32,6 +32,7 @@ model User {
   posts Post[]
   reviews Review[]
   postSaves PostSave[]
+  articleLikes ArticleLike[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -61,6 +62,9 @@ model Pet {
   mbtiTheme  String?
   mbtiTraits String[]
 
+  /// 이 반려동물과 함께 만든 코스. 뱃지를 반려동물별로 세는 데 쓴다. 반려동물을 지워도 코스는 남는다.
+  courses Course[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -80,6 +84,10 @@ model Course {
 
   userId String
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 코스를 만들 때 활성이던 반려동물. 반려동물 도입 전에 만든 코스와 '담기' 사본은 null이다.
+  petId String?
+  pet   Pet?    @relation(fields: [petId], references: [id], onDelete: SetNull)
 
   days      CourseDay[]
   schedules CourseSchedule[]
@@ -280,4 +288,20 @@ model PostSave {
   /// 같은 글을 두 번 담을 수 없다 — 담긴 수가 부풀지 않게 DB가 막는다.
   @@unique([userId, postId])
   @@index([postId])
+}
+
+/// 아티클 '도움돼요' 기록. 아티클 본문은 아직 프론트 목데이터라 articleId는 외래키 없이 문자열로만 든다.
+model ArticleLike {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  articleId String
+
+  createdAt DateTime @default(now())
+
+  /// 한 사람이 같은 아티클에 두 번 누를 수 없다 — 수가 부풀지 않게 DB가 막는다.
+  @@unique([userId, articleId])
+  @@index([articleId])
 }

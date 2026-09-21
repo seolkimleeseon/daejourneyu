@@ -18,6 +18,7 @@ import aiRouter from "./routes/ai";
 import authRouter from "./routes/auth";
 import petsRouter from "./routes/pets";
 import authKakaoRouter from "./routes/authKakao";
+import articlesRouter from "./routes/articles";
 import postsRouter from "./routes/posts";
 import reviewsRouter from "./routes/reviews";
 import festivalsRouter from "./routes/festivals";
@@ -54,6 +55,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/auth/kakao", authKakaoRouter);
 app.use("/api/pets", petsRouter);
 app.use("/api/posts", postsRouter);
+app.use("/api/articles", articlesRouter);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/festivals", festivalsRouter);
 

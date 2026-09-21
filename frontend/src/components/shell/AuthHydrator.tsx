@@ -42,7 +42,8 @@ export function AuthHydrator() {
       // 위저드에서 비로그인 상태로 저장을 누른 경우 — pendingCourseSave.ts 참고).
       const pending = consumePendingCourseSave();
       if (pending) {
-        useCourseStore.getState().addCourse(pending);
+        // 로그인 전에 만든 코스라 어느 반려동물과 만든 건지 모른다 - 지금 활성 반려동물로 오해해 붙이지 않는다.
+        useCourseStore.getState().addCourse({ ...pending, petId: null });
         useToastStore.getState().show("로그인 후 이어서 보관함에 저장했어요 🐾");
       }
     } else if (previousLoggedIn.current) {

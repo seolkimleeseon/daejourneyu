@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Emoji3D } from "@/components/ui/Emoji3D";
 import { cn } from "@/lib/cn";
 
@@ -28,15 +28,30 @@ export function Modal({
   children,
   widthClass = "w-[260px]",
 }: ModalProps) {
+  // 열려 있을 때만 ESC로 닫는다.
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   return (
     <div
+      // 닫힌 모달의 버튼이 탭 순서에 남아 보이지 않는 "로그아웃" 같은 걸 키보드로 누를 수 있었다 —
+      // pointer-events-none은 마우스만 막으므로 invisible(visibility: hidden)로 포커스까지 뺀다.
       className={cn(
-        "fixed inset-0 z-[100] flex items-center justify-center bg-black/45 transition-opacity",
-        open ? "opacity-100" : "pointer-events-none opacity-0"
+        "fixed inset-0 z-[100] flex items-center justify-center bg-black/45 transition-[opacity,visibility]",
+        open ? "opacity-100" : "invisible pointer-events-none opacity-0"
       )}
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className={cn("rounded-xl bg-card p-6 text-center shadow-xl", widthClass)}
         onClick={(event) => event.stopPropagation()}
       >

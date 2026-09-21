@@ -81,4 +81,35 @@ describe("Modal", () => {
     expect(wide.innerHTML).toContain("w-[320px]");
     expect(wide.innerHTML).not.toContain("w-[260px]");
   });
+
+  it("닫혀 있으면 키보드 포커스도 받지 않는다 — 보이지 않는 버튼을 탭으로 누르지 못하게", () => {
+    const { container } = render(<Modal open={false} onClose={vi.fn()} title="삭제할까요?" />);
+
+    expect(overlay(container).className).toContain("invisible");
+  });
+
+  it("열려 있으면 화면에 보이고 대화상자로 알려진다", () => {
+    const { container } = render(<Modal open onClose={vi.fn()} title="삭제할까요?" />);
+
+    expect(overlay(container).className).not.toContain("invisible");
+    expect(screen.getByRole("dialog", { name: "삭제할까요?" })).toBeTruthy();
+  });
+
+  it("열려 있을 때 ESC를 누르면 닫는다", async () => {
+    const onClose = vi.fn();
+    render(<Modal open onClose={onClose} title="삭제할까요?" />);
+
+    await userEvent.setup().keyboard("{Escape}");
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("닫혀 있을 때는 ESC에 반응하지 않는다", async () => {
+    const onClose = vi.fn();
+    render(<Modal open={false} onClose={onClose} title="삭제할까요?" />);
+
+    await userEvent.setup().keyboard("{Escape}");
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

@@ -112,3 +112,41 @@ describe("이동", () => {
     expect(nav.push).toHaveBeenCalledWith("/schedule/course/c2/schedule");
   });
 });
+
+describe("삭제", () => {
+  it("휴지통을 누르면 바로 지우지 않고 확인부터 묻는다", async () => {
+    const deleteCourse = vi.fn();
+    useCourseStore.setState({ deleteCourse });
+    const { user } = setup();
+
+    await user.click(screen.getAllByRole("button", { name: "코스 삭제" })[0]);
+
+    expect(screen.getByText("이 코스를 삭제할까요?")).toBeTruthy();
+    expect(screen.getByText("‘대전 문화 코스’ 코스를 삭제하면 되돌릴 수 없어요")).toBeTruthy();
+    expect(deleteCourse).not.toHaveBeenCalled();
+  });
+
+  it("삭제하기를 누르면 그 코스만 지운다", async () => {
+    const deleteCourse = vi.fn();
+    useCourseStore.setState({ deleteCourse });
+    const { user } = setup();
+
+    // 목록은 최근 순이라 첫 휴지통이 두 번째로 만든 '대전 문화 코스'다.
+    await user.click(screen.getAllByRole("button", { name: "코스 삭제" })[0]);
+    await user.click(screen.getByRole("button", { name: "삭제하기" }));
+
+    expect(deleteCourse).toHaveBeenCalledTimes(1);
+    expect(deleteCourse).toHaveBeenCalledWith("c2");
+  });
+
+  it("취소하면 아무것도 지우지 않는다", async () => {
+    const deleteCourse = vi.fn();
+    useCourseStore.setState({ deleteCourse });
+    const { user } = setup();
+
+    await user.click(screen.getAllByRole("button", { name: "코스 삭제" })[0]);
+    await user.click(screen.getByRole("button", { name: "취소" }));
+
+    expect(deleteCourse).not.toHaveBeenCalled();
+  });
+});

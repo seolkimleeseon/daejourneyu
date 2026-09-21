@@ -22,17 +22,21 @@ const toneClasses: Record<TagTone, string> = {
 };
 
 export function Tag({ tone = "neutral", active, className, children, ...rest }: TagProps) {
+  const classes = cn(
+    "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+    toneClasses[tone],
+    active && "bg-brand text-white",
+    className
+  );
+
+  // 누를 곳이 없는 태그(출처 배지·조건 표시)를 버튼으로 그리면 키보드 포커스만 먹고 아무 일도 안 한다.
+  // onClick이 없으면 모양만 같은 span으로 그려 탭 순서에서 뺀다.
+  if (!rest.onClick) {
+    return <span className={cn("inline-block", classes)}>{children}</span>;
+  }
+
   return (
-    <button
-      type="button"
-      className={cn(
-        "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-        toneClasses[tone],
-        active && "bg-brand text-white",
-        className
-      )}
-      {...rest}
-    >
+    <button type="button" className={classes} {...rest}>
       {children}
     </button>
   );

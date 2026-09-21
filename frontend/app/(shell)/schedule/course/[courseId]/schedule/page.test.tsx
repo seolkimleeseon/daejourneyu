@@ -104,13 +104,38 @@ describe("이미 등록된 일정", () => {
     expect(dayCell("21").querySelector(".rounded-full")).toBeNull();
   });
 
-  it("취소하면 그 일정만 지우고 알린다", async () => {
+  it("취소를 누르면 바로 지우지 않고 확인부터 묻는다", async () => {
     useCourseStore.setState({
       schedules: [makeSchedule({ id: "s1", courseId: "c1", date: "2026-09-20" })],
     });
     const { user } = setup();
 
     await user.click(within(scheduleRow("2026-09-20")).getByRole("button", { name: "취소" }));
+
+    expect(screen.getByText("이 일정을 취소할까요?")).toBeTruthy();
+    expect(removeSchedule).not.toHaveBeenCalled();
+  });
+
+  it("그대로 두기를 누르면 아무것도 지우지 않는다", async () => {
+    useCourseStore.setState({
+      schedules: [makeSchedule({ id: "s1", courseId: "c1", date: "2026-09-20" })],
+    });
+    const { user } = setup();
+
+    await user.click(within(scheduleRow("2026-09-20")).getByRole("button", { name: "취소" }));
+    await user.click(screen.getByRole("button", { name: "그대로 두기" }));
+
+    expect(removeSchedule).not.toHaveBeenCalled();
+  });
+
+  it("확인하면 그 일정만 지우고 알린다", async () => {
+    useCourseStore.setState({
+      schedules: [makeSchedule({ id: "s1", courseId: "c1", date: "2026-09-20" })],
+    });
+    const { user } = setup();
+
+    await user.click(within(scheduleRow("2026-09-20")).getByRole("button", { name: "취소" }));
+    await user.click(screen.getByRole("button", { name: "일정 취소하기" }));
 
     expect(removeSchedule).toHaveBeenCalledWith("s1");
     await waitFor(() => expect(useToastStore.getState().message).toBe("일정을 취소했어요"));
@@ -124,6 +149,7 @@ describe("이미 등록된 일정", () => {
     const { user } = setup();
 
     await user.click(screen.getByRole("button", { name: "취소" }));
+    await user.click(screen.getByRole("button", { name: "일정 취소하기" }));
 
     await waitFor(() => expect(useToastStore.getState().message).toContain("일정 취소에 실패했어요"));
   });
