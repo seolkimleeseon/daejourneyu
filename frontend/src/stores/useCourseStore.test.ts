@@ -34,7 +34,7 @@ beforeEach(() => {
   api.createCourseApi.mockResolvedValue(serverCourse);
   api.updateCourseApi.mockResolvedValue(undefined);
   api.deleteCourseApi.mockResolvedValue(undefined);
-  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), pendingNewScheduleIds: new Set(), removedScheduleIds: new Set(), courseIdAliases: {} });
+  useCourseStore.setState({ courses: [], schedules: [], hasSynced: false, pendingNewCourseIds: new Set(), pendingNewScheduleIds: new Set(), removedScheduleIds: {}, courseIdAliases: {} });
 });
 
 describe("setCourses", () => {
@@ -253,21 +253,39 @@ describe("setSchedules", () => {
 
   it("취소한 일정은 취소 전 스냅샷을 든 낡은 서버 목록이 와도 되살아나지 않는다", () => {
     const cancelled = makeSchedule({ id: "s-cancelled" });
-    useCourseStore.setState({ schedules: [], removedScheduleIds: new Set(["s-cancelled"]) });
+    useCourseStore.setState({ schedules: [], removedScheduleIds: { "s-cancelled": Date.now() } });
 
     useCourseStore.getState().setSchedules([cancelled]);
 
     expect(useCourseStore.getState().schedules).toEqual([]);
   });
 
-  it("서버 목록에서 실제로 사라진 게 확인되면 취소 기록을 푼다", () => {
+  it("새 목록에서 사라진 걸 봐도 곧바로 잊지 않는다 - 그 뒤에 온 더 낡은 목록이 되살리지 못하게", () => {
     const cancelled = makeSchedule({ id: "s-cancelled" });
-    useCourseStore.setState({ removedScheduleIds: new Set(["s-cancelled"]) });
+    useCourseStore.setState({ removedScheduleIds: { "s-cancelled": Date.now() } });
 
-    useCourseStore.getState().setSchedules([]);
-    useCourseStore.getState().setSchedules([cancelled]);
+    useCourseStore.getState().setSchedules([]); // 취소가 반영된 새 목록
+    useCourseStore.getState().setSchedules([cancelled]); // 그 뒤에 도착한 낡은 목록
 
-    expect(useCourseStore.getState().schedules.map((s) => s.id)).toEqual(["s-cancelled"]);
+    expect(useCourseStore.getState().schedules).toEqual([]);
+  });
+
+  it("충분히 시간이 지나 새 목록에서도 사라졌으면 기록을 버린다", () => {
+    vi.useFakeTimers();
+    try {
+      const cancelled = makeSchedule({ id: "s-cancelled" });
+      useCourseStore.setState({ removedScheduleIds: { "s-cancelled": Date.now() } });
+
+      vi.advanceTimersByTime(3 * 60_000);
+      useCourseStore.getState().setSchedules([]);
+
+      expect(useCourseStore.getState().removedScheduleIds).toEqual({});
+      // 같은 id의 일정을 서버가 다시 만들어 준다면 그대로 보여준다.
+      useCourseStore.getState().setSchedules([cancelled]);
+      expect(useCourseStore.getState().schedules.map((s) => s.id)).toEqual(["s-cancelled"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("서버 목록에 있는 항목은 중복으로 두지 않는다", () => {

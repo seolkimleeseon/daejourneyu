@@ -42,8 +42,21 @@ function clientFor(key: string): GoogleGenAI {
   return client;
 }
 
-/** 막힌 (키, 모델) 조합이 다시 시도되기까지 쉬는 시간. 429는 한도가 풀리는 데 걸리는 시간이 길어 오래 쉰다. */
-const COOLDOWN_MS = { quota: 5 * 60_000, busy: 20_000, badKey: 10 * 60_000 } as const;
+/**
+ * 막힌 (키, 모델) 조합이 다시 시도되기까지 쉬는 시간.
+ * 429는 기본 1분 - 무료 티어의 분당 한도(RPM)는 1분이면 풀리는데 더 오래 쉬면 이미 풀린 한도를 못 쓴다.
+ * 하루 한도가 바닥난 경우엔 1분마다 조합당 헛호출 한 번이 나갈 뿐이라 감당할 만하다. 구글이 오류에
+ * retryDelay를 실어 주면 그 값을 따른다.
+ */
+const COOLDOWN_MS = { quota: 60_000, busy: 20_000, badKey: 10 * 60_000 } as const;
+const MIN_QUOTA_COOLDOWN_MS = 5_000;
+const MAX_QUOTA_COOLDOWN_MS = 10 * 60_000;
+
+/** 429 오류에 "retryDelay": "33s"처럼 실려 오는 대기 시간(ms). 없으면 null. */
+function retryDelayMs(error: ApiError): number | null {
+  const match = error.message.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  return match ? Math.round(Number(match[1]) * 1000) : null;
+}
 /** 이 시간이 지나면 더 돌지 않고 지금까지의 실패를 알린다 — 답이 늦으면 화면(챗봇 25초)이 먼저 포기한다. */
 const DEADLINE_MS = 20_000;
 
@@ -100,7 +113,11 @@ export async function generateContentWithKeys(params: Omit<GenerateParams, "mode
         const status = error.status;
         if (status === 429 || status === 503) {
           const reason: CooldownReason = status === 429 ? "quota" : "busy";
-          cooldowns.set(cooldownKey(key, model), { until: Date.now() + COOLDOWN_MS[reason], reason });
+          const wait =
+            reason === "quota"
+              ? Math.min(Math.max(retryDelayMs(error) ?? COOLDOWN_MS.quota, MIN_QUOTA_COOLDOWN_MS), MAX_QUOTA_COOLDOWN_MS)
+              : COOLDOWN_MS.busy;
+          cooldowns.set(cooldownKey(key, model), { until: Date.now() + wait, reason });
         } else if (status === 401 || status === 403) {
           // 잘못된 키는 어느 모델로 불러도 같으므로 그 키의 모든 모델을 쉬게 한다.
           for (const m of GEMINI_MODELS) {

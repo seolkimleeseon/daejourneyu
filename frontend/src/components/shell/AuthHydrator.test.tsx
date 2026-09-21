@@ -105,7 +105,8 @@ describe("로그인 게이트에 걸려 미뤄둔 코스 저장", () => {
 
     setLoggedIn(true);
 
-    expect(addCourse).toHaveBeenCalledWith(pendingCourse);
+    // 로그인 전에 만든 코스라 반려동물은 비워서 저장한다(지금 활성 반려동물로 오해해 붙이지 않게).
+    expect(addCourse).toHaveBeenCalledWith({ ...pendingCourse, petId: null });
     expect(useToastStore.getState().message).toBe("로그인 후 이어서 보관함에 저장했어요 🐾");
   });
 

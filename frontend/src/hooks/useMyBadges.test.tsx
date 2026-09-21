@@ -196,6 +196,17 @@ describe("ready — 숫자를 그려도 되는지", () => {
     expect(renderHook(() => useMyBadges()).result.current.ready).toBe(false);
   });
 
+  it("코스 목록을 받는 데 실패해도 무한 로딩에 갇히지 않는다", () => {
+    useCourseStore.setState({ hasSynced: false });
+    hooks.useSyncCoursesFromApi.mockReturnValue({ coursesFailed: true });
+
+    const { result } = renderHook(() => useMyBadges());
+
+    expect(result.current.ready).toBe(true);
+    // 못 받은 코스는 목데이터로 대신 세지 않는다.
+    expect(result.current.got.some((badge) => badge.id === "first-journey")).toBe(false);
+  });
+
   it("비로그인은 셀 게 없어 세션만 확인되면 true", () => {
     useAuthStore.setState({ isLoggedIn: false, hydrated: true });
 

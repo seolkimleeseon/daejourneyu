@@ -52,7 +52,9 @@ export function useMyBadges(): MyBadges {
   // 취향 계열(소형견 전용·전 견종)은 CourseStop에 없는 조건을 Place에서 찾아야 한다.
   const { data: places = [], isLoading: placesLoading } = usePlaces();
   // 마이탭 진입이 SCHEDULE 탭을 거치지 않을 수 있으므로(딥링크 등) 여기서도 직접 동기화한다.
-  useSyncCoursesFromApi();
+  const sync = useSyncCoursesFromApi();
+  // 코스 목록을 받는 데 실패하면 hasSynced가 영영 안 켜진다 - 무한 로딩 대신 세 수 있는 만큼(코스 없이) 보여준다.
+  const coursesFailed = sync?.coursesFailed ?? false;
   const storeCourses = useCourseStore((state) => state.courses);
   const storeSchedules = useCourseStore((state) => state.schedules);
   const hasSynced = useCourseStore((state) => state.hasSynced);
@@ -104,6 +106,6 @@ export function useMyBadges(): MyBadges {
     total: badges.length,
     nearest,
     nearestMessage: nearest ? nearBadgeMessage(nearest, input) : "",
-    ready: hydrated && (!isLoggedIn || (counted && !reviewsLoading && !postsLoading && !likesLoading && !placesLoading)),
+    ready: hydrated && (!isLoggedIn || ((counted || coursesFailed) && !reviewsLoading && !postsLoading && !likesLoading && !placesLoading)),
   };
 }

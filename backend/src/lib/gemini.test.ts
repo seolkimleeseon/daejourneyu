@@ -156,6 +156,38 @@ describe("generateContentWithKeys", () => {
     expect(calls.used.some((c) => c.key === "k1")).toBe(true);
   });
 
+  it("429는 기본 1분만 쉰다 - 분당 한도는 금방 풀리므로 오래 쉬면 풀린 한도를 못 쓴다", async () => {
+    vi.useFakeTimers();
+    process.env.GEMINI_API_KEYS = "k1";
+    calls.handler.mockRejectedValue(err(429));
+    await expect(generateContentWithKeys({ contents: "x" })).rejects.toMatchObject({ status: 429 });
+    calls.used.length = 0;
+    calls.handler.mockResolvedValue(OK);
+
+    vi.advanceTimersByTime(30_000);
+    await expect(generateContentWithKeys({ contents: "x" })).rejects.toMatchObject({ status: 429 });
+    expect(calls.used).toHaveLength(0);
+
+    vi.advanceTimersByTime(31_000);
+    await expect(generateContentWithKeys({ contents: "x" })).resolves.toEqual(OK);
+  });
+
+  it("오류에 retryDelay가 실려 있으면 그만큼만 쉰다", async () => {
+    vi.useFakeTimers();
+    process.env.GEMINI_API_KEYS = "k1";
+    const withDelay = new ApiError({
+      message: JSON.stringify({ error: { details: [{ retryDelay: "10s" }] } }),
+      status: 429,
+    });
+    calls.handler.mockRejectedValue(withDelay);
+    await expect(generateContentWithKeys({ contents: "x" })).rejects.toMatchObject({ status: 429 });
+    calls.handler.mockResolvedValue(OK);
+
+    vi.advanceTimersByTime(11_000);
+
+    await expect(generateContentWithKeys({ contents: "x" })).resolves.toEqual(OK);
+  });
+
   it("요청마다 시작 키를 옮겨 키들이 고르게 쓰인다", async () => {
     process.env.GEMINI_API_KEYS = "k1,k2,k3";
     calls.handler.mockResolvedValue(OK);
